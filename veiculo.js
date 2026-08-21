@@ -51,6 +51,18 @@ function validarAnoVeiculo() {
 async function enviarFormularioVeiculo(e) {
     e.preventDefault();
 
+    const placa = document.getElementById('fv-placa').value.trim();
+    if (!placa) {
+        mostrarMensagem('Informe a placa do veículo.', 'erro');
+        return;
+    }
+
+    const cnpjDigitos = document.getElementById('fv-cnpj').value.replace(/\D/g, '');
+    if (!cnpjDigitos) {
+        mostrarMensagem('Informe o CNPJ associado ao veículo.', 'erro');
+        return;
+    }
+
     if (!validarAnoVeiculo()) {
         mostrarMensagem(`Veículos do ano ${ANO_PROIBIDO} não podem ser cadastrados. Corrija o campo "Ano do Veículo" antes de enviar.`, 'erro');
         return;
@@ -69,12 +81,6 @@ async function enviarFormularioVeiculo(e) {
     }
     if (!document.getElementById('fv-lgpd-aceite').checked) {
         mostrarMensagem('É necessário concordar com os termos da LGPD para enviar o formulário.', 'erro');
-        return;
-    }
-
-    const placa = document.getElementById('fv-placa').value.trim();
-    if (!placa) {
-        mostrarMensagem('Informe a placa do veículo.', 'erro');
         return;
     }
 
@@ -100,7 +106,7 @@ async function enviarFormularioVeiculo(e) {
 
         const { error: erroInsert } = await supabaseClient.from('formularios_veiculo').insert({
             placa,
-            nome_proprietario: document.getElementById('fv-proprietario').value,
+            nome_proprietario: document.getElementById('fv-proprietario').value.trim() || null,
             cnpj_associado: document.getElementById('fv-cnpj').value,
             valor_contratado: valorContratadoRaw ? parseFloat(valorContratadoRaw) : null,
             documento_veiculo_path: caminhoDocumento,
