@@ -17,7 +17,7 @@ const REGIOES_ADMINISTRATIVAS_DF = [
 ];
 const LOCAIS_PRESTACAO_SERVICO = ['Comitê', ...REGIOES_ADMINISTRATIVAS_DF];
 
-const supabase = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
 function mascararCPF(valor) {
     return String(valor || '')
@@ -85,15 +85,15 @@ async function enviarFormulario(e) {
         const caminhoDocCpf = `${cpfDigitos}/CPF.${extCpf}`;
         const caminhoComprovante = `${cpfDigitos}/Comprovante_Residencia.${extComprovante}`;
 
-        const { error: erroUploadCpf } = await supabase.storage
+        const { error: erroUploadCpf } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf, { upsert: true });
         if (erroUploadCpf) throw new Error('Falha ao enviar o documento de CPF: ' + erroUploadCpf.message);
 
-        const { error: erroUploadComprovante } = await supabase.storage
+        const { error: erroUploadComprovante } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante, { upsert: true });
         if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
 
-        const { error: erroInsert } = await supabase.from('formularios_pessoal').insert({
+        const { error: erroInsert } = await supabaseClient.from('formularios_pessoal').insert({
             nome: document.getElementById('fp-nome').value,
             cpf: cpfDigitos,
             endereco: document.getElementById('fp-endereco').value,
