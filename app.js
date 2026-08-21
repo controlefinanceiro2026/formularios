@@ -78,19 +78,22 @@ async function enviarFormulario(e) {
     botao.textContent = 'Enviando...';
 
     try {
-        // Pasta = CPF da pessoa; arquivo = "CPF" / "Comprovante_Residencia"
-        // (upsert: reenvio da mesma pessoa substitui o documento anterior).
+        // Pasta = CPF da pessoa; arquivo = "CPF" / "Comprovante_Residencia" +
+        // timestamp (garante caminho novo a cada envio — sem upsert, que
+        // exigiria SELECT de "anon" no bucket e deixaria os documentos de
+        // qualquer pessoa legíveis por qualquer um que soubesse o CPF).
+        const agora = Date.now();
         const extCpf = arquivoCpf.name.split('.').pop();
         const extComprovante = arquivoComprovante.name.split('.').pop();
-        const caminhoDocCpf = `${cpfDigitos}/CPF.${extCpf}`;
-        const caminhoComprovante = `${cpfDigitos}/Comprovante_Residencia.${extComprovante}`;
+        const caminhoDocCpf = `${cpfDigitos}/CPF_${agora}.${extCpf}`;
+        const caminhoComprovante = `${cpfDigitos}/Comprovante_Residencia_${agora}.${extComprovante}`;
 
         const { error: erroUploadCpf } = await supabaseClient.storage
-            .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf, { upsert: true });
+            .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf);
         if (erroUploadCpf) throw new Error('Falha ao enviar o documento de CPF: ' + erroUploadCpf.message);
 
         const { error: erroUploadComprovante } = await supabaseClient.storage
-            .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante, { upsert: true });
+            .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante);
         if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
 
         const { error: erroInsert } = await supabaseClient.from('formularios_pessoal').insert({
