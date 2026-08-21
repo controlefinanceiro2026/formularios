@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Pré-Cadastro de Pessoal</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #f1f5f9; }
+        .fp-hero {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: white; padding: 2.5rem 1.5rem; text-align: center;
+        }
+        .fp-hero h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
+        .fp-hero p { margin: 0; opacity: 0.9; max-width: 620px; margin: 0 auto; }
+        .fp-container { max-width: 680px; margin: -2rem auto 3rem; padding: 0 1rem; }
+        .fp-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
+        .fp-secao-titulo { font-size: 1rem; font-weight: 700; color: var(--color-dark); margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .fp-secao-titulo:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        .fp-lgpd-box { max-height: 200px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; color: #475569; margin-bottom: 1rem; }
+        .fp-checkbox-linha { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.9rem; cursor: pointer; }
+        .fp-checkbox-linha input { margin-top: 0.2rem; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+        .fp-msg { padding: 0.9rem 1rem; border-radius: 8px; margin-top: 1rem; font-size: 0.9rem; display: none; }
+        .fp-msg.erro { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .fp-msg.sucesso { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .fp-sucesso-tela { text-align: center; padding: 2rem 0; }
+        .fp-sucesso-tela .icone { font-size: 3rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="fp-hero">
+        <h1>📄 Formulário de Pré-Cadastro de Pessoal</h1>
+        <p>Preencha seus dados e anexe a documentação solicitada. Sua contratação será analisada pela administração financeira da campanha.</p>
+    </div>
+
+    <div class="fp-container">
+        <div class="fp-card">
+            <div id="fp-tela-formulario">
+                <form id="form-pre-cadastro">
+                    <div class="fp-secao-titulo">Dados Pessoais</div>
+
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="fp-nome" placeholder="Seu nome completo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CPF</label>
+                        <input type="text" id="fp-cpf" placeholder="000.000.000-00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" id="fp-endereco" placeholder="Rua, número, bairro" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="fp-telefone" placeholder="(00) 00000-0000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CEP</label>
+                        <input type="text" id="fp-cep" placeholder="00000-000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Função</label>
+                        <select id="fp-funcao" required>
+                            <option value="">Selecione...</option>
+                            <option value="lider">Líder</option>
+                            <option value="multiplicador">Multiplicador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Local da Prestação do Serviço</label>
+                        <select id="fp-local-prestacao" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+
+                    <div class="fp-secao-titulo">Documentação</div>
+                    <div class="form-group">
+                        <label>Documento de CPF (PDF, JPG ou PNG)</label>
+                        <input type="file" id="fp-doc-cpf" accept=".pdf,.jpg,.jpeg,.png" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Comprovante de Residência (PDF, JPG ou PNG)</label>
+                        <input type="file" id="fp-doc-comprovante" accept=".pdf,.jpg,.jpeg,.png" required>
+                    </div>
+
+                    <div class="fp-secao-titulo">Termo de Consentimento — LGPD</div>
+                    <div class="fp-lgpd-box">
+                        Em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 —
+                        LGPD), informamos que os dados pessoais e os documentos fornecidos neste formulário
+                        (nome, CPF, endereço, telefone, CEP, cópia de documento de identificação e
+                        comprovante de residência) serão coletados, armazenados e tratados exclusivamente
+                        para fins de análise e formalização de eventual contratação junto à campanha
+                        eleitoral responsável por este formulário. Os dados não serão compartilhados com
+                        terceiros fora dessa finalidade, serão mantidos sob sigilo e ficarão acessíveis
+                        apenas a pessoas autorizadas da equipe de administração financeira da campanha. O(a)
+                        titular dos dados pode, a qualquer momento, solicitar informações sobre o tratamento
+                        de seus dados, correção ou exclusão, nos termos do art. 18 da LGPD, entrando em
+                        contato diretamente com a campanha.
+                    </div>
+                    <label class="fp-checkbox-linha">
+                        <input type="checkbox" id="fp-lgpd-aceite" required>
+                        <span>Li e concordo com os termos acima e autorizo o tratamento dos meus dados pessoais nos termos da LGPD.</span>
+                    </label>
+
+                    <div id="fp-mensagem" class="fp-msg"></div>
+
+                    <button type="submit" class="btn-primary" style="width:100%; margin-top:1.5rem; padding:0.85rem;" id="fp-btn-enviar">Enviar Formulário</button>
+                </form>
+            </div>
+
+            <div id="fp-tela-sucesso" class="fp-sucesso-tela" style="display:none;">
+                <div class="icone">✅</div>
+                <h2>Formulário enviado com sucesso!</h2>
+                <p style="color:#64748b; margin-top:0.5rem;">Sua solicitação foi recebida e será analisada pela administração financeira da campanha. Em breve entraremos em contato.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

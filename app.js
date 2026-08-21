@@ -1,0 +1,126 @@
+// Formulário público de pré-cadastro de pessoal — hospedado no GitHub
+// Pages, sem servidor próprio. Grava direto no Supabase (chave "anon
+// public" — só consegue INSERIR, nunca ler/editar/apagar, graças às
+// políticas de Row Level Security definidas em
+// supabase/schema-formulario-pessoal.sql). O sistema local da campanha
+// puxa essas submissões periodicamente, nunca ficando exposto à internet.
+
+// Mesma lista de supabase/schema-formulario-pessoal.sql — mantenha as
+// duas em sincronia se uma Região Administrativa for criada/renomeada.
+const REGIOES_ADMINISTRATIVAS_DF = [
+    'Águas Claras', 'Água Quente', 'Arapoanga', 'Arniqueira', 'Brazlândia', 'Candangolândia',
+    'Ceilândia', 'Cruzeiro', 'Fercal', 'Gama', 'Guará', 'Itapoã', 'Jardim Botânico', 'Lago Norte',
+    'Lago Sul', 'Núcleo Bandeirante', 'Paranoá', 'Park Way', 'Planaltina', 'Plano Piloto',
+    'Recanto das Emas', 'Riacho Fundo', 'Riacho Fundo II', 'Samambaia', 'Santa Maria',
+    'São Sebastião', 'SCIA/Estrutural', 'SIA', 'Sobradinho', 'Sobradinho II',
+    'Sol Nascente/Pôr do Sol', 'Sudoeste/Octogonal', 'Taguatinga', 'Varjão', 'Vicente Pires'
+];
+const LOCAIS_PRESTACAO_SERVICO = ['Comitê', ...REGIOES_ADMINISTRATIVAS_DF];
+
+const supabase = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+
+function mascararCPF(valor) {
+    return String(valor || '')
+        .replace(/\D/g, '')
+        .slice(0, 11)
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function mascararTelefone(valor) {
+    const digitos = String(valor || '').replace(/\D/g, '').slice(0, 11);
+    if (digitos.length <= 10) {
+        return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+    }
+    return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+}
+
+function mascararCEP(valor) {
+    return String(valor || '').replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2');
+}
+
+function preencherLocais() {
+    const selectLocal = document.getElementById('fp-local-prestacao');
+    LOCAIS_PRESTACAO_SERVICO.forEach(local => {
+        selectLocal.innerHTML += `<option value="${local}">${local}</option>`;
+    });
+}
+
+function mostrarMensagem(texto, tipo) {
+    const el = document.getElementById('fp-mensagem');
+    el.textContent = texto;
+    el.className = `fp-msg ${tipo}`;
+}
+
+async function enviarFormulario(e) {
+    e.preventDefault();
+
+    const arquivoCpf = document.getElementById('fp-doc-cpf').files[0];
+    const arquivoComprovante = document.getElementById('fp-doc-comprovante').files[0];
+    if (!arquivoCpf || !arquivoComprovante) {
+        mostrarMensagem('Anexe a documentação (CPF e comprovante de residência) antes de enviar.', 'erro');
+        return;
+    }
+    if (!document.getElementById('fp-lgpd-aceite').checked) {
+        mostrarMensagem('É necessário concordar com os termos da LGPD para enviar o formulário.', 'erro');
+        return;
+    }
+
+    const cpfDigitos = document.getElementById('fp-cpf').value.replace(/\D/g, '');
+    if (cpfDigitos.length !== 11) {
+        mostrarMensagem('CPF inválido — informe os 11 dígitos.', 'erro');
+        return;
+    }
+
+    const botao = document.getElementById('fp-btn-enviar');
+    botao.disabled = true;
+    botao.textContent = 'Enviando...';
+
+    try {
+        // Pasta = CPF da pessoa; arquivo = "CPF" / "Comprovante_Residencia"
+        // (upsert: reenvio da mesma pessoa substitui o documento anterior).
+        const extCpf = arquivoCpf.name.split('.').pop();
+        const extComprovante = arquivoComprovante.name.split('.').pop();
+        const caminhoDocCpf = `${cpfDigitos}/CPF.${extCpf}`;
+        const caminhoComprovante = `${cpfDigitos}/Comprovante_Residencia.${extComprovante}`;
+
+        const { error: erroUploadCpf } = await supabase.storage
+            .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf, { upsert: true });
+        if (erroUploadCpf) throw new Error('Falha ao enviar o documento de CPF: ' + erroUploadCpf.message);
+
+        const { error: erroUploadComprovante } = await supabase.storage
+            .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante, { upsert: true });
+        if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
+
+        const { error: erroInsert } = await supabase.from('formularios_pessoal').insert({
+            nome: document.getElementById('fp-nome').value,
+            cpf: cpfDigitos,
+            endereco: document.getElementById('fp-endereco').value,
+            telefone: document.getElementById('fp-telefone').value,
+            cep: document.getElementById('fp-cep').value,
+            funcao: document.getElementById('fp-funcao').value,
+            local_prestacao: document.getElementById('fp-local-prestacao').value,
+            documento_cpf_path: caminhoDocCpf,
+            comprovante_residencia_path: caminhoComprovante,
+            lgpd_aceite: true,
+            status: 'pendente'
+        });
+        if (erroInsert) throw new Error('Falha ao enviar o formulário: ' + erroInsert.message);
+
+        document.getElementById('fp-tela-formulario').style.display = 'none';
+        document.getElementById('fp-tela-sucesso').style.display = 'block';
+    } catch (erro) {
+        mostrarMensagem(erro.message || 'Não foi possível enviar o formulário. Verifique sua conexão e tente novamente.', 'erro');
+        botao.disabled = false;
+        botao.textContent = 'Enviar Formulário';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    preencherLocais();
+    document.getElementById('fp-cpf').addEventListener('input', function () { this.value = mascararCPF(this.value); });
+    document.getElementById('fp-telefone').addEventListener('input', function () { this.value = mascararTelefone(this.value); });
+    document.getElementById('fp-cep').addEventListener('input', function () { this.value = mascararCEP(this.value); });
+    document.getElementById('form-pre-cadastro').addEventListener('submit', enviarFormulario);
+});
