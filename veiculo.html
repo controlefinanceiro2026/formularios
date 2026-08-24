@@ -47,8 +47,20 @@
                         <input type="text" id="fv-placa" placeholder="Ex: ABC1D23" required>
                     </div>
                     <div class="form-group">
+                        <label>Marca</label>
+                        <input type="text" id="fv-marca" placeholder="Ex: Fiat" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo</label>
+                        <input type="text" id="fv-modelo" placeholder="Ex: Uno" required>
+                    </div>
+                    <div class="form-group">
                         <label>Nome do Proprietário (opcional)</label>
                         <input type="text" id="fv-proprietario" placeholder="Nome completo do proprietário">
+                    </div>
+                    <div class="form-group">
+                        <label>CPF do Proprietário (opcional)</label>
+                        <input type="text" id="fv-cpf-proprietario" placeholder="Ex: 000.000.000-00">
                     </div>
                     <div class="form-group">
                         <label>CNPJ Associado</label>
@@ -61,7 +73,7 @@
                     </div>
                     <div class="form-group">
                         <label>Valor Contratado (R$) — opcional</label>
-                        <input type="number" step="0.01" min="0" id="fv-valor-contratado" placeholder="0,00">
+                        <input type="text" inputmode="numeric" id="fv-valor-contratado" placeholder="R$ 0,00">
                     </div>
 
                     <div class="fp-secao-titulo">Documentação</div>

@@ -9,6 +9,15 @@ const ANO_PROIBIDO = '2026';
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
+function mascararCPF(valor) {
+    return String(valor || '')
+        .replace(/\D/g, '')
+        .slice(0, 11)
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
 function mascararCNPJ(valor) {
     return String(valor || '')
         .replace(/\D/g, '')
@@ -24,15 +33,31 @@ function mascararAno(valor) {
     return String(valor || '').replace(/\D/g, '').slice(0, 4);
 }
 
+// Máscara de moeda "digitando de trás pra frente" — mesma lógica de app.js.
+function mascararMoeda(valor) {
+    let digitos = String(valor || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    if (!digitos) return '';
+    digitos = digitos.padStart(3, '0');
+    const centavos = digitos.slice(-2);
+    const inteiro = digitos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `R$ ${inteiro},${centavos}`;
+}
+
+function valorMoedaParaNumero(valorMascarado) {
+    const digitos = String(valorMascarado || '').replace(/\D/g, '');
+    if (!digitos) return null;
+    return parseInt(digitos, 10) / 100;
+}
+
 function mostrarMensagem(texto, tipo) {
     const el = document.getElementById('fv-mensagem');
     el.textContent = texto;
     el.className = `fp-msg ${tipo}`;
 }
 
-// Ano do Veículo NÃO é persistido em lugar nenhum — serve só para barrar,
-// já no formulário, o cadastro de um veículo de 2026 (ano proibido). Não
-// entra no payload enviado ao Supabase.
+// Além de ir para o payload (campo ano_fabricacao), o Ano do Veículo serve
+// para barrar, já no formulário, o cadastro de um veículo de 2026 (ano
+// proibido).
 function validarAnoVeiculo() {
     const input = document.getElementById('fv-ano');
     const erroEl = document.getElementById('fv-ano-erro');
@@ -106,9 +131,13 @@ async function enviarFormularioVeiculo(e) {
 
         const { error: erroInsert } = await supabaseClient.from('formularios_veiculo').insert({
             placa,
+            marca: document.getElementById('fv-marca').value.trim() || null,
+            modelo: document.getElementById('fv-modelo').value.trim() || null,
+            ano_fabricacao: document.getElementById('fv-ano').value || null,
             nome_proprietario: document.getElementById('fv-proprietario').value.trim() || null,
+            cpf_proprietario: document.getElementById('fv-cpf-proprietario').value || null,
             cnpj_associado: document.getElementById('fv-cnpj').value,
-            valor_contratado: valorContratadoRaw ? parseFloat(valorContratadoRaw) : null,
+            valor_contratado: valorMoedaParaNumero(valorContratadoRaw),
             documento_veiculo_path: caminhoDocumento,
             status: 'pendente'
         });
@@ -125,6 +154,8 @@ async function enviarFormularioVeiculo(e) {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fv-cnpj').addEventListener('input', function () { this.value = mascararCNPJ(this.value); });
+    document.getElementById('fv-cpf-proprietario').addEventListener('input', function () { this.value = mascararCPF(this.value); });
+    document.getElementById('fv-valor-contratado').addEventListener('input', function () { this.value = mascararMoeda(this.value); });
     document.getElementById('fv-ano').addEventListener('input', function () {
         this.value = mascararAno(this.value);
         if (this.value.length === 4) validarAnoVeiculo();
