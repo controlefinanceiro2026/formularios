@@ -1,0 +1,13 @@
+{
+  "gerado_em": "2026-08-29T03:44:57.501Z",
+  "veiculos": [
+    {
+      "placa": "PPP9P99",
+      "marca": "TESTE",
+      "modelo": "TESTE",
+      "nome_proprietario": "TESTE",
+      "localidade": "Comitê",
+      "km_atual": 50000
+    }
+  ]
+}
