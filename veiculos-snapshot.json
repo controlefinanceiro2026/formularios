@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-08-29T03:44:57.501Z",
+  "gerado_em": "2026-08-31T22:05:11.685Z",
   "veiculos": [
     {
       "placa": "PPP9P99",
@@ -8,6 +8,14 @@
       "nome_proprietario": "TESTE",
       "localidade": "Comitê",
       "km_atual": 50000
+    },
+    {
+      "placa": "AAA9999",
+      "marca": "FIAT",
+      "modelo": "UNO",
+      "nome_proprietario": "TESTE",
+      "localidade": "SIA",
+      "km_atual": null
     }
   ]
 }
