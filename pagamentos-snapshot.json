@@ -1,10 +1,13 @@
 {
-  "gerado_em": "2026-08-31T22:48:50.031Z",
+  "gerado_em": "2026-08-31T22:54:37.063Z",
   "itens": [
     {
       "token": "p22-1",
       "pessoa_id": 22,
       "nome": "JOAO",
+      "telefone": "(66) 66666-6666",
+      "endereco": "SLKDFLKS",
+      "funcao": "lider",
       "local_prestacao": "Comitê",
       "valor": 1500,
       "data_prevista": "2026-09-02",

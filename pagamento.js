@@ -3,9 +3,10 @@
 // public" — só INSERT em formularios_pagamento, graças ao RLS de
 // supabase/schema-formulario-pagamento.sql). A lista de pagamentos vem de
 // pagamentos-snapshot.json, publicado pela plataforma local da campanha
-// (Agenda de Pagamento -> "Publicar lista para formulário"). NUNCA contém
-// chave PIX nem CPF. O sistema local importa os envios como lançamentos
-// de despesa.
+// (Agenda de Pagamento -> "Publicar lista para formulário"). Contém nome,
+// telefone, endereço, função e localidade (para o responsável em campo
+// identificar a pessoa), mas NUNCA chave PIX nem CPF. O sistema local
+// importa os envios como lançamentos de despesa.
 
 const SEM_LOCALIDADE = 'Sem localidade';
 
@@ -57,6 +58,24 @@ function fmtMoeda(v) {
 
 function localidadeDoItem(it) {
     return it.local_prestacao || SEM_LOCALIDADE;
+}
+
+function rotuloFuncao(f) {
+    if (f === 'lider') return 'Líder';
+    if (f === 'multiplicador') return 'Multiplicador';
+    if (f === 'fiscalizacao') return 'Fiscalização';
+    return f || '';
+}
+
+// Bloco de identificação da pessoa (função · localidade / telefone · endereço)
+// mostrado abaixo do nome, para o responsável em campo achar quem é.
+function detalhePessoa(it) {
+    const linha1 = [rotuloFuncao(it.funcao), it.local_prestacao].filter(Boolean).join(' · ');
+    const contato = [
+        it.telefone ? `📞 ${it.telefone}` : '',
+        it.endereco ? `🏠 ${it.endereco}` : ''
+    ].filter(Boolean).join(' · ');
+    return [linha1, contato].filter(Boolean).join('<br>');
 }
 
 function agruparPorLocalidade(lista) {
@@ -115,7 +134,10 @@ function renderTabelas() {
                     <tbody>
                         ${g.itens.map(it => `
                             <tr id="${linhaId(it.token)}" data-token="${it.token}">
-                                <td><strong>${it.nome}</strong></td>
+                                <td>
+                                    <strong>${it.nome}</strong>
+                                    ${detalhePessoa(it) ? `<div class="pg-pessoa-detalhe">${detalhePessoa(it)}</div>` : ''}
+                                </td>
                                 <td>${fmtMoeda(it.valor)}</td>
                                 <td>${isoParaBR(it.data_prevista)}</td>
                                 <td>${it.parcela || '—'}/${it.total_parcelas || '—'}</td>
