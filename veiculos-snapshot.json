@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-08-31T22:05:11.685Z",
+  "gerado_em": "2026-08-31T22:17:26.705Z",
   "veiculos": [
     {
       "placa": "PPP9P99",
@@ -8,6 +8,14 @@
       "nome_proprietario": "TESTE",
       "localidade": "Comitê",
       "km_atual": 50000
+    },
+    {
+      "placa": "BBB9999",
+      "marca": "FIAT",
+      "modelo": "SIENA",
+      "nome_proprietario": "TESTE",
+      "localidade": "Santa Maria",
+      "km_atual": null
     },
     {
       "placa": "AAA9999",
