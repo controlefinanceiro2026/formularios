@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Confirmação de Pagamento</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #f1f5f9; }
+        .fp-hero {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: white; padding: 2.5rem 1.5rem; text-align: center;
+        }
+        .fp-hero h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
+        .fp-hero p { margin: 0 auto; opacity: 0.9; max-width: 620px; }
+        .fp-container { max-width: 1040px; margin: -2rem auto 3rem; padding: 0 1rem; }
+        .fp-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
+        .fp-secao-titulo { font-size: 1rem; font-weight: 700; color: var(--color-dark); margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .fp-secao-titulo:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        .fp-msg { padding: 0.9rem 1rem; border-radius: 8px; margin-top: 1rem; font-size: 0.9rem; display: none; }
+        .fp-msg.erro { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .fp-msg.sucesso { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .fp-msg.info { display: block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .fp-sucesso-tela { text-align: center; padding: 2rem 0; }
+        .fp-sucesso-tela .icone { font-size: 3rem; margin-bottom: 1rem; }
+
+        .pg-localidade-titulo { font-size: 0.95rem; font-weight: 700; background: #1e293b; color: #fff; padding: 0.6rem 0.9rem; border-radius: 8px 8px 0 0; margin-top: 1.5rem; }
+        .pg-tabela-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-bottom: 0.5rem; }
+        table.pg-tabela { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 680px; }
+        table.pg-tabela th, table.pg-tabela td { padding: 0.6rem 0.7rem; border-bottom: 1px solid #eef2f7; text-align: left; vertical-align: middle; }
+        table.pg-tabela th { background: #f8fafc; font-weight: 700; color: #475569; white-space: nowrap; }
+        .pg-linha-enviada { background: #f0fdf4; }
+        .pg-btn-linha { padding: 0.5rem 0.7rem; font-size: 0.8rem; white-space: nowrap; }
+        .pg-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .pg-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <div class="fp-hero">
+        <h1>💸 Confirmação de Pagamento</h1>
+        <p>Marque cada pessoa que já recebeu o pagamento. A informação vai direto para a administração financeira da campanha.</p>
+        <p id="pg-lista-nome" style="display:none; margin-top:0.75rem; font-weight:700; background:rgba(255,255,255,0.18); border-radius:999px; padding:0.35rem 1rem;"></p>
+    </div>
+
+    <div class="fp-container">
+        <div class="fp-card">
+            <div id="fp-tela-formulario">
+                <div class="fp-secao-titulo">Dados da Confirmação</div>
+                <div class="pg-filtro-linha">
+                    <div class="form-group">
+                        <label>Data do pagamento</label>
+                        <input type="text" id="pg-data" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmado por</label>
+                        <input type="text" id="pg-confirmado-por" placeholder="Nome de quem está confirmando" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Filtrar por localidade (opcional)</label>
+                        <select id="pg-filtro-localidade"><option value="">Todas as localidades</option></select>
+                    </div>
+                </div>
+
+                <div id="pg-carregando" class="fp-msg info" style="display:block;">Carregando os pagamentos…</div>
+                <div id="pg-tabelas"></div>
+
+                <div id="pg-mensagem" class="fp-msg"></div>
+
+                <button type="button" class="btn-primary" style="width:100%; margin-top:1.5rem; padding:0.85rem;" id="pg-btn-todos">Registrar todos os pagamentos</button>
+            </div>
+
+            <div id="fp-tela-sucesso" class="fp-sucesso-tela" style="display:none;">
+                <div class="icone">✅</div>
+                <h2>Confirmações enviadas!</h2>
+                <p style="color:#64748b; margin-top:0.5rem;">Todos os pagamentos foram registrados. A administração financeira vai importar na plataforma.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="pagamento.js"></script>
+</body>
+</html>
