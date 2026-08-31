@@ -53,6 +53,15 @@ function mostrarMensagem(texto, tipo) {
     el.className = `fp-msg ${tipo}`;
 }
 
+// Usado só pra montar a pasta do documento (nome digitado vira parte de um
+// caminho de Storage) — troca "/" por "-" pra nunca criar um nível de pasta
+// indesejado a partir de um nome com barra.
+function sanitizarSegmentoCaminho(valor) {
+    return String(valor || '')
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .trim().replace(/[\/\\]+/g, '-') || 'sem-nome';
+}
+
 async function enviarFormulario(e) {
     e.preventDefault();
 
@@ -78,15 +87,17 @@ async function enviarFormulario(e) {
     botao.textContent = 'Enviando...';
 
     try {
-        // Pasta = CPF da pessoa; arquivo = "CPF" / "Comprovante_Residencia" +
-        // timestamp (garante caminho novo a cada envio — sem upsert, que
-        // exigiria SELECT de "anon" no bucket e deixaria os documentos de
-        // qualquer pessoa legíveis por qualquer um que soubesse o CPF).
+        // Pasta = pessoal/{nome da pessoa}; arquivo = "CPF" / "Comprovante de
+        // Residência" + timestamp (garante caminho novo a cada envio — sem
+        // upsert, que exigiria SELECT de "anon" no bucket e deixaria os
+        // documentos de qualquer pessoa legíveis por qualquer um que
+        // soubesse o nome dela).
         const agora = Date.now();
+        const nomeSanitizado = sanitizarSegmentoCaminho(document.getElementById('fp-nome').value);
         const extCpf = arquivoCpf.name.split('.').pop();
         const extComprovante = arquivoComprovante.name.split('.').pop();
-        const caminhoDocCpf = `${cpfDigitos}/CPF_${agora}.${extCpf}`;
-        const caminhoComprovante = `${cpfDigitos}/Comprovante_Residencia_${agora}.${extComprovante}`;
+        const caminhoDocCpf = `pessoal/${nomeSanitizado}/CPF_${agora}.${extCpf}`;
+        const caminhoComprovante = `pessoal/${nomeSanitizado}/Comprovante de Residência_${agora}.${extComprovante}`;
 
         const { error: erroUploadCpf } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf);

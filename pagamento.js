@@ -9,8 +9,18 @@
 // importa os envios como lançamentos de despesa.
 
 const SEM_LOCALIDADE = 'Sem localidade';
+const VALIDADE_LINK_HORAS = 24; // o link vale 1 dia a partir da publicação da lista
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+
+// Mesma regra de lib/pagamentoFormulario.js#snapshotExpirado — reimplementada
+// porque o formulário público tem deploy isolado. Sem gerado_em válido não
+// expira (compat. com snapshot antigo).
+function snapshotExpirado(geradoEm) {
+    const t = Date.parse(geradoEm);
+    if (!Number.isFinite(t)) return false;
+    return (Date.now() - t) > VALIDADE_LINK_HORAS * 3600 * 1000;
+}
 
 // Itens do snapshot já filtrados pela lista da equipe.
 let itens = [];
@@ -68,14 +78,19 @@ function rotuloFuncao(f) {
 }
 
 // Bloco de identificação da pessoa (função · localidade / telefone · endereço)
-// mostrado abaixo do nome, para o responsável em campo achar quem é.
+// mostrado abaixo do nome, para o responsável em campo achar quem é. A
+// localidade aparece SEMPRE (com 📍), mesmo quando não há função ou quando
+// o cadastro está sem localidade.
 function detalhePessoa(it) {
-    const linha1 = [rotuloFuncao(it.funcao), it.local_prestacao].filter(Boolean).join(' · ');
+    const funcaoLoc = [
+        rotuloFuncao(it.funcao),
+        `📍 ${it.local_prestacao || 'Sem localidade definida'}`
+    ].filter(Boolean).join(' · ');
     const contato = [
         it.telefone ? `📞 ${it.telefone}` : '',
         it.endereco ? `🏠 ${it.endereco}` : ''
     ].filter(Boolean).join(' · ');
-    return [linha1, contato].filter(Boolean).join('<br>');
+    return [funcaoLoc, contato].filter(Boolean).join('<br>');
 }
 
 function agruparPorLocalidade(lista) {
@@ -354,13 +369,19 @@ async function carregar() {
     }
     mostrarNomeDaLista(listaAtiva.nome);
 
+    let snap;
     try {
         const resp = await fetch('pagamentos-snapshot.json', { cache: 'no-store' });
         if (!resp.ok) throw new Error(`status ${resp.status}`);
-        const snap = await resp.json();
+        snap = await resp.json();
         itens = Array.isArray(snap.itens) ? snap.itens : [];
     } catch (e) {
         pararComErro('Não foi possível carregar a lista de pagamentos. Recarregue a página ou fale com a administração da campanha.');
+        return;
+    }
+
+    if (snapshotExpirado(snap.gerado_em)) {
+        pararComErro('Este link expirou. A lista de pagamentos vale por 1 dia após ser publicada — peça um link atualizado à administração da campanha.');
         return;
     }
 

@@ -8,6 +8,16 @@
 
 const SEM_LOCALIDADE = 'Sem localidade definida';
 const TAMANHO_MAX_FOTO = 10 * 1024 * 1024; // 10 MB
+const VALIDADE_LINK_HORAS = 24; // o link vale 1 dia a partir da publicação da lista
+
+// Mesma regra de lib/kmFormulario.js#snapshotExpirado — reimplementada
+// porque o formulário público tem deploy isolado. Sem gerado_em válido não
+// expira (compat. com snapshot antigo).
+function snapshotExpirado(geradoEm) {
+    const t = Date.parse(geradoEm);
+    if (!Number.isFinite(t)) return false;
+    return (Date.now() - t) > VALIDADE_LINK_HORAS * 3600 * 1000;
+}
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
@@ -21,11 +31,12 @@ let listaAtiva = null;
 
 // Mesma regra de lib/kmFormulario.js#filtrarVeiculosPorLocalidades — aqui
 // reimplementada porque o formulário público tem deploy isolado e não
-// carrega aquele arquivo.
+// carrega aquele arquivo. Veículos sem localidade definida entram em TODA
+// lista, pra nenhum carro cadastrado ficar fora de todos os formulários.
 function filtrarVeiculosPorLocalidades(lista, localidades) {
     if (!localidades || !localidades.length) return lista.slice();
     const permitidas = new Set(localidades.map(l => String(l)));
-    return lista.filter(v => permitidas.has(String(v.localidade)));
+    return lista.filter(v => permitidas.has(String(v.localidade)) || String(v.localidade) === SEM_LOCALIDADE);
 }
 
 // ---------- helpers de formatação ----------
@@ -390,45 +401,50 @@ async function carregar() {
     document.getElementById('km-filtro-localidade').addEventListener('change', aplicarFiltroLocalidade);
     document.getElementById('km-btn-enviar-todos').addEventListener('click', enviarTodos);
 
-    const slugLista = new URLSearchParams(location.search).get('lista');
+    // O formulário SÓ funciona com um ?lista=<slug> válido — cada líder usa
+    // o link da própria equipe. Sem isso (ou com slug inexistente), mostra
+    // erro em vez de listar todos os veículos.
+    const slugLista = (new URLSearchParams(location.search).get('lista') || '').trim();
 
-    if (slugLista) {
-        try {
-            listaAtiva = await carregarListaPorSlug(slugLista.trim());
-        } catch (e) {
-            pararComErro('Não foi possível carregar a lista desta equipe. Recarregue a página ou confirme o link com a administração da campanha.');
-            return;
-        }
-        if (!listaAtiva) {
-            pararComErro('Lista não encontrada. Confirme o link recebido com a administração da campanha.');
-            return;
-        }
-        mostrarNomeDaLista(listaAtiva.nome);
+    if (!slugLista) {
+        pararComErro('Link incompleto. Use o link que você recebeu da administração da campanha (ele termina com "?lista=…").');
+        return;
     }
+    try {
+        listaAtiva = await carregarListaPorSlug(slugLista);
+    } catch (e) {
+        pararComErro('Não foi possível carregar a lista desta equipe. Recarregue a página ou confirme o link com a administração da campanha.');
+        return;
+    }
+    if (!listaAtiva) {
+        pararComErro('Lista não encontrada. Confirme o link recebido com a administração da campanha.');
+        return;
+    }
+    mostrarNomeDaLista(listaAtiva.nome);
 
+    let snap;
     try {
         const resp = await fetch('veiculos-snapshot.json', { cache: 'no-store' });
         if (!resp.ok) throw new Error(`status ${resp.status}`);
-        const snap = await resp.json();
+        snap = await resp.json();
         veiculos = Array.isArray(snap.veiculos) ? snap.veiculos : [];
     } catch (e) {
         pararComErro('Não foi possível carregar a lista de veículos. Recarregue a página ou fale com a administração da campanha.');
         return;
     }
 
-    if (listaAtiva) {
-        veiculos = filtrarVeiculosPorLocalidades(veiculos, listaAtiva.localidades);
-        if (veiculos.length === 0) {
-            pararComErro('Nenhum veículo cadastrado nas regiões desta lista. Fale com a administração da campanha.');
-            return;
-        }
+    if (snapshotExpirado(snap.gerado_em)) {
+        pararComErro('Este link expirou. A lista de veículos vale por 1 dia após ser publicada — peça um link atualizado à administração da campanha.');
+        return;
+    }
+
+    veiculos = filtrarVeiculosPorLocalidades(veiculos, listaAtiva.localidades);
+    if (veiculos.length === 0) {
+        pararComErro('Nenhum veículo cadastrado nas regiões desta lista. Fale com a administração da campanha.');
+        return;
     }
 
     document.getElementById('km-carregando').style.display = 'none';
-    if (veiculos.length === 0) {
-        document.getElementById('km-btn-enviar-todos').disabled = true;
-        document.getElementById('km-filtro-localidade').disabled = true;
-    }
     preencherFiltroLocalidades();
     renderTabelas();
 }

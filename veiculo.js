@@ -33,6 +33,23 @@ function mascararAno(valor) {
     return String(valor || '').replace(/\D/g, '').slice(0, 4);
 }
 
+// Máscara de placa — 7 caracteres, sem separadores, maiúsculas (mesmo
+// formato de app.js / lib/queryEngine). Aceita padrão antigo (AAA9999) e
+// Mercosul (AAA9A99), enforçando letra/dígito por posição.
+function mascararPlaca(valor) {
+    const bruto = String(valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
+    let saida = '';
+    for (let i = 0; i < bruto.length; i++) {
+        const c = bruto[i];
+        const ehLetra = c >= 'A' && c <= 'Z';
+        const ehDigito = c >= '0' && c <= '9';
+        const posicaoOk = i < 3 ? ehLetra : (i === 4 ? (ehLetra || ehDigito) : ehDigito);
+        if (!posicaoOk) break;
+        saida += c;
+    }
+    return saida;
+}
+
 // Máscara de moeda "digitando de trás pra frente" — mesma lógica de app.js.
 function mascararMoeda(valor) {
     let digitos = String(valor || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
@@ -53,6 +70,15 @@ function mostrarMensagem(texto, tipo) {
     const el = document.getElementById('fv-mensagem');
     el.textContent = texto;
     el.className = `fp-msg ${tipo}`;
+}
+
+// Usado só pra montar a pasta do documento (nome digitado vira parte de um
+// caminho de Storage) — troca "/" por "-" pra nunca criar um nível de pasta
+// indesejado a partir de um nome com barra.
+function sanitizarSegmentoCaminho(valor) {
+    return String(valor || '')
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .trim().replace(/[\/\\]+/g, '-') || 'sem-nome';
 }
 
 // Além de ir para o payload (campo ano_fabricacao), o Ano do Veículo serve
@@ -76,7 +102,7 @@ function validarAnoVeiculo() {
 async function enviarFormularioVeiculo(e) {
     e.preventDefault();
 
-    const placa = document.getElementById('fv-placa').value.trim();
+    const placa = mascararPlaca(document.getElementById('fv-placa').value);
     if (!placa) {
         mostrarMensagem('Informe a placa do veículo.', 'erro');
         return;
@@ -114,14 +140,14 @@ async function enviarFormularioVeiculo(e) {
     botao.textContent = 'Enviando...';
 
     try {
-        // Pasta = placa do veículo; arquivo = "Documento" + timestamp
+        // Pasta = veiculo/{nome do proprietário}; arquivo = "CRLV" + timestamp
         // (garante caminho novo a cada envio — sem upsert, que exigiria
         // SELECT de "anon" no bucket e deixaria documentos de qualquer
-        // veículo legíveis por qualquer um).
+        // veículo legíveis por qualquer um que soubesse o nome do dono).
         const agora = Date.now();
-        const placaSanitizada = placa.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'SEM-PLACA';
+        const proprietarioSanitizado = sanitizarSegmentoCaminho(document.getElementById('fv-proprietario').value);
         const extDocumento = arquivoDocumento.name.split('.').pop();
-        const caminhoDocumento = `veiculo/${placaSanitizada}/Documento_${agora}.${extDocumento}`;
+        const caminhoDocumento = `veiculo/${proprietarioSanitizado}/CRLV_${agora}.${extDocumento}`;
 
         const { error: erroUpload } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoDocumento, arquivoDocumento);
@@ -153,6 +179,7 @@ async function enviarFormularioVeiculo(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('fv-placa').addEventListener('input', function () { this.value = mascararPlaca(this.value); });
     document.getElementById('fv-cnpj').addEventListener('input', function () { this.value = mascararCNPJ(this.value); });
     document.getElementById('fv-cpf-proprietario').addEventListener('input', function () { this.value = mascararCPF(this.value); });
     document.getElementById('fv-valor-contratado').addEventListener('input', function () { this.value = mascararMoeda(this.value); });
