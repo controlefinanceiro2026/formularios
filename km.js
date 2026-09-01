@@ -27,6 +27,10 @@ const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, 
 // Estado por veículo (índice = posição no snapshot).
 let veiculos = [];
 const enviados = {}; // idx -> true depois de enviado com sucesso
+// idx -> File[] com as fotos escolhidas pra aquele veículo. O líder de
+// campo pode adicionar/remover/trocar à vontade ATÉ enviar; depois do
+// envio a linha trava e não dá mais pra mexer.
+const fotosPorLinha = {};
 
 // Lista por equipe ativa (quando a URL tem ?lista=<slug>): { nome, localidades }.
 // Sem ?lista, o formulário mostra todos os veículos (uso do admin / link antigo).
@@ -127,6 +131,7 @@ function renderTabelas() {
         return;
     }
 
+    Object.keys(fotosPorLinha).forEach(k => delete fotosPorLinha[k]);
     const grupos = agruparPorLocalidade(itens);
     container.innerHTML = grupos.map(g => `
         <div class="km-grupo" data-localidade="${encodeURIComponent(g.localidade)}">
@@ -148,9 +153,10 @@ function renderTabelas() {
                                 <td><input type="number" class="km-no-dia" min="0" step="1" placeholder="Ex: 45230"></td>
                                 <td class="km-rodado">—</td>
                                 <td>
-                                    <input type="file" class="km-foto" accept="image/png,image/jpeg" multiple>
-                                    <span class="km-fotos-ajuda">Selecione de 1 a 3 fotos (JPG ou PNG)</span>
-                                    <div class="km-fotos-previa"></div>
+                                    <input type="file" class="km-foto" accept="image/png,image/jpeg" multiple hidden>
+                                    <button type="button" class="btn-secondary km-add-foto" data-idx="${idx}">📷 Adicionar foto</button>
+                                    <span class="km-fotos-ajuda">Até 3 fotos (JPG ou PNG). Toque no ✕ para remover antes de enviar.</span>
+                                    <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
                                 <td><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
                             </tr>
@@ -162,7 +168,10 @@ function renderTabelas() {
     `).join('');
 
     container.querySelectorAll('.km-no-dia').forEach(inp => inp.addEventListener('input', onKmNoDiaInput));
-    container.querySelectorAll('.km-foto').forEach(inp => inp.addEventListener('change', onFotoChange));
+    container.querySelectorAll('.km-foto').forEach(inp => inp.addEventListener('change', onFotosSelecionadas));
+    container.querySelectorAll('.km-add-foto').forEach(btn => btn.addEventListener('click', () => {
+        btn.closest('tr').querySelector('.km-foto').click();
+    }));
     container.querySelectorAll('.km-btn-linha').forEach(btn => btn.addEventListener('click', () => enviarLinha(Number(btn.dataset.idx))));
 
     aplicarFiltroLocalidade();
@@ -178,20 +187,69 @@ function onKmNoDiaInput(e) {
     cel.className = rodado < 0 ? 'km-rodado km-rodado-neg' : 'km-rodado';
 }
 
-function onFotoChange(e) {
-    const tr = e.target.closest('tr');
+// Duas fotos são "a mesma" se batem nome + tamanho + data de modificação —
+// evita duplicar quando o líder abre o seletor e escolhe o mesmo arquivo.
+function mesmaFoto(a, b) {
+    return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+}
+
+// O líder escolheu arquivos no seletor: acrescenta aos que já estão na
+// linha (respeitando o limite de 3) e redesenha as miniaturas.
+function onFotosSelecionadas(e) {
+    const idx = Number(e.target.closest('tr').dataset.idx);
+    const atuais = fotosPorLinha[idx] || (fotosPorLinha[idx] = []);
+    Array.from(e.target.files).forEach(arquivo => {
+        if (!['image/png', 'image/jpeg'].includes(arquivo.type)) return;
+        if (atuais.length >= MAX_FOTOS) return;
+        if (atuais.some(f => mesmaFoto(f, arquivo))) return;
+        atuais.push(arquivo);
+    });
+    e.target.value = ''; // permite re-selecionar o mesmo arquivo depois
+    renderFotosLinha(idx);
+}
+
+function removerFoto(idx, posicao) {
+    if (!fotosPorLinha[idx]) return;
+    fotosPorLinha[idx].splice(posicao, 1);
+    renderFotosLinha(idx);
+}
+
+// Redesenha as miniaturas + botão ✕ de uma linha, e liga/desliga o botão
+// "Adicionar foto" conforme o limite de 3.
+function renderFotosLinha(idx) {
+    const tr = document.getElementById(linhaId(idx));
+    if (!tr) return;
     const box = tr.querySelector('.km-fotos-previa');
     box.querySelectorAll('img').forEach(img => URL.revokeObjectURL(img.src));
     box.innerHTML = '';
-    const arquivos = Array.from(e.target.files).slice(0, MAX_FOTOS);
-    arquivos.forEach(arquivo => {
-        if (!arquivo.type.startsWith('image/')) return;
+
+    const arquivos = fotosPorLinha[idx] || [];
+    const travada = !!enviados[idx];
+    arquivos.forEach((arquivo, i) => {
+        const item = document.createElement('div');
+        item.className = 'km-foto-item';
         const img = document.createElement('img');
         img.className = 'km-foto-previa';
         img.alt = '';
         img.src = URL.createObjectURL(arquivo);
-        box.appendChild(img);
+        item.appendChild(img);
+        if (!travada) {
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.className = 'km-foto-remover';
+            x.textContent = '✕';
+            x.title = 'Remover esta foto';
+            x.addEventListener('click', () => removerFoto(idx, i));
+            item.appendChild(x);
+        }
+        box.appendChild(item);
     });
+
+    const addBtn = tr.querySelector('.km-add-foto');
+    if (addBtn) {
+        addBtn.disabled = travada || arquivos.length >= MAX_FOTOS;
+        addBtn.textContent = arquivos.length ? '📷 Adicionar outra foto' : '📷 Adicionar foto';
+    }
 }
 
 function preencherFiltroLocalidades() {
@@ -232,7 +290,7 @@ function validarLinha(idx) {
         return `Veículo ${veiculos[idx].placa}: informe um "Km no Dia" válido (número maior ou igual a zero).`;
     }
 
-    const arquivos = Array.from(tr.querySelector('.km-foto').files);
+    const arquivos = fotosPorLinha[idx] || [];
     if (arquivos.length < MIN_FOTOS) return `Veículo ${veiculos[idx].placa}: anexe pelo menos 1 foto do veículo.`;
     if (arquivos.length > MAX_FOTOS) {
         return `Veículo ${veiculos[idx].placa}: no máximo ${MAX_FOTOS} fotos do veículo. Selecione todas de uma vez.`;
@@ -257,6 +315,7 @@ function travarLinha(idx, enviada) {
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-secondary');
         tr.classList.add('km-linha-enviada');
+        renderFotosLinha(idx); // tira os botões ✕ — não dá mais pra editar
     }
 }
 
@@ -264,6 +323,7 @@ function destravarLinha(idx) {
     const tr = document.getElementById(linhaId(idx));
     tr.querySelectorAll('input, button').forEach(el => { el.disabled = false; });
     tr.querySelector('.km-btn-linha').textContent = 'Enviar dados do veículo';
+    renderFotosLinha(idx); // reacerta o estado do botão "Adicionar foto"
 }
 
 // Faz o upload da foto + o insert. Lança em caso de erro. Não mexe em UI.
@@ -273,7 +333,7 @@ async function persistirLinha(idx) {
     const dataISO = dataParaISO(document.getElementById('km-data').value);
     const responsavel = document.getElementById('km-responsavel').value.trim();
     const kmNoDia = Number(tr.querySelector('.km-no-dia').value);
-    const arquivos = Array.from(tr.querySelector('.km-foto').files).slice(0, MAX_FOTOS);
+    const arquivos = (fotosPorLinha[idx] || []).slice(0, MAX_FOTOS);
 
     // As fotos entram na caixa de entrada com nome provisório; a
     // administração renomeia (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}) ao aceitar.
