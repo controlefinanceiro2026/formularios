@@ -1,6 +1,14 @@
 {
-  "gerado_em": "2026-08-31T22:17:26.705Z",
+  "gerado_em": "2026-09-01T14:44:07.760Z",
   "veiculos": [
+    {
+      "placa": "AAA9999",
+      "marca": "FIAT",
+      "modelo": "UNO",
+      "nome_proprietario": "JOAO",
+      "localidade": "Comitê",
+      "km_atual": null
+    },
     {
       "placa": "PPP9P99",
       "marca": "TESTE",
@@ -15,14 +23,6 @@
       "modelo": "SIENA",
       "nome_proprietario": "TESTE",
       "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "AAA9999",
-      "marca": "FIAT",
-      "modelo": "UNO",
-      "nome_proprietario": "TESTE",
-      "localidade": "SIA",
       "km_atual": null
     }
   ]
