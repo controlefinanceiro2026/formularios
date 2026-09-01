@@ -37,7 +37,9 @@
         .km-rodado-neg { color: #dc2626; font-weight: 700; }
         .km-linha-enviada { background: #f0fdf4; }
         .km-btn-linha { padding: 0.5rem 0.7rem; font-size: 0.8rem; white-space: nowrap; }
-        .km-foto-previa { display: block; margin-top: 0.35rem; max-width: 120px; max-height: 90px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .km-fotos-previa { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+        .km-foto-previa { display: block; max-width: 120px; max-height: 90px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .km-fotos-ajuda { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: #64748b; }
         .km-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .km-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
     </style>
@@ -45,7 +47,7 @@
 <body>
     <div class="fp-hero">
         <h1>📏 Formulário de Controle de Km</h1>
-        <p>Informe o km do odômetro de cada veículo no dia da conferência e anexe a foto do odômetro. Os dados vão para a administração financeira da campanha.</p>
+        <p>Informe o km do odômetro de cada veículo no dia da conferência e anexe de 1 a 3 fotos do veículo. Os dados vão para a administração financeira da campanha.</p>
         <p id="km-lista-nome" style="display:none; margin-top:0.75rem; font-weight:700; background:rgba(255,255,255,0.18); border-radius:999px; padding:0.35rem 1rem;"></p>
     </div>
 
@@ -94,6 +96,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=2"></script>
+    <script src="km.js?v=3"></script>
 </body>
 </html>

@@ -4,10 +4,13 @@
 // veículos vem de veiculos-snapshot.json, publicado pelo sistema local da
 // campanha (Controle de Km → "Publicar lista para formulário público").
 // O sistema local puxa esses envios periodicamente e os importa como
-// leituras de odômetro.
+// leituras de km — nomeando as fotos do veículo antes de subir para o
+// bucket definitivo (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}).
 
 const SEM_LOCALIDADE = 'Sem localidade definida';
-const TAMANHO_MAX_FOTO = 10 * 1024 * 1024; // 10 MB
+const TAMANHO_MAX_FOTO = 10 * 1024 * 1024; // 10 MB por foto
+const MIN_FOTOS = 1;
+const MAX_FOTOS = 3; // o líder de campo anexa de 1 a 3 fotos do veículo
 const VALIDADE_LINK_HORAS = 24; // o link vale 1 dia a partir da publicação da lista
 
 // Mesma regra de lib/kmFormulario.js#snapshotExpirado — reimplementada
@@ -133,7 +136,7 @@ function renderTabelas() {
                     <thead>
                         <tr>
                             <th>Placa</th><th>Proprietário</th><th>Km Atual</th>
-                            <th>Km no Dia *</th><th>Km Rodado</th><th>Foto do Odômetro *</th><th></th>
+                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,8 +148,9 @@ function renderTabelas() {
                                 <td><input type="number" class="km-no-dia" min="0" step="1" placeholder="Ex: 45230"></td>
                                 <td class="km-rodado">—</td>
                                 <td>
-                                    <input type="file" class="km-foto" accept="image/png,image/jpeg">
-                                    <img class="km-foto-previa" alt="" style="display:none;">
+                                    <input type="file" class="km-foto" accept="image/png,image/jpeg" multiple>
+                                    <span class="km-fotos-ajuda">Selecione de 1 a 3 fotos (JPG ou PNG)</span>
+                                    <div class="km-fotos-previa"></div>
                                 </td>
                                 <td><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
                             </tr>
@@ -176,14 +180,18 @@ function onKmNoDiaInput(e) {
 
 function onFotoChange(e) {
     const tr = e.target.closest('tr');
-    const img = tr.querySelector('.km-foto-previa');
-    const arquivo = e.target.files[0];
-    if (arquivo && arquivo.type.startsWith('image/')) {
+    const box = tr.querySelector('.km-fotos-previa');
+    box.querySelectorAll('img').forEach(img => URL.revokeObjectURL(img.src));
+    box.innerHTML = '';
+    const arquivos = Array.from(e.target.files).slice(0, MAX_FOTOS);
+    arquivos.forEach(arquivo => {
+        if (!arquivo.type.startsWith('image/')) return;
+        const img = document.createElement('img');
+        img.className = 'km-foto-previa';
+        img.alt = '';
         img.src = URL.createObjectURL(arquivo);
-        img.style.display = 'block';
-    } else {
-        img.style.display = 'none';
-    }
+        box.appendChild(img);
+    });
 }
 
 function preencherFiltroLocalidades() {
@@ -224,13 +232,18 @@ function validarLinha(idx) {
         return `Veículo ${veiculos[idx].placa}: informe um "Km no Dia" válido (número maior ou igual a zero).`;
     }
 
-    const arquivo = tr.querySelector('.km-foto').files[0];
-    if (!arquivo) return `Veículo ${veiculos[idx].placa}: anexe a foto do odômetro.`;
-    if (!['image/png', 'image/jpeg'].includes(arquivo.type)) {
-        return `Veículo ${veiculos[idx].placa}: a foto do odômetro deve ser uma imagem JPG ou PNG.`;
+    const arquivos = Array.from(tr.querySelector('.km-foto').files);
+    if (arquivos.length < MIN_FOTOS) return `Veículo ${veiculos[idx].placa}: anexe pelo menos 1 foto do veículo.`;
+    if (arquivos.length > MAX_FOTOS) {
+        return `Veículo ${veiculos[idx].placa}: no máximo ${MAX_FOTOS} fotos do veículo. Selecione todas de uma vez.`;
     }
-    if (arquivo.size > TAMANHO_MAX_FOTO) {
-        return `Veículo ${veiculos[idx].placa}: a foto do odômetro passa de 10 MB. Envie uma imagem menor.`;
+    for (const arquivo of arquivos) {
+        if (!['image/png', 'image/jpeg'].includes(arquivo.type)) {
+            return `Veículo ${veiculos[idx].placa}: as fotos do veículo devem ser imagens JPG ou PNG.`;
+        }
+        if (arquivo.size > TAMANHO_MAX_FOTO) {
+            return `Veículo ${veiculos[idx].placa}: uma das fotos passa de 10 MB. Envie imagens menores.`;
+        }
     }
     return null;
 }
@@ -260,12 +273,19 @@ async function persistirLinha(idx) {
     const dataISO = dataParaISO(document.getElementById('km-data').value);
     const responsavel = document.getElementById('km-responsavel').value.trim();
     const kmNoDia = Number(tr.querySelector('.km-no-dia').value);
-    const arquivo = tr.querySelector('.km-foto').files[0];
+    const arquivos = Array.from(tr.querySelector('.km-foto').files).slice(0, MAX_FOTOS);
 
-    const caminhoFoto = `km/${dataISO}/${sanitizarSegmentoCaminho(v.placa)}_${Date.now()}.${extensaoImagem(arquivo)}`;
-    const { error: erroUpload } = await supabaseClient.storage
-        .from('documentos-formularios').upload(caminhoFoto, arquivo);
-    if (erroUpload) throw new Error('Falha ao enviar a foto do odômetro: ' + erroUpload.message);
+    // As fotos entram na caixa de entrada com nome provisório; a
+    // administração renomeia (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}) ao aceitar.
+    const placaSeg = sanitizarSegmentoCaminho(v.placa);
+    const caminhosFotos = [];
+    for (let i = 0; i < arquivos.length; i++) {
+        const caminho = `km/${dataISO}/${placaSeg}_${Date.now()}_${i + 1}.${extensaoImagem(arquivos[i])}`;
+        const { error: erroUpload } = await supabaseClient.storage
+            .from('documentos-formularios').upload(caminho, arquivos[i]);
+        if (erroUpload) throw new Error(`Falha ao enviar a foto ${i + 1} do veículo: ` + erroUpload.message);
+        caminhosFotos.push(caminho);
+    }
 
     const { error: erroInsert } = await supabaseClient.from('formularios_km').insert({
         data_afericao: dataISO,
@@ -275,7 +295,7 @@ async function persistirLinha(idx) {
         km_atual: (v.km_atual === null || v.km_atual === undefined) ? null : Number(v.km_atual),
         km_no_dia: kmNoDia,
         km_rodado: calcularKmRodado(v.km_atual, kmNoDia),
-        odometro_foto_path: caminhoFoto,
+        veiculo_fotos_paths: caminhosFotos,
         responsavel_informacoes: responsavel,
         status: 'pendente'
     });
