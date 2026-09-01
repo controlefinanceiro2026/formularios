@@ -5,17 +5,18 @@
 // supabase/schema-formulario-pessoal.sql). O sistema local da campanha
 // puxa essas submissões periodicamente, nunca ficando exposto à internet.
 
-// Mesma lista de supabase/schema-formulario-pessoal.sql — mantenha as
-// duas em sincronia se uma Região Administrativa for criada/renomeada.
-const REGIOES_ADMINISTRATIVAS_DF = [
-    'Águas Claras', 'Água Quente', 'Arapoanga', 'Arniqueira', 'Brazlândia', 'Candangolândia',
-    'Ceilândia', 'Cruzeiro', 'Fercal', 'Gama', 'Guará', 'Itapoã', 'Jardim Botânico', 'Lago Norte',
-    'Lago Sul', 'Núcleo Bandeirante', 'Paranoá', 'Park Way', 'Planaltina', 'Plano Piloto',
-    'Recanto das Emas', 'Riacho Fundo', 'Riacho Fundo II', 'Samambaia', 'Santa Maria',
-    'São Sebastião', 'SCIA/Estrutural', 'SIA', 'Sobradinho', 'Sobradinho II',
-    'Sol Nascente/Pôr do Sol', 'Sudoeste/Octogonal', 'Taguatinga', 'Varjão', 'Vicente Pires'
-];
-const LOCAIS_PRESTACAO_SERVICO = ['Comitê', ...REGIOES_ADMINISTRATIVAS_DF];
+// Regiões de fiscalização da campanha (ver Regiões.jpeg) — mesma estrutura
+// de lib/regioesDF.js e app.js; mantenha as três em sincronia. O dropdown
+// "Local da Prestação do Serviço" agrupa as localidades por região.
+const REGIOES_FISCALIZACAO = {
+    'Comitê': ['Comitê'],
+    'Região Sul': ['Santa Maria', 'Gama', 'Riacho I', 'Riacho II', 'Recanto', 'Samambaia'],
+    'Região Leste': ['TAG/ARN/AGCL', 'Ceilândia', 'Brazlândia'],
+    'Região Norte': ['Planaltina', 'SOBR I / II - Fercal', 'Paranoá', 'Itapoã', 'São Sebastião', 'Jardim Botânico'],
+    'Região Centrinho': ['P. Piloto', 'SIA', 'Guará', 'N. Bandeirantes', 'Candangolândia', 'Estrutural', 'Vicente Pires', 'Cruzeiro', 'Lago S/N', 'Sudoeste', 'Park Way', 'Varjão']
+};
+const LOCAIS_PRESTACAO_SERVICO = Object.keys(REGIOES_FISCALIZACAO)
+    .reduce((acc, r) => acc.concat(REGIOES_FISCALIZACAO[r]), []);
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
@@ -42,8 +43,15 @@ function mascararCEP(valor) {
 
 function preencherLocais() {
     const selectLocal = document.getElementById('fp-local-prestacao');
-    LOCAIS_PRESTACAO_SERVICO.forEach(local => {
-        selectLocal.innerHTML += `<option value="${local}">${local}</option>`;
+    Object.keys(REGIOES_FISCALIZACAO).forEach(regiao => {
+        const grupo = document.createElement('optgroup');
+        grupo.label = regiao;
+        REGIOES_FISCALIZACAO[regiao].forEach(local => {
+            const opt = document.createElement('option');
+            opt.value = local; opt.textContent = local;
+            grupo.appendChild(opt);
+        });
+        selectLocal.appendChild(grupo);
     });
 }
 

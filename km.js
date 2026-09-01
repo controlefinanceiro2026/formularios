@@ -141,7 +141,7 @@ function renderTabelas() {
                     <thead>
                         <tr>
                             <th>Placa</th><th>Proprietário</th><th>Km Atual</th>
-                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th></th>
+                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th>Observações</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -158,6 +158,7 @@ function renderTabelas() {
                                     <span class="km-fotos-ajuda">Até 3 fotos (JPG ou PNG). Toque no ✕ para remover antes de enviar.</span>
                                     <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
+                                <td><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
                                 <td><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
                             </tr>
                         `).join('')}
@@ -331,7 +332,7 @@ function validarLinha(idx) {
 
 function travarLinha(idx, enviada) {
     const tr = document.getElementById(linhaId(idx));
-    tr.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+    tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; });
     const btn = tr.querySelector('.km-btn-linha');
     if (enviada) {
         btn.textContent = '✓ Enviado';
@@ -344,7 +345,7 @@ function travarLinha(idx, enviada) {
 
 function destravarLinha(idx) {
     const tr = document.getElementById(linhaId(idx));
-    tr.querySelectorAll('input, button').forEach(el => { el.disabled = false; });
+    tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = false; });
     tr.querySelector('.km-btn-linha').textContent = 'Enviar dados do veículo';
     renderFotosLinha(idx); // reacerta o estado do botão "Adicionar foto"
 }
@@ -356,6 +357,7 @@ async function persistirLinha(idx) {
     const dataISO = dataParaISO(document.getElementById('km-data').value);
     const responsavel = document.getElementById('km-responsavel').value.trim();
     const kmNoDia = Number(tr.querySelector('.km-no-dia').value);
+    const observacoes = tr.querySelector('.km-obs').value.trim();
     const arquivos = (fotosPorLinha[idx] || []).slice(0, MAX_FOTOS);
 
     // As fotos entram na caixa de entrada com nome provisório; a
@@ -379,6 +381,7 @@ async function persistirLinha(idx) {
         km_no_dia: kmNoDia,
         km_rodado: calcularKmRodado(v.km_atual, kmNoDia),
         veiculo_fotos_paths: caminhosFotos,
+        observacoes: observacoes || null,
         responsavel_informacoes: responsavel,
         status: 'pendente'
     });
@@ -394,7 +397,7 @@ async function enviarLinha(idx) {
 
     const tr = document.getElementById(linhaId(idx));
     const btn = tr.querySelector('.km-btn-linha');
-    tr.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+    tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; });
     btn.textContent = 'Enviando…';
 
     try {
@@ -436,7 +439,7 @@ async function enviarTodos() {
     try {
         for (const idx of pendentes) {
             const tr = document.getElementById(linhaId(idx));
-            tr.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+            tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; });
             tr.querySelector('.km-btn-linha').textContent = 'Enviando…';
             await persistirLinha(idx);
             enviados[idx] = true;
