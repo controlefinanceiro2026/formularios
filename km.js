@@ -174,7 +174,7 @@ function renderTabelas() {
     }));
     container.querySelectorAll('.km-btn-linha').forEach(btn => btn.addEventListener('click', () => enviarLinha(Number(btn.dataset.idx))));
 
-    aplicarFiltroLocalidade();
+    aplicarFiltros();
 }
 
 function onKmNoDiaInput(e) {
@@ -268,12 +268,35 @@ function preencherFiltroLocalidades() {
     }
 }
 
-function aplicarFiltroLocalidade() {
-    const alvo = document.getElementById('km-filtro-localidade').value;
+// Só letras/dígitos, em maiúsculas — pra pesquisa de placa "solta"
+// (ignora hífen, espaço, caixa: "abc 1d23" acha "ABC1D23").
+function normalizarPlacaBusca(valor) {
+    return String(valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// Aplica os dois filtros ao mesmo tempo: localidade (select) e placa
+// (busca dinâmica). Um grupo de localidade some quando nenhuma das suas
+// linhas passa nos filtros.
+function aplicarFiltros() {
+    const alvoLoc = document.getElementById('km-filtro-localidade').value;
+    const termoPlaca = normalizarPlacaBusca(document.getElementById('km-filtro-placa').value);
+    let algumaLinhaVisivel = false;
+
     document.querySelectorAll('.km-grupo').forEach(g => {
         const loc = decodeURIComponent(g.dataset.localidade);
-        g.style.display = (!alvo || alvo === loc) ? '' : 'none';
+        const localidadeBate = !alvoLoc || alvoLoc === loc;
+        let algumaNoGrupo = false;
+        g.querySelectorAll('tr[data-idx]').forEach(tr => {
+            const placa = normalizarPlacaBusca(veiculos[Number(tr.dataset.idx)].placa);
+            const visivel = localidadeBate && (!termoPlaca || placa.includes(termoPlaca));
+            tr.style.display = visivel ? '' : 'none';
+            if (visivel) { algumaNoGrupo = true; algumaLinhaVisivel = true; }
+        });
+        g.style.display = algumaNoGrupo ? '' : 'none';
     });
+
+    const semResultado = document.getElementById('km-sem-resultado');
+    if (semResultado) semResultado.style.display = (!algumaLinhaVisivel && veiculos.length) ? 'block' : 'none';
 }
 
 // ---------- validação de uma linha ----------
@@ -390,7 +413,8 @@ async function enviarLinha(idx) {
 async function enviarTodos() {
     limparMensagem();
     document.getElementById('km-filtro-localidade').value = '';
-    aplicarFiltroLocalidade();
+    document.getElementById('km-filtro-placa').value = '';
+    aplicarFiltros();
 
     const pendentes = veiculos.map((_, idx) => idx).filter(idx => !enviados[idx]);
     if (pendentes.length === 0) {
@@ -449,6 +473,9 @@ function pararComErro(texto) {
     document.getElementById('km-tabelas').innerHTML = '';
     document.getElementById('km-btn-enviar-todos').disabled = true;
     document.getElementById('km-filtro-localidade').disabled = true;
+    document.getElementById('km-filtro-placa').disabled = true;
+    const semResultado = document.getElementById('km-sem-resultado');
+    if (semResultado) semResultado.style.display = 'none';
 }
 
 // Busca a definição da lista da equipe pelo slug da URL (?lista=<slug>).
@@ -478,7 +505,8 @@ function mostrarNomeDaLista(nome) {
 async function carregar() {
     document.getElementById('km-data').value = hojeBR();
     document.getElementById('km-data').addEventListener('input', function () { this.value = mascararData(this.value); });
-    document.getElementById('km-filtro-localidade').addEventListener('change', aplicarFiltroLocalidade);
+    document.getElementById('km-filtro-localidade').addEventListener('change', aplicarFiltros);
+    document.getElementById('km-filtro-placa').addEventListener('input', aplicarFiltros);
     document.getElementById('km-btn-enviar-todos').addEventListener('click', enviarTodos);
 
     // O formulário SÓ funciona com um ?lista=<slug> válido — cada líder usa

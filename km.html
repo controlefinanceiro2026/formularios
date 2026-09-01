@@ -68,10 +68,15 @@
                         <label>Filtrar por localidade (opcional)</label>
                         <select id="km-filtro-localidade"><option value="">Todas as localidades</option></select>
                     </div>
+                    <div class="form-group">
+                        <label>Pesquisar por placa</label>
+                        <input type="search" id="km-filtro-placa" placeholder="Ex: ABC1D23" autocomplete="off" inputmode="text">
+                    </div>
                 </div>
 
                 <div id="km-carregando" class="fp-msg info" style="display:block;">Carregando a lista de veículos…</div>
                 <div id="km-tabelas"></div>
+                <div id="km-sem-resultado" class="fp-msg info" style="display:none;">Nenhum veículo com essa placa nesta lista.</div>
 
                 <div class="fp-secao-titulo">Responsável</div>
                 <div class="form-group">
@@ -100,6 +105,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=5"></script>
+    <script src="km.js?v=6"></script>
 </body>
 </html>
