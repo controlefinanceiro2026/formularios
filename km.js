@@ -136,6 +136,38 @@ function limparMensagem() {
     el.className = 'fp-msg';
 }
 
+// Mostra um aviso (pendência, erro de envio ou confirmação de sucesso)
+// logo abaixo do próprio veículo, sem rolar a tela até o rodapé.
+// block:'nearest' só reposiciona se a linha estiver fora de vista. O aviso
+// de sucesso some sozinho depois de alguns segundos (a linha já fica verde
+// com "✓ Enviado").
+function mostrarAvisoLinha(idx, texto, tipo) {
+    const tr = document.getElementById(`km-erro-${idx}`);
+    if (!tr) return;
+    const box = tr.querySelector('.km-erro-box');
+    box.textContent = texto;
+    box.classList.toggle('sucesso', tipo === 'sucesso');
+    tr.style.display = '';
+    tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    clearTimeout(tr._timerAviso);
+    if (tipo === 'sucesso') {
+        tr._timerAviso = setTimeout(() => limparErroLinha(idx), 4000);
+    }
+}
+
+function mostrarErroLinha(idx, texto) { mostrarAvisoLinha(idx, texto, 'erro'); }
+function mostrarSucessoLinha(idx, texto) { mostrarAvisoLinha(idx, texto, 'sucesso'); }
+
+function limparErroLinha(idx) {
+    const tr = document.getElementById(`km-erro-${idx}`);
+    if (!tr) return;
+    clearTimeout(tr._timerAviso);
+    tr.style.display = 'none';
+    const box = tr.querySelector('.km-erro-box');
+    box.textContent = '';
+    box.classList.remove('sucesso');
+}
+
 // ---------- render ----------
 function linhaId(idx) { return `km-linha-${idx}`; }
 
@@ -177,6 +209,9 @@ function renderTabelas() {
                                 </td>
                                 <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
                                 <td class="km-td-bloco km-td-acao"><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
+                            </tr>
+                            <tr class="km-erro-linha" id="km-erro-${idx}" style="display:none">
+                                <td colspan="8"><div class="km-erro-box"></div></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -305,9 +340,13 @@ function aplicarFiltros() {
         const localidadeBate = !alvoLoc || alvoLoc === loc;
         let algumaNoGrupo = false;
         g.querySelectorAll('tr[data-idx]').forEach(tr => {
-            const placa = normalizarPlacaBusca(veiculos[Number(tr.dataset.idx)].placa);
+            const idx = Number(tr.dataset.idx);
+            const placa = normalizarPlacaBusca(veiculos[idx].placa);
             const visivel = localidadeBate && (!termoPlaca || placa.includes(termoPlaca));
             tr.style.display = visivel ? '' : 'none';
+            // A linha de erro do veículo acompanha: some junto quando ele é
+            // filtrado (ela só reaparece numa nova tentativa de envio).
+            if (!visivel) limparErroLinha(idx);
             if (visivel) { algumaNoGrupo = true; algumaLinhaVisivel = true; }
         });
         g.style.display = algumaNoGrupo ? '' : 'none';
@@ -356,6 +395,7 @@ function travarLinha(idx, enviada) {
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-secondary');
         tr.classList.add('km-linha-enviada');
+        limparErroLinha(idx); // envio ok — some qualquer aviso de pendência
         renderFotosLinha(idx); // tira os botões ✕ — não dá mais pra editar
     }
 }
@@ -456,11 +496,12 @@ function garantirResponsavel() {
 async function enviarLinha(idx) {
     if (enviados[idx]) return;
     limparMensagem();
+    limparErroLinha(idx);
 
     if (!(await garantirResponsavel())) return;
 
     const erro = validarLinha(idx);
-    if (erro) { mostrarMensagem(erro, 'erro'); return; }
+    if (erro) { mostrarErroLinha(idx, erro); return; }
 
     const tr = document.getElementById(linhaId(idx));
     const btn = tr.querySelector('.km-btn-linha');
@@ -471,11 +512,11 @@ async function enviarLinha(idx) {
         await persistirLinha(idx);
         enviados[idx] = true;
         travarLinha(idx, true);
-        mostrarMensagem(`Veículo ${veiculos[idx].placa}: dados enviados com sucesso.`, 'sucesso');
+        mostrarSucessoLinha(idx, `Veículo ${veiculos[idx].placa}: dados enviados com sucesso.`);
         conferirSeTerminou();
     } catch (e) {
         destravarLinha(idx);
-        mostrarMensagem(e.message || 'Não foi possível enviar. Verifique sua conexão e tente novamente.', 'erro');
+        mostrarErroLinha(idx, e.message || 'Não foi possível enviar. Verifique sua conexão e tente novamente.');
     }
 }
 
@@ -495,9 +536,15 @@ async function enviarTodos() {
         return;
     }
 
-    for (const idx of pendentes) {
-        const erro = validarLinha(idx);
-        if (erro) { mostrarMensagem('Antes de enviar todos: ' + erro, 'erro'); return; }
+    pendentes.forEach(limparErroLinha);
+    const comErro = pendentes
+        .map(idx => ({ idx, erro: validarLinha(idx) }))
+        .filter(x => x.erro);
+    if (comErro.length) {
+        // Marca cada veículo pendente na sua própria linha e leva a vista
+        // ao primeiro deles (sem pular pro rodapé).
+        comErro.slice().reverse().forEach(x => mostrarErroLinha(x.idx, x.erro));
+        return;
     }
 
     const btnTodos = document.getElementById('km-btn-enviar-todos');
@@ -506,8 +553,10 @@ async function enviarTodos() {
     document.getElementById('km-data').disabled = true;
     document.getElementById('km-responsavel').disabled = true;
 
+    let idxAtual = null;
     try {
         for (const idx of pendentes) {
+            idxAtual = idx;
             const tr = document.getElementById(linhaId(idx));
             tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; });
             tr.querySelector('.km-btn-linha').textContent = 'Enviando…';
@@ -526,7 +575,11 @@ async function enviarTodos() {
         document.getElementById('km-responsavel').disabled = false;
         btnTodos.disabled = false;
         btnTodos.textContent = 'Enviar informação de todos os veículos';
-        mostrarMensagem((e.message || 'Não foi possível concluir o envio.') + ' Os veículos que faltam continuam liberados para reenvio.', 'erro');
+        if (idxAtual !== null) {
+            mostrarErroLinha(idxAtual, (e.message || 'Não foi possível concluir o envio.') + ' Este e os próximos continuam liberados para reenvio.');
+        } else {
+            mostrarMensagem(e.message || 'Não foi possível concluir o envio.', 'erro');
+        }
     }
 }
 

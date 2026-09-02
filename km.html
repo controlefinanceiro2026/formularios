@@ -119,6 +119,14 @@
         html.km-layout-mobile .km-btn-linha { width: 100%; white-space: normal; padding: 0.75rem; font-size: 0.9rem; }
         html.km-layout-mobile .km-add-foto { white-space: normal; }
         html.km-layout-mobile .km-foto-previa { max-width: 100px; max-height: 75px; }
+
+        /* Linha de erro por veículo — o que falta aparece colado ao veículo. */
+        table.km-tabela tr.km-erro-linha td { padding: 0.1rem 0.7rem 0.6rem; border-bottom: none; }
+        .km-erro-box { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 8px; padding: 0.7rem 0.9rem; font-size: 0.85rem; font-weight: 600; line-height: 1.4; }
+        .km-erro-box.sucesso { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        html.km-layout-mobile table.km-tabela tr.km-erro-linha { margin: -0.4rem 0 0.65rem; }
+        html.km-layout-mobile table.km-tabela tr.km-erro-linha td { display: block; padding: 0; border-bottom: none; text-align: left; }
+        html.km-layout-mobile table.km-tabela tr.km-erro-linha td::before { display: none; }
     </style>
 </head>
 <body>
@@ -222,6 +230,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=9"></script>
+    <script src="km.js?v=11"></script>
 </body>
 </html>
