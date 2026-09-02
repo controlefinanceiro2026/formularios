@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-09-02T07:57:20.540Z",
+  "gerado_em": "2026-09-02T15:08:52.961Z",
   "veiculos": [
     {
       "placa": "JHJ1246",
@@ -274,7 +274,7 @@
       "km_atual": null
     },
     {
-      "placa": "RMQ3557",
+      "placa": "RMQ3J57",
       "marca": null,
       "modelo": null,
       "nome_proprietario": "DAVSON OLIVEIRA",
@@ -1146,14 +1146,6 @@
       "km_atual": null
     },
     {
-      "placa": "JJK7716",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TELMA DE FARIAS OLIVEIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
       "placa": "JJL8132",
       "marca": null,
       "modelo": null,
@@ -1198,6 +1190,14 @@
       "marca": null,
       "modelo": null,
       "nome_proprietario": "ANDERSON GRILLO",
+      "localidade": "Ceilândia",
+      "km_atual": null
+    },
+    {
+      "placa": "JKK7716",
+      "marca": null,
+      "modelo": null,
+      "nome_proprietario": "TELMA DE FARIAS OLIVEIRA",
       "localidade": "Ceilândia",
       "km_atual": null
     },
@@ -1869,7 +1869,7 @@
       "placa": "PAD3950",
       "marca": null,
       "modelo": null,
-      "nome_proprietario": "LUANA FERREIRA",
+      "nome_proprietario": "WESLIANA FERREIRA",
       "localidade": "Planaltina",
       "km_atual": null
     },
