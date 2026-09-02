@@ -58,6 +58,48 @@
         .pg-btn-linha { padding: 0.5rem 0.7rem; font-size: 0.8rem; white-space: nowrap; }
         .pg-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .pg-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+
+        /* ---------- Experiência no celular ----------
+           No modo Celular a tabela deixa de rolar na horizontal: cada
+           pagamento vira um cartão com os campos empilhados. */
+        html.pg-layout-mobile .fp-hero { padding: 1.4rem 1rem; }
+        html.pg-layout-mobile .fp-hero h1 { font-size: 1.2rem; }
+        html.pg-layout-mobile .fp-hero p { font-size: 0.82rem; }
+        html.pg-layout-mobile .fp-container { margin-top: -1rem; }
+        html.pg-layout-mobile .fp-card { padding: 1rem; }
+        html.pg-layout-mobile .fp-secao-titulo { font-size: 0.92rem; margin: 1.1rem 0 0.8rem; }
+        html.pg-layout-mobile #pg-btn-todos { font-size: 0.95rem; }
+
+        html.pg-layout-mobile .pg-localidade-titulo { font-size: 0.9rem; margin-top: 1rem; border-radius: 8px; }
+        html.pg-layout-mobile .pg-tabela-wrap { overflow-x: visible; border: none; border-radius: 0; margin-bottom: 0; }
+        html.pg-layout-mobile table.pg-tabela,
+        html.pg-layout-mobile table.pg-tabela tbody,
+        html.pg-layout-mobile table.pg-tabela tr,
+        html.pg-layout-mobile table.pg-tabela td { display: block; width: 100%; min-width: 0; }
+        html.pg-layout-mobile table.pg-tabela { font-size: 0.9rem; }
+        html.pg-layout-mobile table.pg-tabela thead { display: none; }
+        html.pg-layout-mobile table.pg-tabela tr[data-token] {
+            border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.4rem 0.85rem 0.8rem;
+            margin: 0.65rem 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        html.pg-layout-mobile table.pg-tabela td {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 0.9rem;
+            padding: 0.45rem 0; border-bottom: 1px solid #f1f5f9; text-align: right;
+        }
+        html.pg-layout-mobile table.pg-tabela td:last-child { border-bottom: none; padding-bottom: 0; }
+        html.pg-layout-mobile table.pg-tabela td::before {
+            content: attr(data-label); font-weight: 700; color: #475569;
+            text-align: left; flex: 0 0 auto; white-space: nowrap;
+        }
+        /* Pessoa = cabeçalho do cartão */
+        html.pg-layout-mobile table.pg-tabela td.pg-td-pessoa { display: block; text-align: left; border-bottom: 2px solid #e2e8f0; padding-top: 0.15rem; }
+        html.pg-layout-mobile table.pg-tabela td.pg-td-pessoa::before { display: none; }
+        html.pg-layout-mobile table.pg-tabela td.pg-td-pessoa strong { font-size: 1.1rem; }
+        /* Botão ocupa a linha inteira */
+        html.pg-layout-mobile table.pg-tabela td.pg-td-bloco { display: block; text-align: left; }
+        html.pg-layout-mobile table.pg-tabela td.pg-td-acao { padding-top: 0.7rem; }
+        html.pg-layout-mobile table.pg-tabela td.pg-td-acao::before { display: none; }
+        html.pg-layout-mobile .pg-btn-linha { width: 100%; white-space: normal; padding: 0.75rem; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -130,6 +172,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="pagamento.js?v=4"></script>
+    <script src="pagamento.js?v=5"></script>
 </body>
 </html>

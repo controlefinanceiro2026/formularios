@@ -149,14 +149,14 @@ function renderTabelas() {
                     <tbody>
                         ${g.itens.map(it => `
                             <tr id="${linhaId(it.token)}" data-token="${it.token}">
-                                <td>
+                                <td class="pg-td-pessoa">
                                     <strong>${it.nome}</strong>
                                     ${detalhePessoa(it) ? `<div class="pg-pessoa-detalhe">${detalhePessoa(it)}</div>` : ''}
                                 </td>
-                                <td>${fmtMoeda(it.valor)}</td>
-                                <td>${isoParaBR(it.data_prevista)}</td>
-                                <td>${it.parcela || '—'}/${it.total_parcelas || '—'}</td>
-                                <td><button type="button" class="btn-primary pg-btn-linha" data-token="${it.token}">Registrar pagamento</button></td>
+                                <td data-label="Valor">${fmtMoeda(it.valor)}</td>
+                                <td data-label="Data prevista">${isoParaBR(it.data_prevista)}</td>
+                                <td data-label="Parcela">${it.parcela || '—'}/${it.total_parcelas || '—'}</td>
+                                <td class="pg-td-bloco pg-td-acao"><button type="button" class="btn-primary pg-btn-linha" data-token="${it.token}">Registrar pagamento</button></td>
                             </tr>
                         `).join('')}
                     </tbody>

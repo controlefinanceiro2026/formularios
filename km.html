@@ -142,6 +142,12 @@
                         <input type="text" id="km-data" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" required>
                     </div>
                     <div class="form-group">
+                        <label>Responsável pelas Informações</label>
+                        <input type="text" id="km-responsavel" placeholder="Nome de quem está preenchendo o formulário" autocomplete="name" required>
+                    </div>
+                </div>
+                <div class="km-filtro-linha" style="margin-top:1rem;">
+                    <div class="form-group">
                         <label>Filtrar por localidade (opcional)</label>
                         <select id="km-filtro-localidade"><option value="">Todas as localidades</option></select>
                     </div>
@@ -154,12 +160,6 @@
                 <div id="km-carregando" class="fp-msg info" style="display:block;">Carregando a lista de veículos…</div>
                 <div id="km-tabelas"></div>
                 <div id="km-sem-resultado" class="fp-msg info" style="display:none;">Nenhum veículo com essa placa nesta lista.</div>
-
-                <div class="fp-secao-titulo">Responsável</div>
-                <div class="form-group">
-                    <label>Responsável pelas Informações</label>
-                    <input type="text" id="km-responsavel" placeholder="Nome de quem está preenchendo o formulário" required>
-                </div>
 
                 <div id="km-mensagem" class="fp-msg"></div>
 
@@ -176,6 +176,24 @@
                 <div class="icone">✅</div>
                 <h2>Dados enviados com sucesso!</h2>
                 <p style="color:#64748b; margin-top:0.5rem;">O km de todos os veículos foi recebido pela administração financeira da campanha.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="km-modal-responsavel" class="modal" role="dialog" aria-modal="true" aria-labelledby="km-modal-responsavel-titulo">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header">
+                <h3 id="km-modal-responsavel-titulo" style="margin:0; font-size:1.1rem;">Quem está preenchendo?</h3>
+            </div>
+            <p style="color:#64748b; font-size:0.88rem; margin-bottom:0.9rem;">Informe o responsável pelas informações. O nome fica salvo neste aparelho e vem preenchido nas próximas vezes.</p>
+            <div class="form-group">
+                <label for="km-modal-responsavel-input">Responsável pelas Informações</label>
+                <input type="text" id="km-modal-responsavel-input" placeholder="Seu nome" autocomplete="name" style="font-size:16px;">
+            </div>
+            <div id="km-modal-responsavel-erro" style="display:none; color:#b91c1c; font-size:0.85rem; margin-top:0.4rem;">Digite o nome para continuar.</div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="km-modal-responsavel-cancelar">Cancelar</button>
+                <button type="button" class="btn-primary" id="km-modal-responsavel-confirmar">Confirmar e enviar</button>
             </div>
         </div>
     </div>
@@ -204,6 +222,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=8"></script>
+    <script src="km.js?v=9"></script>
 </body>
 </html>

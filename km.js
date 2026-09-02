@@ -24,6 +24,23 @@ function snapshotExpirado(geradoEm) {
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
+// Nome do responsável pelas informações, guardado no aparelho do líder de
+// campo pra vir preenchido nas próximas vezes (editável no campo do
+// formulário e no modal).
+const CHAVE_RESPONSAVEL = 'km-responsavel';
+
+function lerResponsavelSalvo() {
+    try { return (localStorage.getItem(CHAVE_RESPONSAVEL) || '').trim(); } catch (e) { return ''; }
+}
+
+function salvarResponsavel(valor) {
+    const limpo = String(valor || '').trim();
+    try {
+        if (limpo) localStorage.setItem(CHAVE_RESPONSAVEL, limpo);
+        else localStorage.removeItem(CHAVE_RESPONSAVEL);
+    } catch (e) { /* modo privado / storage bloqueado — segue sem persistir */ }
+}
+
 // Estado por veículo (índice = posição no snapshot).
 let veiculos = [];
 const enviados = {}; // idx -> true depois de enviado com sucesso
@@ -388,9 +405,59 @@ async function persistirLinha(idx) {
     if (erroInsert) throw new Error('Falha ao enviar os dados do veículo: ' + erroInsert.message);
 }
 
+// Garante que há um "Responsável pelas Informações" antes de enviar. Se o
+// campo já tem valor, resolve na hora. Senão, abre o modal (pré-preenchido
+// com o que estiver salvo no aparelho) e resolve true quando o usuário
+// confirmar um nome, ou false se ele cancelar.
+function garantirResponsavel() {
+    const campo = document.getElementById('km-responsavel');
+    if (campo.value.trim()) return Promise.resolve(true);
+
+    const modal = document.getElementById('km-modal-responsavel');
+    const input = document.getElementById('km-modal-responsavel-input');
+    const erro = document.getElementById('km-modal-responsavel-erro');
+    const btnOk = document.getElementById('km-modal-responsavel-confirmar');
+    const btnCancelar = document.getElementById('km-modal-responsavel-cancelar');
+
+    input.value = lerResponsavelSalvo();
+    erro.style.display = 'none';
+    modal.classList.add('show');
+    setTimeout(() => input.focus(), 50);
+
+    return new Promise(resolve => {
+        function fechar(resultado) {
+            modal.classList.remove('show');
+            btnOk.removeEventListener('click', onOk);
+            btnCancelar.removeEventListener('click', onCancelar);
+            input.removeEventListener('keydown', onKey);
+            modal.removeEventListener('click', onBackdrop);
+            resolve(resultado);
+        }
+        function onOk() {
+            const nome = input.value.trim();
+            if (!nome) { erro.style.display = 'block'; input.focus(); return; }
+            salvarResponsavel(nome);
+            campo.value = nome;
+            fechar(true);
+        }
+        function onCancelar() { fechar(false); }
+        function onKey(e) {
+            if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+            else if (e.key === 'Escape') { onCancelar(); }
+        }
+        function onBackdrop(e) { if (e.target === modal) onCancelar(); }
+        btnOk.addEventListener('click', onOk);
+        btnCancelar.addEventListener('click', onCancelar);
+        input.addEventListener('keydown', onKey);
+        modal.addEventListener('click', onBackdrop);
+    });
+}
+
 async function enviarLinha(idx) {
     if (enviados[idx]) return;
     limparMensagem();
+
+    if (!(await garantirResponsavel())) return;
 
     const erro = validarLinha(idx);
     if (erro) { mostrarMensagem(erro, 'erro'); return; }
@@ -415,6 +482,9 @@ async function enviarLinha(idx) {
 // ---------- enviar todos ----------
 async function enviarTodos() {
     limparMensagem();
+
+    if (!(await garantirResponsavel())) return;
+
     document.getElementById('km-filtro-localidade').value = '';
     document.getElementById('km-filtro-placa').value = '';
     aplicarFiltros();
@@ -511,6 +581,13 @@ async function carregar() {
     document.getElementById('km-filtro-localidade').addEventListener('change', aplicarFiltros);
     document.getElementById('km-filtro-placa').addEventListener('input', aplicarFiltros);
     document.getElementById('km-btn-enviar-todos').addEventListener('click', enviarTodos);
+
+    // Responsável pelas informações: vem preenchido com o que foi salvo
+    // neste aparelho e regrava a cada digitação (editável a qualquer hora).
+    const campoResp = document.getElementById('km-responsavel');
+    const respSalvo = lerResponsavelSalvo();
+    if (respSalvo) campoResp.value = respSalvo;
+    campoResp.addEventListener('input', () => salvarResponsavel(campoResp.value));
 
     // O formulário SÓ funciona com um ?lista=<slug> válido — cada líder usa
     // o link da própria equipe. Sem isso (ou com slug inexistente), mostra
