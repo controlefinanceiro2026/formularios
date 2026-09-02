@@ -71,6 +71,54 @@
         .km-fotos-ajuda { display: block; margin-top: 0.35rem; font-size: 0.75rem; color: #64748b; }
         .km-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .km-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+
+        /* ---------- Experiência no celular ----------
+           No modo Celular a tabela deixa de rolar na horizontal: cada
+           veículo vira um cartão com os campos empilhados. */
+        html.km-layout-mobile .fp-hero { padding: 1.4rem 1rem; }
+        html.km-layout-mobile .fp-hero h1 { font-size: 1.2rem; }
+        html.km-layout-mobile .fp-hero p { font-size: 0.82rem; }
+        html.km-layout-mobile .fp-container { margin-top: -1rem; }
+        html.km-layout-mobile .fp-card { padding: 1rem; }
+        html.km-layout-mobile .fp-secao-titulo { font-size: 0.92rem; margin: 1.1rem 0 0.8rem; }
+        html.km-layout-mobile #km-btn-enviar-todos { font-size: 0.95rem; }
+
+        html.km-layout-mobile .km-localidade-titulo { font-size: 0.9rem; margin-top: 1rem; border-radius: 8px; }
+        html.km-layout-mobile .km-tabela-wrap { overflow-x: visible; border: none; border-radius: 0; margin-bottom: 0; }
+        html.km-layout-mobile table.km-tabela,
+        html.km-layout-mobile table.km-tabela tbody,
+        html.km-layout-mobile table.km-tabela tr,
+        html.km-layout-mobile table.km-tabela td { display: block; width: 100%; min-width: 0; }
+        html.km-layout-mobile table.km-tabela { font-size: 0.9rem; }
+        html.km-layout-mobile table.km-tabela thead { display: none; }
+        html.km-layout-mobile table.km-tabela tr[data-idx] {
+            border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.4rem 0.85rem 0.8rem;
+            margin: 0.65rem 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        html.km-layout-mobile table.km-tabela td {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 0.9rem;
+            padding: 0.45rem 0; border-bottom: 1px solid #f1f5f9; text-align: right;
+        }
+        html.km-layout-mobile table.km-tabela td:last-child { border-bottom: none; padding-bottom: 0; }
+        html.km-layout-mobile table.km-tabela td::before {
+            content: attr(data-label); font-weight: 700; color: #475569;
+            text-align: left; flex: 0 0 auto; white-space: nowrap;
+        }
+        /* Placa = cabeçalho do cartão */
+        html.km-layout-mobile table.km-tabela td.km-td-placa { justify-content: flex-start; border-bottom: 2px solid #e2e8f0; padding-top: 0.15rem; }
+        html.km-layout-mobile table.km-tabela td.km-td-placa::before { display: none; }
+        html.km-layout-mobile table.km-tabela td.km-td-placa strong { font-size: 1.15rem; }
+        /* Fotos, observações e botão ocupam a linha inteira */
+        html.km-layout-mobile table.km-tabela td.km-td-bloco { display: block; text-align: left; }
+        html.km-layout-mobile table.km-tabela td.km-td-bloco::before { display: block; margin-bottom: 0.4rem; white-space: normal; }
+        html.km-layout-mobile table.km-tabela td.km-td-acao { padding-top: 0.7rem; }
+        html.km-layout-mobile table.km-tabela td.km-td-acao::before { display: none; }
+        /* Campos: largura total e font-size 16px (evita o zoom automático do iOS ao focar) */
+        html.km-layout-mobile table.km-tabela td .km-no-dia { flex: 1 1 auto; min-width: 0; width: auto; font-size: 16px; padding: 0.5rem 0.6rem; }
+        html.km-layout-mobile table.km-tabela td.km-td-bloco textarea.km-obs { width: 100%; font-size: 16px; padding: 0.55rem 0.6rem; }
+        html.km-layout-mobile .km-btn-linha { width: 100%; white-space: normal; padding: 0.75rem; font-size: 0.9rem; }
+        html.km-layout-mobile .km-add-foto { white-space: normal; }
+        html.km-layout-mobile .km-foto-previa { max-width: 100px; max-height: 75px; }
     </style>
 </head>
 <body>
@@ -156,6 +204,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=7"></script>
+    <script src="km.js?v=8"></script>
 </body>
 </html>

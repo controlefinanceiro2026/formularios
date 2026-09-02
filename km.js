@@ -147,19 +147,19 @@ function renderTabelas() {
                     <tbody>
                         ${g.itens.map(({ veiculo: v, idx }) => `
                             <tr id="${linhaId(idx)}" data-idx="${idx}">
-                                <td><strong>${v.placa}</strong></td>
-                                <td>${v.nome_proprietario || '—'}</td>
-                                <td>${fmtKm(v.km_atual)}</td>
-                                <td><input type="number" class="km-no-dia" min="0" step="1" placeholder="Ex: 45230"></td>
-                                <td class="km-rodado">—</td>
-                                <td>
+                                <td class="km-td-placa" data-label="Placa"><strong>${v.placa}</strong></td>
+                                <td data-label="Proprietário">${v.nome_proprietario || '—'}</td>
+                                <td data-label="Km atual">${fmtKm(v.km_atual)}</td>
+                                <td data-label="Km no dia *"><input type="number" class="km-no-dia" min="0" step="1" placeholder="Ex: 45230"></td>
+                                <td class="km-rodado" data-label="Km rodado">—</td>
+                                <td class="km-td-bloco" data-label="Fotos do veículo * (1 a 3)">
                                     <input type="file" class="km-foto" accept="image/png,image/jpeg" multiple hidden>
                                     <button type="button" class="btn-secondary km-add-foto" data-idx="${idx}">📷 Adicionar foto</button>
                                     <span class="km-fotos-ajuda">Até 3 fotos (JPG ou PNG). Toque no ✕ para remover antes de enviar.</span>
                                     <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
-                                <td><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
-                                <td><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
+                                <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
+                                <td class="km-td-bloco km-td-acao"><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
                             </tr>
                         `).join('')}
                     </tbody>
