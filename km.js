@@ -44,6 +44,9 @@ function salvarResponsavel(valor) {
 // Estado por veículo (índice = posição no snapshot).
 let veiculos = [];
 const enviados = {}; // idx -> true depois de enviado com sucesso
+// idx dos veículos travados porque o Supabase já tem um envio deles nesta
+// data (qualquer aparelho) — some/reaparece quando a data muda.
+const travadosPorEnvioDoDia = new Set();
 // idx -> File[] com as fotos escolhidas pra aquele veículo. O líder de
 // campo pode adicionar/remover/trocar à vontade ATÉ enviar; depois do
 // envio a linha trava e não dá mais pra mexer.
@@ -141,14 +144,16 @@ function limparMensagem() {
 // block:'nearest' só reposiciona se a linha estiver fora de vista. O aviso
 // de sucesso some sozinho depois de alguns segundos (a linha já fica verde
 // com "✓ Enviado").
-function mostrarAvisoLinha(idx, texto, tipo) {
+function mostrarAvisoLinha(idx, texto, tipo, rolar) {
     const tr = document.getElementById(`km-erro-${idx}`);
     if (!tr) return;
     const box = tr.querySelector('.km-erro-box');
     box.textContent = texto;
     box.classList.toggle('sucesso', tipo === 'sucesso');
+    box.classList.toggle('info', tipo === 'info');
     tr.style.display = '';
-    tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // block:'nearest' só reposiciona se a linha estiver fora de vista.
+    if (rolar !== false) tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     clearTimeout(tr._timerAviso);
     if (tipo === 'sucesso') {
         tr._timerAviso = setTimeout(() => limparErroLinha(idx), 4000);
@@ -157,6 +162,8 @@ function mostrarAvisoLinha(idx, texto, tipo) {
 
 function mostrarErroLinha(idx, texto) { mostrarAvisoLinha(idx, texto, 'erro'); }
 function mostrarSucessoLinha(idx, texto) { mostrarAvisoLinha(idx, texto, 'sucesso'); }
+// Nota passiva (veículo já enviado hoje) — não rola a tela.
+function mostrarInfoLinha(idx, texto) { mostrarAvisoLinha(idx, texto, 'info', false); }
 
 function limparErroLinha(idx) {
     const tr = document.getElementById(`km-erro-${idx}`);
@@ -165,7 +172,7 @@ function limparErroLinha(idx) {
     tr.style.display = 'none';
     const box = tr.querySelector('.km-erro-box');
     box.textContent = '';
-    box.classList.remove('sucesso');
+    box.classList.remove('sucesso', 'info');
 }
 
 // ---------- render ----------
@@ -386,16 +393,16 @@ function validarLinha(idx) {
     return null;
 }
 
-function travarLinha(idx, enviada) {
+function travarLinha(idx, enviada, rotulo) {
     const tr = document.getElementById(linhaId(idx));
     tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; });
     const btn = tr.querySelector('.km-btn-linha');
     if (enviada) {
-        btn.textContent = '✓ Enviado';
+        btn.textContent = rotulo || '✓ Enviado';
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-secondary');
         tr.classList.add('km-linha-enviada');
-        limparErroLinha(idx); // envio ok — some qualquer aviso de pendência
+        if (!rotulo) limparErroLinha(idx); // envio desta sessão — some o aviso de pendência
         renderFotosLinha(idx); // tira os botões ✕ — não dá mais pra editar
     }
 }
@@ -403,8 +410,56 @@ function travarLinha(idx, enviada) {
 function destravarLinha(idx) {
     const tr = document.getElementById(linhaId(idx));
     tr.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = false; });
-    tr.querySelector('.km-btn-linha').textContent = 'Enviar dados do veículo';
+    const btn = tr.querySelector('.km-btn-linha');
+    btn.textContent = 'Enviar dados do veículo';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+    tr.classList.remove('km-linha-enviada');
     renderFotosLinha(idx); // reacerta o estado do botão "Adicionar foto"
+}
+
+// Pergunta ao Supabase quais placas da lista já têm envio nesta data.
+// Função SECURITY DEFINER (supabase/migracao-km-trava-envio-diario.sql) —
+// devolve só as placas, sem dados pessoais. Falha de rede / função ainda
+// não criada: devolve [] e o formulário segue sem as travas do servidor.
+async function placasJaEnviadasNoDia(dataISO) {
+    if (!dataISO || !veiculos.length) return [];
+    try {
+        const { data, error } = await supabaseClient.rpc('km_placas_enviadas', {
+            p_data: dataISO,
+            p_placas: veiculos.map(v => v.placa)
+        });
+        if (error) { console.warn('km_placas_enviadas:', error.message); return []; }
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.warn('km_placas_enviadas:', e.message);
+        return [];
+    }
+}
+
+// Trava (ou destrava, se a data mudou) os veículos que já têm envio hoje.
+// Não mexe nas linhas já enviadas NESTA sessão.
+async function sincronizarTravasDoDia() {
+    const dataISO = dataParaISO(document.getElementById('km-data').value);
+    const jaEnviadas = new Set(await placasJaEnviadasNoDia(dataISO));
+
+    veiculos.forEach((v, idx) => {
+        const enviadaNestaSessao = enviados[idx] && !travadosPorEnvioDoDia.has(idx);
+        if (enviadaNestaSessao) return;
+
+        const deveTravar = jaEnviadas.has(v.placa);
+        if (deveTravar && !travadosPorEnvioDoDia.has(idx)) {
+            travadosPorEnvioDoDia.add(idx);
+            enviados[idx] = true;
+            travarLinha(idx, true, '✓ Enviado hoje');
+            mostrarInfoLinha(idx, 'Este veículo já teve os dados enviados hoje. Para corrigir, fale com a administração da campanha.');
+        } else if (!deveTravar && travadosPorEnvioDoDia.has(idx)) {
+            travadosPorEnvioDoDia.delete(idx);
+            enviados[idx] = false;
+            destravarLinha(idx);
+            limparErroLinha(idx);
+        }
+    });
 }
 
 // Faz o upload da foto + o insert. Lança em caso de erro. Não mexe em UI.
@@ -688,6 +743,14 @@ async function carregar() {
     document.getElementById('km-carregando').style.display = 'none';
     preencherFiltroLocalidades();
     renderTabelas();
+
+    // Trava os veículos que já têm envio nesta data (checagem no Supabase).
+    sincronizarTravasDoDia();
+    let timerTravasData;
+    document.getElementById('km-data').addEventListener('input', () => {
+        clearTimeout(timerTravasData);
+        timerTravasData = setTimeout(sincronizarTravasDoDia, 400);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', carregar);
