@@ -11,9 +11,9 @@
 const REGIOES_FISCALIZACAO = {
     'Comitê': ['Comitê'],
     'Região Sul': ['Santa Maria', 'Gama', 'Riacho Fundo I', 'Riacho Fundo II', 'Recanto das Emas', 'Samambaia'],
-    'Região Leste': ['Taguatinga / Arniqueira / Águas Claras', 'Ceilândia', 'Brazlândia'],
-    'Região Norte': ['Planaltina', 'Sobradinho I / Sobradinho II - Fercal', 'Paranoá', 'Itapoã', 'São Sebastião', 'Jardim Botânico'],
-    'Região Centrinho': ['Plano Piloto', 'SIA', 'Guará', 'Núcleo Bandeirante', 'Candangolândia', 'Estrutural / SCIA', 'Vicente Pires', 'Cruzeiro', 'Lago Sul / Lago Norte', 'Sudoeste/Octogonal', 'Park Way', 'Varjão']
+    'Região Leste': ['Taguatinga', 'Arniqueira', 'Águas Claras', 'Sol Nascente / Pôr do Sol', 'Ceilândia', 'Brazlândia'],
+    'Região Norte': ['Planaltina', 'Sobradinho', 'Paranoá', 'Itapoã', 'São Sebastião', 'Jardim Botânico'],
+    'Região Centrinho': ['Plano Piloto', 'SIA', 'Guará', 'Núcleo Bandeirante', 'Candangolândia', 'Estrutural', 'Vicente Pires', 'Cruzeiro', 'Lago Sul', 'Lago Norte', 'Sudoeste/Octogonal', 'Park Way', 'Varjão']
 };
 const LOCAIS_PRESTACAO_SERVICO = Object.keys(REGIOES_FISCALIZACAO)
     .reduce((acc, r) => acc.concat(REGIOES_FISCALIZACAO[r]), []);

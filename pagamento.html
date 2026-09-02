@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulário de Confirmação de Pagamento</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Define o modo de layout antes de pintar a tela (evita "pulo").
+        // 1ª visita: escolhe pelo tamanho da tela; depois, respeita a
+        // preferência salva pelo usuário de campo.
+        (function () {
+            var salvo = null;
+            try { salvo = localStorage.getItem('pg-layout-modo'); } catch (e) {}
+            var modo = (salvo === 'mobile' || salvo === 'desktop')
+                ? salvo
+                : (window.innerWidth >= 1024 ? 'desktop' : 'mobile');
+            document.documentElement.classList.add('pg-layout-' + modo);
+        })();
+    </script>
     <style>
         body { background: #f1f5f9; }
         .fp-hero {
@@ -14,6 +27,17 @@
         .fp-hero h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
         .fp-hero p { margin: 0 auto; opacity: 0.9; max-width: 620px; }
         .fp-container { max-width: 1040px; margin: -2rem auto 3rem; padding: 0 1rem; }
+
+        /* Seletor de layout — o líder de campo ajusta o formulário ao aparelho dele. */
+        .pg-layout-seletor { display: inline-flex; gap: 0.25rem; margin-top: 1rem; background: rgba(255,255,255,0.16); border-radius: 999px; padding: 0.25rem; }
+        .pg-layout-seletor button { border: none; background: transparent; color: #fff; font: inherit; font-size: 0.85rem; font-weight: 700; padding: 0.4rem 1.1rem; border-radius: 999px; cursor: pointer; opacity: 0.8; transition: background 0.15s, color 0.15s, opacity 0.15s; }
+        .pg-layout-seletor button.ativo { background: #fff; color: var(--color-primary-dark); opacity: 1; }
+
+        /* Modo Celular: coluna estreita e centralizada. */
+        html.pg-layout-mobile .fp-container { max-width: 720px; }
+        /* Modo Computador: ocupa a largura inteira da janela. */
+        html.pg-layout-desktop .fp-container { max-width: none; padding: 0 1.5rem; }
+        html.pg-layout-desktop table.pg-tabela { min-width: 0; }
         .fp-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
         .fp-secao-titulo { font-size: 1rem; font-weight: 700; color: var(--color-dark); margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
         .fp-secao-titulo:first-child { margin-top: 0; padding-top: 0; border-top: none; }
@@ -41,6 +65,10 @@
         <h1>💸 Confirmação de Pagamento</h1>
         <p>Marque cada pessoa que já recebeu o pagamento. A informação vai direto para a administração financeira da campanha.</p>
         <p id="pg-lista-nome" style="display:none; margin-top:0.75rem; font-weight:700; background:rgba(255,255,255,0.18); border-radius:999px; padding:0.35rem 1rem;"></p>
+        <div class="pg-layout-seletor" role="group" aria-label="Ajustar o formulário ao seu aparelho">
+            <button type="button" data-modo="mobile" aria-pressed="false">📱 Celular</button>
+            <button type="button" data-modo="desktop" aria-pressed="false">🖥️ Computador</button>
+        </div>
     </div>
 
     <div class="fp-container">
@@ -77,6 +105,28 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Liga os botões do seletor de layout e guarda a escolha.
+        (function () {
+            var botoes = document.querySelectorAll('.pg-layout-seletor button');
+            function aplicar(modo) {
+                var raiz = document.documentElement;
+                raiz.classList.toggle('pg-layout-desktop', modo === 'desktop');
+                raiz.classList.toggle('pg-layout-mobile', modo === 'mobile');
+                botoes.forEach(function (b) {
+                    var ativo = b.dataset.modo === modo;
+                    b.classList.toggle('ativo', ativo);
+                    b.setAttribute('aria-pressed', String(ativo));
+                });
+                try { localStorage.setItem('pg-layout-modo', modo); } catch (e) {}
+            }
+            botoes.forEach(function (b) {
+                b.addEventListener('click', function () { aplicar(b.dataset.modo); });
+            });
+            aplicar(document.documentElement.classList.contains('pg-layout-desktop') ? 'desktop' : 'mobile');
+        })();
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
