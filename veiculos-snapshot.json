@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-09-03T15:39:50.581Z",
+  "gerado_em": "2026-09-03T17:36:37.495Z",
   "veiculos": [
     {
       "placa": "JHJ1246",
@@ -26,6 +26,342 @@
       "km_atual": null
     },
     {
+      "placa": "JGE3948",
+      "marca": null,
+      "modelo": "CELTA PRATA",
+      "nome_proprietario": "LUIZ FERNANDO ZEIDAN",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "JJG0H92",
+      "marca": null,
+      "modelo": "CLASSIC PRATA",
+      "nome_proprietario": "CRISTIANE MATHEUS DA SILVA",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "OZW6B35",
+      "marca": null,
+      "modelo": "PALIO",
+      "nome_proprietario": "DANIELE ALINE EUGENIA LIMA",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "PBY1527",
+      "marca": null,
+      "modelo": "FORD KA",
+      "nome_proprietario": "ELAINE NONATO DAMACENO",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "RVQ5E97",
+      "marca": null,
+      "modelo": "HB20",
+      "nome_proprietario": "GUILHERME PEREIRA",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "SCD2E85",
+      "marca": null,
+      "modelo": "MOBI",
+      "nome_proprietario": "KENIA LOPES DE SOUSA",
+      "localidade": "Santa Maria",
+      "km_atual": null
+    },
+    {
+      "placa": "JGM6418",
+      "marca": null,
+      "modelo": "FIESTA",
+      "nome_proprietario": "PAULA MOREIRA RODRIGUES",
+      "localidade": "Gama",
+      "km_atual": null
+    },
+    {
+      "placa": "PBL6F32",
+      "marca": null,
+      "modelo": "POLO",
+      "nome_proprietario": "WALTER MOREIRA MINERVINO",
+      "localidade": "Gama",
+      "km_atual": null
+    },
+    {
+      "placa": "REJ0A56",
+      "marca": null,
+      "modelo": "ARGO DRIVE",
+      "nome_proprietario": "JAQUELINE LOHANE DE SOUSA",
+      "localidade": "Gama",
+      "km_atual": null
+    },
+    {
+      "placa": "JFS4548",
+      "marca": null,
+      "modelo": "PALIO WEEKEND",
+      "nome_proprietario": "KENNEDY JEFFERSON ALVES FEITOSA",
+      "localidade": "Riacho Fundo II",
+      "km_atual": null
+    },
+    {
+      "placa": "JFX9F82",
+      "marca": null,
+      "modelo": "CORSA CLASSIC",
+      "nome_proprietario": "ALINE SOUSA ROCHA",
+      "localidade": "Riacho Fundo II",
+      "km_atual": null
+    },
+    {
+      "placa": "JIT7922",
+      "marca": null,
+      "modelo": "GOL G5",
+      "nome_proprietario": "ARTHUR LOURENÇO GONÇALVES",
+      "localidade": "Riacho Fundo II",
+      "km_atual": null
+    },
+    {
+      "placa": "JHP6760",
+      "marca": null,
+      "modelo": "PALIO",
+      "nome_proprietario": "AMAURY RODRIGUES DOS SANTOS COSTA",
+      "localidade": "Recanto das Emas",
+      "km_atual": null
+    },
+    {
+      "placa": "PBN2920",
+      "marca": null,
+      "modelo": "HB20",
+      "nome_proprietario": "MICAELLY ALVES PEREIRA",
+      "localidade": "Recanto das Emas",
+      "km_atual": null
+    },
+    {
+      "placa": "JHA6699",
+      "marca": null,
+      "modelo": "FIESTA",
+      "nome_proprietario": "CARLOS ANDRE COSTA",
+      "localidade": "Samambaia",
+      "km_atual": null
+    },
+    {
+      "placa": "NRV8A90",
+      "marca": null,
+      "modelo": "BMW",
+      "nome_proprietario": "ADEMAR JOSE BENEDITO",
+      "localidade": "Taguatinga",
+      "km_atual": null
+    },
+    {
+      "placa": "FGQ0156",
+      "marca": null,
+      "modelo": "CORSA",
+      "nome_proprietario": "MARCOS PEREIRA GOMES",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "JJC7384",
+      "marca": null,
+      "modelo": "FIAT PALIO",
+      "nome_proprietario": "CRISTIANE SANTOS ESPINDOLA",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "OAH7159",
+      "marca": null,
+      "modelo": "RENAULT FLUENCE",
+      "nome_proprietario": "ADMA ARANHA DA SILVA",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "PAY8371",
+      "marca": null,
+      "modelo": "RENAULT KWID",
+      "nome_proprietario": "AGLAILSON ALVES VIEIRA",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "REE1C02",
+      "marca": null,
+      "modelo": "HYNDAI CRETA",
+      "nome_proprietario": "GERUZA CAVALCANTE DOS SANTOS",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "TVK2I96",
+      "marca": null,
+      "modelo": "NIVUS",
+      "nome_proprietario": "STPHANY BRAZ DIAS",
+      "localidade": "Brazlândia",
+      "km_atual": null
+    },
+    {
+      "placa": "HMY5825",
+      "marca": null,
+      "modelo": "DOBLO",
+      "nome_proprietario": "CLEMIR FERNANDES",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JFV9301",
+      "marca": null,
+      "modelo": "PALIO WEEKEND",
+      "nome_proprietario": "THIAGO ALVES COSTA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JGG8446",
+      "marca": null,
+      "modelo": "GOL G3",
+      "nome_proprietario": "EUCLIDES DA SILVA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JGQ2748",
+      "marca": null,
+      "modelo": "GOL",
+      "nome_proprietario": "MARCOS MARTINS DE MOURA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JHP8102",
+      "marca": null,
+      "modelo": "VOYAGE",
+      "nome_proprietario": "CLAUDIA RIBEIRO DOS SANTOS",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JHQ9G50",
+      "marca": null,
+      "modelo": "CELTA",
+      "nome_proprietario": "EDELSON ANTONIO TRINDADE",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JHU8234",
+      "marca": null,
+      "modelo": "IDEIA FIAT",
+      "nome_proprietario": "NEIDE TEIXEIRA COELHO CAMARGO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JIR6449",
+      "marca": null,
+      "modelo": "C3",
+      "nome_proprietario": "FRANK MATHEUS DA SILVA MELO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JJH4686",
+      "marca": null,
+      "modelo": "FIAT LINEA",
+      "nome_proprietario": "GUILHERME ANTONIO DA ROCHA ARAUJO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "JJK0254",
+      "marca": null,
+      "modelo": "PRISMA",
+      "nome_proprietario": "MAXSUEL MELO DE SOUZA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "OVN0439",
+      "marca": null,
+      "modelo": "HONDA CIVIC",
+      "nome_proprietario": "HERCULES COSTA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "OVP3328",
+      "marca": null,
+      "modelo": "IX 35",
+      "nome_proprietario": "JUSSARA DE OLIVEIRA XAVIER",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "PAO0720",
+      "marca": null,
+      "modelo": "PALIO",
+      "nome_proprietario": "LELLIS NEVES PEREIRA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "PAV7D82",
+      "marca": null,
+      "modelo": "SPIN",
+      "nome_proprietario": "JOSE IVANILSON DIAS DE SOUSA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "PAY7217",
+      "marca": null,
+      "modelo": "FIAT TORO",
+      "nome_proprietario": "SEBASTIAO FERREIRA DA SILVA",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "PBZ0203",
+      "marca": null,
+      "modelo": "KICS NISSAN",
+      "nome_proprietario": "RAINELLE DA SILVA MELO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "PRP5D94",
+      "marca": null,
+      "modelo": "MOBI",
+      "nome_proprietario": "ANDREIA DE SOUZA SOARES",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "RES0G13",
+      "marca": null,
+      "modelo": "GOL",
+      "nome_proprietario": "ALEXANDRE DE OLIVEIRA COUTO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "SDQ3139",
+      "marca": null,
+      "modelo": "GOL G8",
+      "nome_proprietario": "DOUGLAS OLIVEIRA PRADO",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
+      "placa": "SSH0H96",
+      "marca": null,
+      "modelo": "ONIX",
+      "nome_proprietario": "MARIA DAS VITORIAS DOS SANTOS",
+      "localidade": "Sobradinho",
+      "km_atual": null
+    },
+    {
       "placa": "JDU1920",
       "marca": null,
       "modelo": "J6 jac",
@@ -46,6 +382,14 @@
       "marca": null,
       "modelo": "SIENA",
       "nome_proprietario": "PAULA RIBEIRO LOPES DA CONCEIÇÃO",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "JIR5790",
+      "marca": null,
+      "modelo": "I30 HYUANDAI",
+      "nome_proprietario": "Osmir Martins Silva",
       "localidade": "Paranoá",
       "km_atual": null
     },
@@ -114,6 +458,22 @@
       "km_atual": null
     },
     {
+      "placa": "PIJ0G06",
+      "marca": null,
+      "modelo": "GOL",
+      "nome_proprietario": "TIAGO MELO FARIAS",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "UIZ6B19",
+      "marca": null,
+      "modelo": "Boreal AZUL",
+      "nome_proprietario": "Izarron Saiazi Ribeiro dos Reis",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
       "placa": "GJI5D73",
       "marca": null,
       "modelo": "GOL",
@@ -178,10 +538,10 @@
       "km_atual": null
     },
     {
-      "placa": "ECZ8J04",
+      "placa": "ECZ8J01",
       "marca": null,
-      "modelo": "Volkswagen Voyage",
-      "nome_proprietario": "Amanda Pereira silva",
+      "modelo": "VOYAGE",
+      "nome_proprietario": "AMANDA PEREIRA SILVA",
       "localidade": "São Sebastião",
       "km_atual": null
     },
@@ -245,7 +605,7 @@
       "placa": "NKV9G45",
       "marca": null,
       "modelo": "VW / CROSSFOX",
-      "nome_proprietario": "Enoc de Almeida Costa",
+      "nome_proprietario": "ENOC DE ALMEIDA COSTA",
       "localidade": "São Sebastião",
       "km_atual": null
     },
@@ -261,7 +621,7 @@
       "placa": "PAO1517",
       "marca": null,
       "modelo": "HYUNDAI/TUCSON. GLSB /2016/ COR PRETA",
-      "nome_proprietario": "Isvaneth Oliveira da Silva",
+      "nome_proprietario": "ISVANETH OLIVEIRA DA SILVA",
       "localidade": "São Sebastião",
       "km_atual": null
     },
@@ -276,8 +636,8 @@
     {
       "placa": "PBX3458",
       "marca": null,
-      "modelo": "GRANDSIENA/FIAT",
-      "nome_proprietario": "Paulo Carpegeani Sousa Oliveira",
+      "modelo": "GRAND SIENA",
+      "nome_proprietario": "PAULO CARPEGEANI SOUSA OLIVEIRA",
       "localidade": "São Sebastião",
       "km_atual": null
     },
@@ -351,6 +711,30 @@
       "modelo": "HIUNDAY SANTA FE",
       "nome_proprietario": "SARA FERNANDES SALES",
       "localidade": "Estrutural",
+      "km_atual": null
+    },
+    {
+      "placa": "JHS3499",
+      "marca": null,
+      "modelo": "PUNTO VERMELHO",
+      "nome_proprietario": "GABRIEL ARAUJO NASCIMENTO",
+      "localidade": "Vicente Pires",
+      "km_atual": null
+    },
+    {
+      "placa": "NJK6132",
+      "marca": null,
+      "modelo": "FIESTA",
+      "nome_proprietario": "BEATRIZ SOUZA LOPES",
+      "localidade": "Vicente Pires",
+      "km_atual": null
+    },
+    {
+      "placa": "RGC0B13",
+      "marca": null,
+      "modelo": "MOBI",
+      "nome_proprietario": "CAROLINE ALVES TEIXEIRA",
+      "localidade": "Vicente Pires",
       "km_atual": null
     }
   ]
