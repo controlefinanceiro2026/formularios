@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-09-02T15:08:52.961Z",
+  "gerado_em": "2026-09-03T15:39:50.581Z",
   "veiculos": [
     {
       "placa": "JHJ1246",
@@ -26,2651 +26,331 @@
       "km_atual": null
     },
     {
-      "placa": "JEE0777",
+      "placa": "JDU1920",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIELA SOUSA ANDRADE",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "JFM7116",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELLEN ALVES",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "JGI1A04",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NELIO SANTANA MARRA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "OZW6B35",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIELE ALINE E. L.",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "PAN3114",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EFRAIN DORNELES DE GRACA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "PAQ0776",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "REGIVAN OLIVEIRA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "PBJ2436",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAIMUNDO NONATO",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "PYB1527",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELAINE NONATO D.",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "REJ0A56",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JAQUELINE LOHANE",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "RHE5392",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JESUALDO DE SOUZA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "RTJ9B74",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUANA OLIVEIRA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "RUG9B16",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ADRIANA PEREIRA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "RVQ5E97",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUILHERME PEREIRA",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "SGG4668",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FABIANO DA ROCHA FREITAS",
-      "localidade": "Santa Maria",
-      "km_atual": null
-    },
-    {
-      "placa": "GFH5021",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALINE SOUZA BESSA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JFS8385",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IZAC RIBEIRO",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JGM6418",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PAULA RODRIGUES",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JHL2324",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ZENILDA PEREIRA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JHR0789",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS ROGÉRIO",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JHV7138",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ABEL ROQUIM",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "JKF0722",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "BRUNO SPINDOLA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "LBP3879",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CICERO MARTINS",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "NWC0175",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PAULO HENRIQUE",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "OVR1863",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUSTAVO",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "PAC8150",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "REJANE FARIAS",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "PAZ9468",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GLERTON RUBENS SILVINA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "PAZ9E02",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AMANDA KATRINY COSTA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "QQB7D86",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ZENAIDE PEREIRA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "QXJ0196",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS MILLER",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "RED8J02",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANTONIO",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "RGJ4H15",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JULIANA KARLA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "RMQ3J57",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DAVSON OLIVEIRA",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "RTY9E61",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANA BEATRIZ",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "SGN9I45",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLAUDINE M.",
-      "localidade": "Gama",
-      "km_atual": null
-    },
-    {
-      "placa": "BZP0668",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RENATA ANTONIO",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "JGQ4905",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CELSO OLIVEIRA MEDEIROS",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "KVO3C52",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "OSEIAS MILTON",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "NLA4E99",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RENATO SANTOS LIMA",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "PAL0517",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS ALBERTO",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "PBX0104",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUILHERME BATISTA",
-      "localidade": "Riacho Fundo I",
-      "km_atual": null
-    },
-    {
-      "placa": "EDC6J14",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MILENA SOUSA COSTA",
-      "localidade": "Riacho Fundo II",
-      "km_atual": null
-    },
-    {
-      "placa": "JHA6690",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDRÉ COSTA",
-      "localidade": "Riacho Fundo II",
-      "km_atual": null
-    },
-    {
-      "placa": "JIQ3256",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ITAIANA CARVALHO DE OLIVEIRA",
-      "localidade": "Riacho Fundo II",
-      "km_atual": null
-    },
-    {
-      "placa": "JIT7922",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS ARTHUR",
-      "localidade": "Riacho Fundo II",
-      "km_atual": null
-    },
-    {
-      "placa": "JSF4588",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "KENNEDY ALVES",
-      "localidade": "Riacho Fundo II",
-      "km_atual": null
-    },
-    {
-      "placa": "JFE0005",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLAYTON RIBEIRO",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "JGM8048",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PATRICIA SOUZA",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "JHP6760",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AMAURI",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "JJG4199",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CHAGAS ONOYAMA",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "JKM0381",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "APARECIDA M",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "PAK4044",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NICOLE GLADE",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "PAK9093",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FABIANO TARGINO",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "PBA5477",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MÁRCIA MATOS",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "PBT9246",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DENILCE ANTUNES",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "PBY5122",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AILTON CLAITON",
-      "localidade": "Recanto das Emas",
-      "km_atual": null
-    },
-    {
-      "placa": "ABW6A05",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WESLEY",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "ANX4703",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS ANTONIO SOARES",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "DQI7C04",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUCAS LIMA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "DQP3D74",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JANILEIDE FERREIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JEZ1441",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "REBECA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JGH0B88",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SILVANA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHG2141",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PAULO RICARDO",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHI1090",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GLEYDJANE",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHI3541",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUCA ROSA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHI6F49",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOSIEL JOSÉ",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHJ1744",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LEONILIA DE FREITAS",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHZ7710",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TATIANE MACHADO",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIA7039",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SUELEN PEREIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIR6886",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "HERICA MAGALHÃES",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIZ8854",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SIMONE",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJA5050",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS HUMBERTO",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJI0634",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANTÔNIO PAULO",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJL1475",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUZINEIDE DA SILVA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJM3259",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCELO",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JVQ2156",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "POLIANA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "NET3805",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDJAEL",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "NYK7J56",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ROBERTA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAA1252",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA EDUARDA PEREIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAV1113",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GILVANA BARBOSA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAW8220",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MOISÉS CERQUEIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAY3154",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LAICONE",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBC3257",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AFRISIO PEREIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "REC5B39",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDINEIA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "REL0C66",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SAMANTA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "RTK4F45",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLÁUDIO MOISES",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "SKU1J79",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUILHERME PEREIRA",
-      "localidade": "Samambaia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHI8086",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARTA SUELY",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "JIY5A39",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IDELFONSO RIBEIRO",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "JJK7559",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MATERS DANTAS DINIZ",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "JKB5050",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ARIANE CANABARRO",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "JKI7G38",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NEDIMA NERES",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "LSC8I28",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MÁRCIO SANTOS VIANA",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "NGB5A04",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANELISE RODRIGUES",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "OVM8921",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CREUZELY O. DE SOUZA",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "PAE6516",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DEBORA RODRIGUES",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "PAT5946",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DENISON DOS SANTOS",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "PDZ6H16",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "REGININHA",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "REG3F90",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PATRICIA MACEDO",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "SYS6D72",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WILLIAN FERREIRA",
-      "localidade": "Taguatinga",
-      "km_atual": null
-    },
-    {
-      "placa": "JEL7H79",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLAUDIA KELLY DIAS",
-      "localidade": "Arniqueira",
-      "km_atual": null
-    },
-    {
-      "placa": "NLX4871",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ADIMILSON ALVES",
-      "localidade": "Arniqueira",
-      "km_atual": null
-    },
-    {
-      "placa": "JIX6104",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUCAS DA ROCHA",
-      "localidade": "Águas Claras",
-      "km_atual": null
-    },
-    {
-      "placa": "OVN5973",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ADÃO ALVES MOREIRA",
-      "localidade": "Águas Claras",
-      "km_atual": null
-    },
-    {
-      "placa": "EZF5B92",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "THIAGO TRINDADE",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "GHZ4F39",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDILSON ROBERTO CAETANO",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "GLQ7837",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "KLEBER",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "JIS3114",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EMERSON RUFINO",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "JKE5999",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALLAN GOMES",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "NFZ2604",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUDOVICO",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "OVR3860",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ENOQUE ROCHA ALVES JUNES",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "PBC1983",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JURANDIR TEODORO DE SOLTO",
-      "localidade": "Sol Nascente / Pôr do Sol",
-      "km_atual": null
-    },
-    {
-      "placa": "AOM2F93",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDRÉ LUIZ",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "ARE1J26",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LAURO MANOEL",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "FAI6918",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SIMAO FRANCISCO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "HOZ2300",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DEICY DE SIQUEIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JER8333",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIEL CARVALHO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JFV6802",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DAIANE CRISTINA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JGO7332",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SARA XAVIER",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHB5810",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JESSICA DA CONCEIÇÃO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHC2382",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JUDILENE DIAS LIMA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHD6A40",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CRISTINEY ALVES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHE5555",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SAMUEL BITTENCOURT",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHF7479",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LEIDSON",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHI5211",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "APARECIDA MARIA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHS5E16",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NEUCELIO FRANCISCO DE JESUS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHS9332",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "VALBER LUIZ RIBEIRO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHT1132",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RICARDO DE SOUZA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHU0280",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "KLEYBER STEFANIO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JHZ9G59",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "BÁRBARA VIEIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIE4434",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "THAYANE DE SOUZA COSTA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIG7290",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALINE RIBEIRO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIH4H15",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUILHERME",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIJ2755",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAFAELA RODRIGUES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIL8176",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WILSON FERNANDES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIN1928",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOCILENE PEREIRA FURTADO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIQ1G63",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDREA DE SIQUEIRA MOREIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JIX1461",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANCISCO DE ASSIS ALVES BUTO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJA4771",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOÃO PEDRO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJG2839",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DAYWSON KLEYTON",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJJ3731",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RICARDO FERNANDES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJL8132",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PEDRO PENAL",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJV6990",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAFAEL MARTINS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKB5C08",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DOUGLAS GUSTAVO SOUZA LIMA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKF8233",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NATÁLIA MARINHO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKG3485",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "VAGNER CARPEGIANI",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKJ6681",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDERSON GRILLO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKK7716",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TELMA DE FARIAS OLIVEIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JKR5407",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARLENE SOARES DA SILVA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JVI5E37",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MATHEUS FELIX TAVARES DE LIMA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "KBX3713",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AGNALDO PONTES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "KPX0279",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS ANTONIO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "NGJ3C70",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELDER CALDAS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "NIV4426",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TATIANE SANTOS SOUSA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OBY8E16",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "HELENA DE MELO B.",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OFY6H01",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "INALDO SILVA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OGR2D03",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PAULO CESAR SILVA DA VEIGA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OGX2J78",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLEISON GEUINO DE SOUZA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OHR7549",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AGDA CAMARGO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "ONK3C32",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PASTOR EDINELSON",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OVM8785",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ÍTALO DE SOUZA C.",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OVT3220",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANCISCO ADAÍLTON",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OVV5369",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANI MENEZES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAG1C19",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDRÉ BEZERRA MARIANO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAG7263",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ADRIANA SANTON SALES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAI1214",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NATAN PEREIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAN9613",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIEL DE MELO B.",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAZ1445",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ORLEANO SOARES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBA8622",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARLON DE SOUZA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBF7679",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ROBERTO LOPES MATIAS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBF9487",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WILLIAM CALDEIRA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBQ8A29",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAFAEL DA SILVA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBT1140",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANTONIO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PBV0446",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALEX COSTA SILVA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PSX0747",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DAVID WILLIAM",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "QBE0B42",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JONATHAN DA CONCEIÇÃO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "QCI1445",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JEFERSON ALEXANDRE",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "QNI8F36",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AGNA PEREIRA DOS SANTOS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "QPN9776",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "HELCIO PEREIRA LINS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "REL0B73",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IVANEIDE DANTAS",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "RES9H34",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANA KELLY SOARES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "RET6B25",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS AURELIO FERREIRA NUNES",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "RET6F75",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "KEILA DE SOUZA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "RNJ8J17",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IURY ARAUJO FIGUEREDO",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "SGV8C40",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "THIAGO DE LIMA",
-      "localidade": "Ceilândia",
-      "km_atual": null
-    },
-    {
-      "placa": "FGQ0156",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS GOMES DA SILVA",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "JJC7384",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DAVID ESPINDOLA",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "OAH7159",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ADMA ANANHA",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "PAY8371",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AGLAILSON",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "REE1C02",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GERUZA CAVALCANTE",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "REJ3B79",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MAYCON",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "TVK2196",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "STEPHANY BRAZ",
-      "localidade": "Brazlândia",
-      "km_atual": null
-    },
-    {
-      "placa": "EOA1B24",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JEFERSON",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "HKR3559",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GERALDO DANTAS",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "HND1B00",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RODRIGO FELISBINO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JDX2501",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "VIRIATO COIMBIA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JEC4445",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LAZARO DE PAULA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JEH0093",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WILLIAN AMARAL",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JEK8377",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RONALD SILVA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JFS9E15",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MAYKE CARVALHO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JFV9622",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SMILE MAGALHÃES",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JGA8J12",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MADSON V. DA ROCHA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JGD9846",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EUPIDIO FRANCO DA SILVA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JGI9025",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WENDEL",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JGJ4234",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PASTOR RUBENS CORRÊA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JGX9744",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCELO DIAS",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JHA9637",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TIAGO ALVES",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JHL7487",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUIS PEREIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JHS1812",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MATEUS LIMA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JHW4G67",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MAURICIO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JHX8I07",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GEÂNIO RAMALHO F.",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIC1679",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IVANILDO DIAS DE ARAUJO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIE6145",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RUAN CARLO PABLO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIG0085",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELIEDA MARIA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIR3069",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOSÉ ADOLFO CARVALHO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIT8637",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDUARDO SILVA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JIV4471",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANA PAULA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JJH7557",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JONATA ALVES",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JKK5912",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RONAN PEREIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "JPQ5C52",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLEIDIANE",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "KXY4E22",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDÍLSON PEIXOTO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "NGK1H19",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EMERSON ALVES M.",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "OBF7E15",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANSCISCA CELIA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "ONQ5874",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANA CAROLINA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "OVN6276",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "KATIENE RODRIGUES",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "OVV3290",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IVAN PEREIRA DE SOUZA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "OVV3F14",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANTÔNIO WANDERLEY",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "OZW4517",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAILTON FERREIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAA8963",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA CLARA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAB2070",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RICARDO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAB2643",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIZA SILVA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAD3950",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WESLIANA FERREIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAV1156",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "BERNARDO SOBRINA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PAX3470",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS NASCIMENTO COIMBRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PBB5314",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOSEANE MENDES",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PBX9I34",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUIZ ANTONIO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PCW6B20",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS EDUARDO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PDB5E52",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUIZ CLAYTON",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PMP8617",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOÃO MARCOS",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PQX2816",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JESSICA FONSECA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PRP1J40",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALESSANDRO D SANTOS",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "PZW2104",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "VITOR HUGO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "REC7C65",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ROMÉRIO VILARINO",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "RER6H32",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANA MARIA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "RFI4775",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLEITON DE OLIVEIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "RGH5G63",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ARLINDO RIBEIRO C.",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "SCR0495",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PAMELA MORGANA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "UIY0F51",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDINEI GOMES PEREIRA",
-      "localidade": "Planaltina",
-      "km_atual": null
-    },
-    {
-      "placa": "AVD8996",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TÂNIA LIMA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "HNY5825",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLEMIR FERNANDES",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JGG8446",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EUCLIDES",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JGQ2748",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCOS MARTINS",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JGW9535",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDI MICHELE",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JHP6B44",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WESLEY M. DE ALMEIDA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JHP8102",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLÁUDIA RIBEIRO",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JHU8334",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NEIDE TEIXEIRA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JHX6903",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "THIAGO COSTA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JJK0254",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MAXSUEL MELO DE SOUZA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "JJQ9050",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDELSOM",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "NIL2818",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GUILHERME ANTÔNIO",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "OQL0550",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANCINAR LANDIM",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "OVN0439",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "HÉRCULES",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "OVP3328",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JUSSARA OLIVEIRA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "PAZ2701",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELIETE PEREIRA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "PBO9D44",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUÍS AURÉLIO",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "PBZ0203",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAINELLE MELO",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "PRP5094",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDREIA SOUSA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "REK9D29",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CENILDO MARTIN BEZERSA",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "RES0613",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "BARAUNA ALEXANDRE",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "RES0G13",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALISON COUTO",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "SCK5F56",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "VALÉRIA RODRIUES",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "SGQ7H40",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "PR. WANDERSON",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "SSH0H96",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA DAS VITÓRIAS",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "TAV7082",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOSÉ EVANILSON",
-      "localidade": "Sobradinho",
-      "km_atual": null
-    },
-    {
-      "placa": "HAY3E00",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARISA",
+      "modelo": "J6 jac",
+      "nome_proprietario": "Iraildo Felix de Oliveira",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
-      "placa": "JHB1196",
+      "placa": "JHN3499",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JONAS GOMES DOS SANTOS",
+      "modelo": "CORSA",
+      "nome_proprietario": "ANTONIA MACIEL DA SILVA",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
-      "placa": "JHN3A99",
+      "placa": "JIP4968",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANTONIA",
+      "modelo": "SIENA",
+      "nome_proprietario": "PAULA RIBEIRO LOPES DA CONCEIÇÃO",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "JKD6318",
+      "marca": null,
+      "modelo": "Uno Vivace",
+      "nome_proprietario": "Felipe da Silva Gomes",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "MMT4996",
+      "marca": null,
+      "modelo": "FIAT UNO",
+      "nome_proprietario": "Antônio Francisco dos Santos",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
       "placa": "NWR9H80",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCIO",
+      "modelo": "HYUNDAI SONATA",
+      "nome_proprietario": "MÁRCIO MARCELINO DOS SANTOS",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "OQL0550",
+      "marca": null,
+      "modelo": "FIAT PUNTO",
+      "nome_proprietario": "Francimar Landim santos",
+      "localidade": "Paranoá",
+      "km_atual": null
+    },
+    {
+      "placa": "OVN4021",
+      "marca": null,
+      "modelo": "CHERY FACE",
+      "nome_proprietario": "ADRIANO FRANCISCO SILVA",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
       "placa": "OVP3902",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIELA",
+      "modelo": "SANDERO",
+      "nome_proprietario": "DANIELA SOUSA DA SILVA",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
-      "placa": "PAH3G89",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIEL SILVA",
+      "placa": "PAL1035",
+      "marca": "Renault",
+      "modelo": "DUSTER",
+      "nome_proprietario": "Paulo Christian Vilarindo de Souza",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
-      "placa": "PIJ0G06",
+      "placa": "PBO0184",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "TIAGO MELO FARIAS",
+      "modelo": "Fiat Argo",
+      "nome_proprietario": "FERNANDA VENTURA DA SILVA",
       "localidade": "Paranoá",
       "km_atual": null
     },
     {
-      "placa": "QIS6569",
+      "placa": "GJI5D73",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDGAR CHAVES",
-      "localidade": "Paranoá",
-      "km_atual": null
-    },
-    {
-      "placa": "BSY6F58",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELINE SOARES",
+      "modelo": "GOL",
+      "nome_proprietario": "Daniel Silva de Farias",
       "localidade": "Itapoã",
       "km_atual": null
     },
     {
       "placa": "HNW7045",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "NATANNIELLE CRISTINA",
+      "modelo": "CELTA",
+      "nome_proprietario": "Natannielle Cristina de Sousa Maciel",
+      "localidade": "Itapoã",
+      "km_atual": null
+    },
+    {
+      "placa": "JET5A83",
+      "marca": null,
+      "modelo": "FORD ESCORT GL",
+      "nome_proprietario": "Eline Soares",
       "localidade": "Itapoã",
       "km_atual": null
     },
     {
       "placa": "JGZ4992",
       "marca": null,
-      "modelo": null,
+      "modelo": "CELTA",
       "nome_proprietario": "JONAS BARBOSA",
+      "localidade": "Itapoã",
+      "km_atual": null
+    },
+    {
+      "placa": "JHB1196",
+      "marca": null,
+      "modelo": "FORD FIESTA",
+      "nome_proprietario": "Jonas Gomes dos Santos",
       "localidade": "Itapoã",
       "km_atual": null
     },
     {
       "placa": "PAC2123",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WELSON G. MARTINS",
+      "modelo": "HB20",
+      "nome_proprietario": "WELSON GOMES MARTINS",
       "localidade": "Itapoã",
       "km_atual": null
     },
     {
-      "placa": "HCI9251",
+      "placa": "PBT8206",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUCAS VINICIUS",
+      "modelo": "RENAULT SANDERO",
+      "nome_proprietario": "Railson vieira chaves",
+      "localidade": "Itapoã",
+      "km_atual": null
+    },
+    {
+      "placa": "PBT8J61",
+      "marca": null,
+      "modelo": "Hb20 Hyndai",
+      "nome_proprietario": "Amanda Ballerini de Lima",
+      "localidade": "Itapoã",
+      "km_atual": null
+    },
+    {
+      "placa": "ECZ8J04",
+      "marca": null,
+      "modelo": "Volkswagen Voyage",
+      "nome_proprietario": "Amanda Pereira silva",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "IFT7163",
+      "placa": "EEJ8E70",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUIS CARLOS BARBOSA",
+      "modelo": "C3 CITROEN",
+      "nome_proprietario": "Waldiney Almeida da Silva",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "HCI9C51",
+      "marca": null,
+      "modelo": "celta spirit 2004/2005",
+      "nome_proprietario": "LUCAS VINICIUS DA SILVA ARAUJO",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "JEL6049",
+      "marca": null,
+      "modelo": "Gol 1.8 MARCA Volkswagen",
+      "nome_proprietario": "Leandro Pimentel Santos",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "JGB9732",
+      "marca": null,
+      "modelo": "FIAT UNO",
+      "nome_proprietario": "VERA LUCIA RESENDE",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "JGM8998",
+      "marca": null,
+      "modelo": "FIAT UNO",
+      "nome_proprietario": "EDJAMES PEREIRA COSTA",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
       "placa": "JHF5732",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JACKSON ARAUJO",
+      "modelo": "Gol G5 Vermelho",
+      "nome_proprietario": "Jackson Araujo Rodrigues",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
       "placa": "JIL1A02",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FORGINA LUIZA GOMES",
+      "modelo": "Doblô aventure",
+      "nome_proprietario": "Jorgina Luiza Gomes",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "NKV9G45",
+      "marca": null,
+      "modelo": "VW / CROSSFOX",
+      "nome_proprietario": "Enoc de Almeida Costa",
+      "localidade": "São Sebastião",
+      "km_atual": null
+    },
+    {
+      "placa": "OVP8639",
+      "marca": null,
+      "modelo": "PALIO",
+      "nome_proprietario": "EDCARLO LUSTOSA DOS SANTOS",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
       "placa": "PAO1517",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ISVANETH OLIVEIRA",
+      "modelo": "HYUNDAI/TUCSON. GLSB /2016/ COR PRETA",
+      "nome_proprietario": "Isvaneth Oliveira da Silva",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "TDF3F01",
+      "placa": "PAR0626",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RONALDO PEREIRA DA SILVA",
+      "modelo": "MOBI BRANCO",
+      "nome_proprietario": "JAILSON RODDRIGUES ALVES",
       "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "JFD9F12",
+      "placa": "PBX3458",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JULIANA",
-      "localidade": "Plano Piloto",
+      "modelo": "GRANDSIENA/FIAT",
+      "nome_proprietario": "Paulo Carpegeani Sousa Oliveira",
+      "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "OZW5094",
+      "placa": "QEV3989",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "RAQUEL TAVARES",
-      "localidade": "Plano Piloto",
+      "modelo": "GOL PRATA G3",
+      "nome_proprietario": "Luiz Carlos Barbosa Barros",
+      "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "PAR6F65",
+      "placa": "SDF5D67",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ANDERSON SANTOS",
-      "localidade": "Plano Piloto",
+      "modelo": "MOBI PRATA",
+      "nome_proprietario": "JUDIVAN ARAUJO CARNEIRO",
+      "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "PAW7604",
+      "placa": "TDI3F01",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA DA GRAÇAS",
-      "localidade": "Plano Piloto",
+      "modelo": "VOLKSWAGEN T CROOS",
+      "nome_proprietario": "Ronaldo Pereira da silva",
+      "localidade": "São Sebastião",
       "km_atual": null
     },
     {
-      "placa": "QAP0188",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIELLE DOMASCENO",
-      "localidade": "Plano Piloto",
-      "km_atual": null
-    },
-    {
-      "placa": "SGP2B14",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDMILSON",
-      "localidade": "Plano Piloto",
-      "km_atual": null
-    },
-    {
-      "placa": "GIM1233",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CARLOS PEREINA",
+      "placa": "PBC0D22",
+      "marca": "FIAT ",
+      "modelo": "TORO VERMELHO",
+      "nome_proprietario": "JULIANA GOMES ASSUNÇÃO",
       "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "JHR2582",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "THAIS PEREIRA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "JIB3J97",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALEXSANDER DIAS",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "JIY4C55",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ALANYS ALMEIDA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "JKJ7007",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANKIN LIMA ALVES",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PAG0702",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA EUNICE",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PAX5212",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "WANESSA LEÃO",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PBB9174",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "AMANDA DRUMOND",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PPJ0182",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ERICK DANTAS",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PRJ9D26",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "IARA CRISTINA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "QOP2D33",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GENILDA DA SILVA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "RDF2120",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "STIVI DE OLIVEIRA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "RDG2B70",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "FRANCISCO ANDERSON",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "REC2F11",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GLAUBER SANTOS",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "REI7172",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIELE BATISTA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "RET5D84",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "LUIS KASSIO",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "UIV3159",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JULIANA TELES",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "UJA3E66",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCELA NOGUEIRA",
-      "localidade": "Guará",
-      "km_atual": null
-    },
-    {
-      "placa": "PQD0199",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "BRUNA MOREIRA",
-      "localidade": "Núcleo Bandeirante",
-      "km_atual": null
-    },
-    {
-      "placa": "FHZ5D25",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLAUDIENE MARIA",
-      "localidade": "Estrutural",
-      "km_atual": null
-    },
-    {
-      "placa": "IWE4429",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JOÃO PAULO",
-      "localidade": "Estrutural",
       "km_atual": null
     },
     {
       "placa": "JEX6737",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "DANIEL JUNIOR SOARES DE OLIVEIRA",
+      "modelo": "GOL VERMELHO",
+      "nome_proprietario": "DANIEL JUNIOR SOARES OLIVEIRA",
       "localidade": "Estrutural",
       "km_atual": null
     },
     {
       "placa": "JFX4G64",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "ELIAS PEREIRA",
+      "modelo": "CORSA CINZA",
+      "nome_proprietario": "ELIAS PEREIRA VALVERDE",
       "localidade": "Estrutural",
       "km_atual": null
     },
     {
-      "placa": "JPC0B22",
+      "placa": "JHM6317",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "JULIANA",
-      "localidade": "Estrutural",
-      "km_atual": null
-    },
-    {
-      "placa": "KNN2670",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "EDILSON COSTA FERREIRA DA SILVA",
+      "modelo": "FOX CINZA",
+      "nome_proprietario": "MARIA SIRENIA BARBOSA GOMES",
       "localidade": "Estrutural",
       "km_atual": null
     },
     {
       "placa": "LSA6D08",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SANDRA MARCIA PAIVA",
+      "marca": "Mitsubishi",
+      "modelo": "ASX",
+      "nome_proprietario": "SANDRA MARCIA PAIVA MACIEL",
       "localidade": "Estrutural",
       "km_atual": null
     },
     {
       "placa": "ODB2385",
       "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SARA FERNANDES",
+      "modelo": "HIUNDAY SANTA FE",
+      "nome_proprietario": "SARA FERNANDES SALES",
       "localidade": "Estrutural",
-      "km_atual": null
-    },
-    {
-      "placa": "PAJ1465",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CLARICE SILVA",
-      "localidade": "Estrutural",
-      "km_atual": null
-    },
-    {
-      "placa": "QOX0279",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARCO ANTÔNIO",
-      "localidade": "Estrutural",
-      "km_atual": null
-    },
-    {
-      "placa": "JHS3499",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "GABRIEL ARAÚJO NASCIMENTO",
-      "localidade": "Vicente Pires",
-      "km_atual": null
-    },
-    {
-      "placa": "KDD4750",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "HERCULES RODRIGO RODRIGUES DE SANTANA",
-      "localidade": "Vicente Pires",
-      "km_atual": null
-    },
-    {
-      "placa": "PBB9J64",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "SILVIA HELENA DE MELO LOPES",
-      "localidade": "Vicente Pires",
-      "km_atual": null
-    },
-    {
-      "placa": "RGC0B13",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "CAROLINE ALVES",
-      "localidade": "Vicente Pires",
-      "km_atual": null
-    },
-    {
-      "placa": "KKC6153",
-      "marca": null,
-      "modelo": null,
-      "nome_proprietario": "MARIA DO SOCORRO",
-      "localidade": "Cruzeiro",
       "km_atual": null
     }
   ]
