@@ -806,11 +806,143 @@ textarea { resize: vertical; }
     #modal-enviar-prestacao .modal-content {
         max-width: 95%;
     }
-    
+
     #envio-irmaos-body th:nth-child(3),
     #envio-irmaos-body td:nth-child(3),
     #envio-irmaos-body th:nth-child(4),
     #envio-irmaos-body td:nth-child(4) {
         display: none;
     }
+}
+
+/* ==========================================
+   FILTRO POR COLUNA (mesmo mecanismo da plataforma principal)
+   ========================================== */
+.th-filtro-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+}
+
+.btn-filtro-coluna {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.1rem 0.2rem;
+    font-size: 0.75rem;
+    color: var(--color-gray);
+    line-height: 1;
+    border-radius: 4px;
+}
+
+.btn-filtro-coluna:hover {
+    background: #e2e8f0;
+}
+
+.btn-filtro-coluna.ativo {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.painel-filtro-coluna {
+    position: absolute;
+    z-index: 500;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow), 0 8px 24px rgba(0,0,0,0.15);
+    padding: 0.6rem;
+    width: 230px;
+    display: flex;
+    flex-direction: column;
+    text-transform: none;
+}
+
+.painel-filtro-coluna input[type="text"] {
+    width: 100%;
+    margin-bottom: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    font-size: 0.82rem;
+}
+
+.painel-filtro-coluna .lista-valores {
+    overflow-y: auto;
+    max-height: 190px;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.3rem 0;
+}
+
+.painel-filtro-coluna label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 400;
+    text-transform: none;
+    color: var(--color-dark);
+    padding: 0.2rem 0.1rem;
+    cursor: pointer;
+}
+
+.painel-filtro-coluna label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.painel-filtro-coluna label.label-todos {
+    font-weight: 600;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.2rem;
+}
+
+.painel-filtro-coluna .ordenar-coluna {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.painel-filtro-coluna .ordenar-coluna button {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 0.3rem 0.2rem;
+    font-size: 0.82rem;
+    color: var(--color-dark);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.painel-filtro-coluna .ordenar-coluna button:hover {
+    background: #f1f5f9;
+}
+
+.painel-filtro-coluna .ordenar-coluna button.ativo {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.painel-filtro-coluna .acoes {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+}
+
+.painel-filtro-coluna .acoes button {
+    flex: 1;
+    padding: 0.35rem;
+    font-size: 0.8rem;
 }
