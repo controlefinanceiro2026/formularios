@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Consulta</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🔒 Painel de Consulta</h2>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#formularios" class="nav-link active" data-page="formularios">📄 Formulários</a>
+                <a href="#cadastro-rapido" class="nav-link" data-page="cadastro-rapido">🪪 Cadastro Rápido</a>
+                <a href="#pessoal" class="nav-link" data-page="pessoal">👤 Cadastro de Pessoal</a>
+                <a href="#veiculos" class="nav-link" data-page="veiculos">🚗 Cadastro de Veículos</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="user-email" class="user-name">—</span>
+                </div>
+                <button type="button" class="btn-logout" onclick="sair()">Sair 🚪</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h2 id="page-title">Formulários</h2>
+            </header>
+
+            <div class="page-content">
+                <section id="formularios" class="page active">
+                    <div class="table-container">
+                        <table class="table-data">
+                            <thead><tr>
+                                <th>Tipo</th><th>Nome</th><th>CPF / Placa</th><th>Marca/Modelo</th>
+                                <th>Função</th><th>Local / CNPJ</th><th>Status</th><th>Enviado em</th><th>Documentos</th>
+                            </tr></thead>
+                            <tbody id="formularios-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="cadastro-rapido" class="page">
+                    <div class="table-container">
+                        <table class="table-data">
+                            <thead><tr>
+                                <th>Enviado em</th><th>Nome</th><th>CPF</th><th>Telefone</th>
+                                <th>Localidade</th><th>Placa</th><th>Modelo</th><th>Status</th>
+                            </tr></thead>
+                            <tbody id="cadastro-rapido-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="pessoal" class="page">
+                    <div class="table-container">
+                        <table class="table-data">
+                            <thead><tr>
+                                <th>Nome</th><th>CPF</th><th>Telefone</th><th>Atividades</th><th>Local</th>
+                                <th>Jornada</th><th>Início</th><th>Fim</th><th>Contrato</th>
+                                <th>Documentos</th><th>Ações</th>
+                            </tr></thead>
+                            <tbody id="pessoal-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="veiculos" class="page">
+                    <div class="table-container">
+                        <table class="table-data">
+                            <thead><tr>
+                                <th>Placa</th><th>Marca/Modelo</th><th>Proprietário</th><th>CNPJ Associado</th>
+                                <th>Localidade</th><th>Valor Contratado</th><th>Documento</th><th>Ações</th>
+                            </tr></thead>
+                            <tbody id="veiculos-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL VISUALIZADOR DE DOCUMENTO -->
+    <div id="modal-documento" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="modal-documento-titulo">📎 Documento</h3>
+                <span class="close-modal" onclick="fecharModalDocumento()">&times;</span>
+            </div>
+            <div id="modal-documento-body" style="min-height:400px; display:flex; align-items:center; justify-content:center; background:#f8fafc; border-radius:8px; overflow:hidden;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalDocumento()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="pdfDocumentos.js"></script>
+    <script src="painel.js"></script>
+</body>
+</html>
