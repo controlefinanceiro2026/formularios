@@ -433,12 +433,24 @@ async function validarFormularioVeiculo(id, botao) {
     await Promise.all([carregarFormularios(), carregarVeiculos()]);
 }
 
+// Mesmas cores/emoji da coluna "Tipo" na tela Formulários da plataforma
+// principal (app.js#ROTULOS_TIPO_FORMULARIO) — mantenha em sincronia.
+const ROTULOS_TIPO_FORMULARIO = {
+    pessoal: { texto: '👤 Pessoal', cor: '#6d28d9', fundo: '#ede9fe' },
+    veiculo: { texto: '🚗 Veículo', cor: '#b91c1c', fundo: '#fee2e2' }
+};
+
+function badgeTipoFormulario(tipo) {
+    const tp = ROTULOS_TIPO_FORMULARIO[tipo];
+    return `<span style="font-size:0.75rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:999px; color:${tp.cor}; background:${tp.fundo}; white-space:nowrap;">${tp.texto}</span>`;
+}
+
 async function carregarFormularios() {
     const tbody = document.getElementById('formularios-body');
     inicializarFiltroColunas('tabela-formularios', [8, 9]);
     const [{ data: pessoal, error: eP }, { data: veiculo, error: eV }] = await Promise.all([
-        supabaseClient.from('formularios_pessoal').select('*'),
-        supabaseClient.from('formularios_veiculo').select('*')
+        supabaseClient.from('formularios_pessoal').select('*').eq('status', 'pendente'),
+        supabaseClient.from('formularios_veiculo').select('*').eq('status', 'pendente')
     ]);
     if (eP || eV) { tbody.innerHTML = linhaVazia(10, 'Erro ao carregar formulários.'); return; }
     cacheFormulariosPessoal = pessoal || [];
@@ -448,7 +460,7 @@ async function carregarFormularios() {
 
     const linhasPessoal = cacheFormulariosPessoal.map(f => `
         <tr>
-            <td>Pessoal</td>
+            <td>${badgeTipoFormulario('pessoal')}</td>
             <td>${escaparHtml(f.nome)}</td>
             <td>${escaparHtml(mascararCPF(f.cpf))}</td>
             <td>—</td>
@@ -466,7 +478,7 @@ async function carregarFormularios() {
 
     const linhasVeiculo = cacheFormulariosVeiculo.map(f => `
         <tr>
-            <td>Veículo</td>
+            <td>${badgeTipoFormulario('veiculo')}</td>
             <td>${escaparHtml(f.nome_proprietario || '—')}</td>
             <td>${escaparHtml(f.placa)}</td>
             <td>${escaparHtml(`${f.marca || ''} ${f.modelo || ''}`.trim() || '—')}</td>
@@ -481,7 +493,7 @@ async function carregarFormularios() {
         </tr>`);
 
     const linhas = [...linhasPessoal, ...linhasVeiculo];
-    tbody.innerHTML = linhas.length ? linhas.join('') : linhaVazia(10, 'Nenhum formulário recebido.');
+    tbody.innerHTML = linhas.length ? linhas.join('') : linhaVazia(10, 'Nenhum formulário pendente.');
     aplicarFiltrosColuna('tabela-formularios');
 }
 
