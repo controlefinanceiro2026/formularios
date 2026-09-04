@@ -74,6 +74,31 @@
                         </select>
                     </div>
 
+                    <div id="fp-secao-veiculo" style="display:none;">
+                        <div class="fp-secao-titulo">Dados do Veículo (Líder)</div>
+                        <div class="form-group">
+                            <label>Placa</label>
+                            <input type="text" id="fv-placa" placeholder="Ex: ABC1D23" maxlength="7" style="text-transform:uppercase;">
+                        </div>
+                        <div class="form-group">
+                            <label>Marca</label>
+                            <input type="text" id="fv-marca" placeholder="Ex: Fiat">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <input type="text" id="fv-modelo" placeholder="Ex: Uno">
+                        </div>
+                        <div class="form-group">
+                            <label>CNPJ Associado</label>
+                            <input type="text" id="fv-cnpj" placeholder="Ex: 00.000.000/0001-00">
+                        </div>
+                        <div class="form-group">
+                            <label>Ano do Veículo</label>
+                            <input type="text" id="fv-ano" placeholder="Ex: 2019" inputmode="numeric" maxlength="4">
+                            <span class="form-error" id="fv-ano-erro" style="display:none; color:#dc2626; font-size:0.82rem; margin-top:0.3rem;"></span>
+                        </div>
+                    </div>
+
                     <div class="fp-secao-titulo">Documentação</div>
                     <div class="form-group">
                         <label>Documento de CPF (PDF, JPG ou PNG)</label>
@@ -83,13 +108,19 @@
                         <label>Comprovante de Residência (PDF, JPG ou PNG)</label>
                         <input type="file" id="fp-doc-comprovante" accept=".pdf,.jpg,.jpeg,.png" required>
                     </div>
+                    <div class="form-group" id="fp-doc-veiculo-grupo" style="display:none;">
+                        <label>Documento do Veículo (CRLV, PDF, JPG ou PNG)</label>
+                        <input type="file" id="fv-doc-veiculo" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
 
                     <div class="fp-secao-titulo">Termo de Consentimento — LGPD</div>
                     <div class="fp-lgpd-box">
                         Em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 —
                         LGPD), informamos que os dados pessoais e os documentos fornecidos neste formulário
-                        (nome, CPF, endereço, telefone, CEP, cópia de documento de identificação e
-                        comprovante de residência) serão coletados, armazenados e tratados exclusivamente
+                        (nome, CPF, endereço, telefone, CEP, cópia de documento de identificação,
+                        comprovante de residência e, quando aplicável por se tratar de líder, os dados do
+                        veículo utilizado no serviço — placa, marca, modelo, ano, CNPJ associado e documento
+                        do veículo) serão coletados, armazenados e tratados exclusivamente
                         para fins de análise e formalização de eventual contratação junto à campanha
                         eleitoral responsável por este formulário. Os dados não serão compartilhados com
                         terceiros fora dessa finalidade, serão mantidos sob sigilo e ficarão acessíveis
@@ -110,7 +141,6 @@
 
                 <div style="text-align:center; margin-top:1rem; font-size:0.85rem;">
                     Veio parar aqui por engano?
-                    <a href="veiculo.html" style="color:var(--color-primary); font-weight:600; text-decoration:none;">Pré-Cadastro de Veículo</a> ·
                     <a href="km.html" style="color:var(--color-primary); font-weight:600; text-decoration:none;">Controle de Km</a>
                 </div>
             </div>

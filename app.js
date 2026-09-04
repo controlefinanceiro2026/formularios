@@ -41,6 +41,73 @@ function mascararCEP(valor) {
     return String(valor || '').replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2');
 }
 
+function mascararCNPJ(valor) {
+    return String(valor || '')
+        .replace(/\D/g, '')
+        .slice(0, 14)
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+// Máscara AAAA — só 4 dígitos numéricos, sem separadores.
+function mascararAno(valor) {
+    return String(valor || '').replace(/\D/g, '').slice(0, 4);
+}
+
+// Máscara de placa — 7 caracteres, sem separadores, maiúsculas. Aceita
+// padrão antigo (AAA9999) e Mercosul (AAA9A99), enforçando letra/dígito
+// por posição.
+function mascararPlaca(valor) {
+    const bruto = String(valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
+    let saida = '';
+    for (let i = 0; i < bruto.length; i++) {
+        const c = bruto[i];
+        const ehLetra = c >= 'A' && c <= 'Z';
+        const ehDigito = c >= '0' && c <= '9';
+        const posicaoOk = i < 3 ? ehLetra : (i === 4 ? (ehLetra || ehDigito) : ehDigito);
+        if (!posicaoOk) break;
+        saida += c;
+    }
+    return saida;
+}
+
+const ANO_VEICULO_PROIBIDO = '2026';
+
+// Além de barrar no envio, avisa já no campo que o Ano do Veículo não pode
+// ser o ano proibido (2026).
+function validarAnoVeiculo() {
+    const input = document.getElementById('fv-ano');
+    const erroEl = document.getElementById('fv-ano-erro');
+    const valor = input.value;
+
+    if (valor === ANO_VEICULO_PROIBIDO) {
+        erroEl.textContent = `Veículos do ano ${ANO_VEICULO_PROIBIDO} não podem ser cadastrados.`;
+        erroEl.style.display = 'block';
+        return false;
+    }
+    erroEl.style.display = 'none';
+    erroEl.textContent = '';
+    return true;
+}
+
+// A seção de veículo só aparece pra quem se declara Líder — o líder é o
+// proprietário do veículo cedido à campanha (ver lib/regioesDF.js /
+// veiculos.lider_id no app admin).
+function ehLider() {
+    return document.getElementById('fp-funcao').value === 'lider';
+}
+
+function atualizarVisibilidadeVeiculo() {
+    const mostrar = ehLider();
+    document.getElementById('fp-secao-veiculo').style.display = mostrar ? 'block' : 'none';
+    document.getElementById('fp-doc-veiculo-grupo').style.display = mostrar ? 'block' : 'none';
+    ['fv-placa', 'fv-marca', 'fv-modelo', 'fv-cnpj', 'fv-ano', 'fv-doc-veiculo'].forEach(id => {
+        document.getElementById(id).required = mostrar;
+    });
+}
+
 function preencherLocais() {
     const selectLocal = document.getElementById('fp-local-prestacao');
     Object.keys(REGIOES_FISCALIZACAO).forEach(regiao => {
@@ -79,6 +146,33 @@ async function enviarFormulario(e) {
         mostrarMensagem('Anexe a documentação (CPF e comprovante de residência) antes de enviar.', 'erro');
         return;
     }
+
+    const lider = ehLider();
+    let arquivoVeiculo = null;
+    if (lider) {
+        if (!document.getElementById('fv-placa').value.trim()) {
+            mostrarMensagem('Informe a placa do veículo.', 'erro');
+            return;
+        }
+        if (!document.getElementById('fv-cnpj').value.replace(/\D/g, '')) {
+            mostrarMensagem('Informe o CNPJ associado ao veículo.', 'erro');
+            return;
+        }
+        if (!validarAnoVeiculo()) {
+            mostrarMensagem(`Veículos do ano ${ANO_VEICULO_PROIBIDO} não podem ser cadastrados. Corrija o campo "Ano do Veículo" antes de enviar.`, 'erro');
+            return;
+        }
+        if (document.getElementById('fv-ano').value.length !== 4) {
+            mostrarMensagem('Informe o ano do veículo com 4 dígitos (ex: 2019).', 'erro');
+            return;
+        }
+        arquivoVeiculo = document.getElementById('fv-doc-veiculo').files[0];
+        if (!arquivoVeiculo) {
+            mostrarMensagem('Anexe o documento do veículo (CRLV) antes de enviar.', 'erro');
+            return;
+        }
+    }
+
     if (!document.getElementById('fp-lgpd-aceite').checked) {
         mostrarMensagem('É necessário concordar com os termos da LGPD para enviar o formulário.', 'erro');
         return;
@@ -95,8 +189,8 @@ async function enviarFormulario(e) {
     botao.textContent = 'Enviando...';
 
     try {
-        // Pasta = pessoal/{nome da pessoa}; arquivo = "CPF" / "Comprovante de
-        // Residência" + timestamp (garante caminho novo a cada envio — sem
+        // Pasta = pessoal/{nome da pessoa}; arquivo = "CPF" / "Comprovante_
+        // Residencia" + timestamp (garante caminho novo a cada envio — sem
         // upsert, que exigiria SELECT de "anon" no bucket e deixaria os
         // documentos de qualquer pessoa legíveis por qualquer um que
         // soubesse o nome dela).
@@ -114,6 +208,32 @@ async function enviarFormulario(e) {
         const { error: erroUploadComprovante } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante);
         if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
+
+        // O veículo (quando líder) é inserido antes do formulário de pessoal:
+        // as duas tabelas são independentes (sem FK), então cadastrar o
+        // veículo primeiro evita deixar uma pré-inscrição de Pessoal órfã
+        // caso o envio do veículo falhe.
+        if (lider) {
+            const extVeiculo = arquivoVeiculo.name.split('.').pop();
+            const caminhoVeiculo = `veiculo/${nomeSanitizado}/CRLV_${agora}.${extVeiculo}`;
+
+            const { error: erroUploadVeiculo } = await supabaseClient.storage
+                .from('documentos-formularios').upload(caminhoVeiculo, arquivoVeiculo);
+            if (erroUploadVeiculo) throw new Error('Falha ao enviar o documento do veículo: ' + erroUploadVeiculo.message);
+
+            const { error: erroInsertVeiculo } = await supabaseClient.from('formularios_veiculo').insert({
+                placa: mascararPlaca(document.getElementById('fv-placa').value),
+                marca: document.getElementById('fv-marca').value.trim() || null,
+                modelo: document.getElementById('fv-modelo').value.trim() || null,
+                ano_fabricacao: document.getElementById('fv-ano').value || null,
+                nome_proprietario: document.getElementById('fp-nome').value,
+                cpf_proprietario: cpfDigitos,
+                cnpj_associado: document.getElementById('fv-cnpj').value,
+                documento_veiculo_path: caminhoVeiculo,
+                status: 'pendente'
+            });
+            if (erroInsertVeiculo) throw new Error('Falha ao enviar os dados do veículo: ' + erroInsertVeiculo.message);
+        }
 
         const { error: erroInsert } = await supabaseClient.from('formularios_pessoal').insert({
             nome: document.getElementById('fp-nome').value,
@@ -144,5 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fp-cpf').addEventListener('input', function () { this.value = mascararCPF(this.value); });
     document.getElementById('fp-telefone').addEventListener('input', function () { this.value = mascararTelefone(this.value); });
     document.getElementById('fp-cep').addEventListener('input', function () { this.value = mascararCEP(this.value); });
+    document.getElementById('fp-funcao').addEventListener('change', atualizarVisibilidadeVeiculo);
+    document.getElementById('fv-placa').addEventListener('input', function () { this.value = mascararPlaca(this.value); });
+    document.getElementById('fv-cnpj').addEventListener('input', function () { this.value = mascararCNPJ(this.value); });
+    document.getElementById('fv-ano').addEventListener('input', function () {
+        this.value = mascararAno(this.value);
+        if (this.value.length === 4) validarAnoVeiculo();
+        else document.getElementById('fv-ano-erro').style.display = 'none';
+    });
+    document.getElementById('fv-ano').addEventListener('blur', validarAnoVeiculo);
     document.getElementById('form-pre-cadastro').addEventListener('submit', enviarFormulario);
 });
