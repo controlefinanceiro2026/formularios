@@ -35,6 +35,7 @@ let token = '';
 let expiraEm = null;        // Date — fim da janela de 10 min
 let timerContador = null;
 let enviado = false;
+let modoAdmin = false;      // link do administrador: sem prazo, vários envios
 
 // ---------- máscaras / validações (espelho de lib/cadastroRapido.js) ----------
 function soDigitos(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
@@ -172,9 +173,20 @@ async function comecar() {
     }
 
     if (resposta.estado === 'ok') {
-        expiraEm = new Date(resposta.expira_em);
         mostrarTela('tela-formulario');
-        iniciarContador();
+        if (resposta.expira_em) {
+            expiraEm = new Date(resposta.expira_em);
+            iniciarContador();
+        } else {
+            // Link do administrador — sem cronômetro, pode reenviar.
+            modoAdmin = true;
+            const box = document.getElementById('contador');
+            box.classList.remove('alerta');
+            box.style.background = '#eef2ff';
+            box.style.borderColor = '#c7d2fe';
+            box.style.color = '#4338ca';
+            box.textContent = '🔑 Link do administrador — sem prazo. Cada envio grava um cadastro e o formulário fica pronto para o próximo.';
+        }
         document.getElementById('cr-nome').focus();
     } else if (resposta.estado === 'expirado') {
         mostrarTela('tela-expirado');
@@ -226,6 +238,21 @@ function validarFormulario() {
     };
 }
 
+// Modo admin: depois de gravar um cadastro, limpa o formulário para o
+// próximo sem sair da tela.
+function prepararProximoCadastroAdmin() {
+    const form = document.getElementById('form-cadastro-rapido');
+    form.reset();
+    document.getElementById('cr-cpf-erro').style.display = 'none';
+    document.getElementById('cr-placa-erro').style.display = 'none';
+    const botao = document.getElementById('cr-btn-enviar');
+    botao.disabled = false;
+    botao.textContent = 'Enviar Cadastro';
+    mostrarMensagem('cr-mensagem', '✅ Cadastro gravado. Pode preencher o próximo.', 'sucesso');
+    document.getElementById('cr-nome').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function enviarFormulario(e) {
     e.preventDefault();
     mostrarMensagem('cr-mensagem', '', '');
@@ -252,6 +279,10 @@ async function enviarFormulario(e) {
     }
 
     if (resposta.ok) {
+        if (modoAdmin) {
+            prepararProximoCadastroAdmin();
+            return;
+        }
         enviado = true;
         pararContador();
         mostrarTela('tela-sucesso');
@@ -286,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('beforeunload', (e) => {
         const naTela = document.getElementById('tela-formulario').style.display === 'block';
-        if (naTela && !enviado) { e.preventDefault(); e.returnValue = ''; }
+        if (naTela && !enviado && !modoAdmin) { e.preventDefault(); e.returnValue = ''; }
     });
 
     if (!token) {

@@ -105,7 +105,7 @@ async function enviarFormulario(e) {
         const extCpf = arquivoCpf.name.split('.').pop();
         const extComprovante = arquivoComprovante.name.split('.').pop();
         const caminhoDocCpf = `pessoal/${nomeSanitizado}/CPF_${agora}.${extCpf}`;
-        const caminhoComprovante = `pessoal/${nomeSanitizado}/Comprovante de Residência_${agora}.${extComprovante}`;
+        const caminhoComprovante = `pessoal/${nomeSanitizado}/Comprovante_Residencia_${agora}.${extComprovante}`;
 
         const { error: erroUploadCpf } = await supabaseClient.storage
             .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf);
