@@ -16,6 +16,7 @@
             <nav class="sidebar-nav">
                 <a href="#formularios" class="nav-link active" data-page="formularios">📄 Formulários</a>
                 <a href="#cadastro-rapido" class="nav-link" data-page="cadastro-rapido">🪪 Cadastro Rápido</a>
+                <a href="#multiplicadores" class="nav-link" data-page="multiplicadores" id="nav-multiplicadores" style="display:none;">🧑‍🤝‍🧑 Multiplicadores</a>
                 <a href="#pessoal" class="nav-link" data-page="pessoal">👤 Cadastro de Pessoal</a>
                 <a href="#veiculos" class="nav-link" data-page="veiculos">🚗 Cadastro de Veículos</a>
             </nav>
@@ -54,6 +55,48 @@
                                 <th>Localidade</th><th>Placa</th><th>Modelo</th><th>Status</th>
                             </tr></thead>
                             <tbody id="cadastro-rapido-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="multiplicadores" class="page">
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.6rem;">
+                            <h3 style="margin-bottom:0.5rem;">Links individuais por líder</h3>
+                            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                                <button type="button" class="btn-secondary" onclick="enviarWhatsAppMultiplicadorSelecionados(this)">💬 Enviar WhatsApp (selecionados)</button>
+                                <button type="button" class="btn-primary" onclick="gerarLinksMultiplicadorTodos(this)">➕ Gerar links para todos os líderes</button>
+                            </div>
+                        </div>
+                        <p class="text-muted" style="margin-bottom:1rem;">
+                            Cada líder recebe o <strong>próprio link</strong>, de uso único, para cadastrar os
+                            <strong>4 liderados</strong> dele numa tela só. Expira <strong>10 minutos</strong> depois de
+                            aberto pela primeira vez, ou assim que o cadastro é enviado. Marque os líderes na coluna à
+                            esquerda para enviar a mensagem de WhatsApp de vários de uma vez (o navegador abre uma aba
+                            por líder — pode ser necessário permitir pop-ups deste site).
+                        </p>
+                        <div class="form-group" style="max-width:340px;">
+                            <input type="text" id="mult-lider-busca" placeholder="🔍 Buscar líder pelo nome..." oninput="renderLideresMultiplicador()">
+                        </div>
+                        <table class="table-data" id="tabela-links-multiplicador">
+                            <thead><tr>
+                                <th><input type="checkbox" onclick="document.querySelectorAll('.chk-lider-mult:not(:disabled)').forEach(c => c.checked = this.checked)"></th>
+                                <th>Líder</th><th>Telefone</th><th>Status do link</th><th>WhatsApp</th><th>Ações</th>
+                            </tr></thead>
+                            <tbody id="mult-lideres-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <div style="padding:1rem 1rem 0;">
+                            <h3>Liderados recebidos</h3>
+                        </div>
+                        <table class="table-data" id="tabela-envios-multiplicador">
+                            <thead><tr>
+                                <th>Enviado em</th><th>Líder</th><th>Nome do liderado</th><th>CPF</th>
+                                <th>Telefone</th><th>Endereço</th><th>Status</th><th>Ações</th>
+                            </tr></thead>
+                            <tbody id="mult-envios-body"></tbody>
                         </table>
                     </div>
                 </section>

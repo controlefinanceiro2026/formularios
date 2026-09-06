@@ -520,6 +520,298 @@ async function carregarCadastroRapido() {
     aplicarFiltrosColuna('tabela-cadastro-rapido');
 }
 
+// ─── MULTIPLICADORES (só validador/admin — ver possoValidarFormularios) ──
+// Mesma lógica de lib/cadastroRapido.js + lib/multiplicadorFormulario.js,
+// reimplementada aqui porque este site estático não carrega lib/ (mesmo
+// padrão do resto do arquivo) — mantenha em sincronia se mudar lá.
+const URL_FORMULARIO_MULTIPLICADOR = 'https://controlefinanceiro2026.github.io/formularios/multiplicador.html';
+const EXPIRACAO_MINUTOS_MULTIPLICADOR = 10;
+
+function formatarDataHoraMultiplicador(iso) {
+    if (!iso) return '—';
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return '—';
+    const partes = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(new Date(t)).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+    return `${partes.day}/${partes.month}/${partes.year} ${partes.hour}:${partes.minute}`;
+}
+
+function gerarTokenMultiplicador() {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function linkMultiplicador(token) {
+    return `${URL_FORMULARIO_MULTIPLICADOR}?t=${token}`;
+}
+
+const ROTULOS_ESTADO_LINK_MULTIPLICADOR = {
+    nao_aberto: 'Não aberto', em_preenchimento: 'Em preenchimento', expirado: 'Expirado', enviado: 'Enviado'
+};
+
+function estadoLinkMultiplicador(link, agora = new Date()) {
+    if (!link) return 'nao_aberto';
+    if (link.enviado_em) return 'enviado';
+    if (!link.aberto_em) return 'nao_aberto';
+    const limite = Date.parse(link.aberto_em) + EXPIRACAO_MINUTOS_MULTIPLICADOR * 60000;
+    return agora.getTime() <= limite ? 'em_preenchimento' : 'expirado';
+}
+
+function numeroWhatsApp(telefone) {
+    const d = String(telefone || '').replace(/\D/g, '');
+    if (d.length === 10 || d.length === 11) return `55${d}`;
+    if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return d;
+    return null;
+}
+
+function linkWhatsApp(telefone, mensagem) {
+    const numero = numeroWhatsApp(telefone);
+    if (!numero) return null;
+    return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+}
+
+function mensagemPadraoMultiplicador(nomeLider, link) {
+    return `Olá, ${nomeLider}! Segue o link para você cadastrar os 4 multiplicadores da sua célula: ${link}\n\n`
+        + `O tempo de preenchimento desse formulário é de ${EXPIRACAO_MINUTOS_MULTIPLICADOR} minutos, dessa forma, é importante que você já tenha os dados dos multiplicadores da sua célula disponíveis (Nome, CPF, Telefone, Endereço). `
+        + `O link é de uso único após aberto e expira em 12 horas. Pedimos agilidade na resposta.`;
+}
+
+let linksMultiplicadorCache = new Map(); // lider_id -> link mais recente
+let cacheEnviosMultiplicador = [];
+
+async function carregarMultiplicadores() {
+    const tbodyLideres = document.getElementById('mult-lideres-body');
+    const tbodyEnvios = document.getElementById('mult-envios-body');
+    if (!tbodyLideres || !tbodyEnvios) return;
+    tbodyLideres.innerHTML = linhaVazia(6, 'Carregando…');
+    tbodyEnvios.innerHTML = linhaVazia(8, 'Carregando…');
+
+    const [{ data: links, error: eL }, { data: envios, error: eE }] = await Promise.all([
+        supabaseClient.from('links_multiplicador').select('*').order('gerado_em', { ascending: false }),
+        supabaseClient.from('envios_multiplicador').select('*').order('created_at', { ascending: false })
+    ]);
+    if (eL) { tbodyLideres.innerHTML = linhaVazia(6, 'Erro ao carregar os links: ' + eL.message); }
+    if (eE) { tbodyEnvios.innerHTML = linhaVazia(8, 'Erro ao carregar os envios: ' + eE.message); }
+
+    const maisRecentePorLider = new Map();
+    (links || []).forEach(l => {
+        const atual = maisRecentePorLider.get(l.lider_id);
+        if (!atual || new Date(l.gerado_em) > new Date(atual.gerado_em)) maisRecentePorLider.set(l.lider_id, l);
+    });
+    linksMultiplicadorCache = maisRecentePorLider;
+    cacheEnviosMultiplicador = envios || [];
+
+    if (!eL) renderLideresMultiplicador();
+    if (!eE) renderEnviosMultiplicador();
+}
+
+function renderLideresMultiplicador() {
+    const tbody = document.getElementById('mult-lideres-body');
+    const termo = (document.getElementById('mult-lider-busca')?.value || '').trim().toLowerCase();
+    const lideres = cachePessoal.filter(p => p.funcao === 'lider')
+        .filter(p => !termo || String(p.nome).toLowerCase().includes(termo))
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+
+    if (!lideres.length) { tbody.innerHTML = linhaVazia(6, termo ? 'Nenhum líder encontrado para essa busca.' : 'Nenhum líder cadastrado ainda.'); return; }
+
+    const agora = new Date();
+    const cores = { nao_aberto: '#64748b', em_preenchimento: '#0e7490', expirado: '#b91c1c', enviado: '#15803d' };
+
+    tbody.innerHTML = lideres.map(lider => {
+        const link = linksMultiplicadorCache.get(lider.id) || null;
+        const estado = link ? estadoLinkMultiplicador(link, agora) : null;
+        const podeGerar = !link || estado === 'expirado' || estado === 'enviado';
+        const urlLink = link ? linkMultiplicador(link.token) : '';
+        const numeroWpp = (link && estado !== 'expirado' && lider.telefone) ? numeroWhatsApp(lider.telefone) : null;
+
+        const celulaStatus = link
+            ? `<span style="font-size:0.78rem; font-weight:700; color:${cores[estado]};">${ROTULOS_ESTADO_LINK_MULTIPLICADOR[estado]}</span>`
+            : '<span class="text-muted">Nenhum link gerado</span>';
+
+        const celulaWhatsApp = link && link.whatsapp_enviado_em
+            ? `<span style="font-size:0.75rem; font-weight:700; color:#15803d;">✅ Enviado em ${escaparHtml(formatarDataHoraMultiplicador(link.whatsapp_enviado_em))}</span>`
+            : '<span class="text-muted">—</span>';
+
+        const botoes = [];
+        if (podeGerar) {
+            botoes.push(`<button type="button" class="btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.7rem;" onclick="gerarLinkMultiplicador(${lider.id})">${link ? '🔄 Gerar novo link' : '🔗 Gerar link'}</button>`);
+        }
+        if (link && estado !== 'expirado') {
+            botoes.push(`<button type="button" class="btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.7rem;" onclick="copiarTextoMultiplicador('${escaparHtml(urlLink)}')">📋 Copiar</button>`);
+            if (numeroWpp) {
+                const rotuloWpp = link.whatsapp_enviado_em ? '💬 Reenviar por WhatsApp' : '💬 Enviar por WhatsApp';
+                botoes.push(`<button type="button" class="btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.7rem;" onclick="enviarWhatsAppMultiplicador(${lider.id})">${rotuloWpp}</button>`);
+            }
+        }
+
+        return `
+        <tr>
+            <td><input type="checkbox" class="chk-lider-mult" value="${lider.id}" ${numeroWpp ? '' : 'disabled'}></td>
+            <td><strong>${escaparHtml(lider.nome)}</strong></td>
+            <td>${lider.telefone ? escaparHtml(lider.telefone) : '<span class="text-muted">Sem telefone</span>'}</td>
+            <td>${celulaStatus}</td>
+            <td>${celulaWhatsApp}</td>
+            <td>${botoes.join(' ')}</td>
+        </tr>`;
+    }).join('');
+}
+
+async function copiarTextoMultiplicador(texto) {
+    try { await navigator.clipboard.writeText(texto); }
+    catch { alert('Não foi possível copiar automaticamente. Link: ' + texto); }
+}
+
+async function gerarLinkMultiplicador(liderId) {
+    const { error } = await supabaseClient.from('links_multiplicador').insert({ lider_id: liderId, token: gerarTokenMultiplicador() });
+    if (error) { alert('Erro ao gerar o link: ' + error.message); return; }
+    await carregarMultiplicadores();
+}
+
+async function gerarLinksMultiplicadorTodos(botao) {
+    const agora = new Date();
+    const pendentes = cachePessoal.filter(p => p.funcao === 'lider').filter(lider => {
+        const link = linksMultiplicadorCache.get(lider.id) || null;
+        const estado = link ? estadoLinkMultiplicador(link, agora) : null;
+        return !link || estado === 'expirado' || estado === 'enviado';
+    });
+    if (!pendentes.length) { alert('Todos os líderes já têm um link ativo no momento.'); return; }
+
+    botao.disabled = true;
+    const linhas = pendentes.map(lider => ({ lider_id: lider.id, token: gerarTokenMultiplicador() }));
+    const { error } = await supabaseClient.from('links_multiplicador').insert(linhas);
+    botao.disabled = false;
+    if (error) { alert('Erro ao gerar os links: ' + error.message); return; }
+    await carregarMultiplicadores();
+}
+
+// Grava whatsapp_enviado_em no link e atualiza a linha na tela — best
+// effort: marca assim que a aba do wa.me é aberta, não há como confirmar
+// que a mensagem foi de fato enviada a partir daqui.
+async function marcarWhatsAppEnviadoMultiplicador(linkId) {
+    const agoraIso = new Date().toISOString();
+    const { error } = await supabaseClient.from('links_multiplicador')
+        .update({ whatsapp_enviado_em: agoraIso }).eq('id', linkId);
+    if (error) return;
+    linksMultiplicadorCache.forEach(l => { if (l.id === linkId) l.whatsapp_enviado_em = agoraIso; });
+    renderLideresMultiplicador();
+}
+
+function enviarWhatsAppMultiplicador(liderId) {
+    const lider = cachePessoal.find(p => p.id === liderId);
+    const link = linksMultiplicadorCache.get(liderId);
+    if (!lider || !link) return;
+    const numeroWpp = lider.telefone ? numeroWhatsApp(lider.telefone) : null;
+    if (!numeroWpp) return;
+    const urlLink = linkMultiplicador(link.token);
+    const linkWpp = linkWhatsApp(lider.telefone, mensagemPadraoMultiplicador(lider.nome, urlLink));
+    window.open(linkWpp, '_blank');
+    marcarWhatsAppEnviadoMultiplicador(link.id);
+}
+
+// Abre uma aba wa.me por líder marcado (o wa.me só aceita um destinatário
+// por link — não existe "envio em massa" sem a API paga do WhatsApp
+// Business). O navegador pode bloquear as abas além da primeira; por isso
+// o aviso na tela pedindo pra liberar pop-ups deste site.
+async function enviarWhatsAppMultiplicadorSelecionados() {
+    const ids = Array.from(document.querySelectorAll('.chk-lider-mult:checked')).map(c => Number(c.value));
+    if (!ids.length) { alert('Marque ao menos um líder com WhatsApp disponível.'); return; }
+
+    const agora = new Date();
+    const linkIdsEnviados = [];
+    ids.forEach(liderId => {
+        const lider = cachePessoal.find(p => p.id === liderId);
+        const link = linksMultiplicadorCache.get(liderId);
+        if (!lider || !link) return;
+        const estado = estadoLinkMultiplicador(link, agora);
+        if (estado === 'expirado') return;
+        const numeroWpp = lider.telefone ? numeroWhatsApp(lider.telefone) : null;
+        if (!numeroWpp) return;
+        const urlLink = linkMultiplicador(link.token);
+        const linkWpp = linkWhatsApp(lider.telefone, mensagemPadraoMultiplicador(lider.nome, urlLink));
+        window.open(linkWpp, '_blank');
+        linkIdsEnviados.push(link.id);
+    });
+
+    if (linkIdsEnviados.length) {
+        const agoraIso = agora.toISOString();
+        await Promise.all(linkIdsEnviados.map(id => supabaseClient.from('links_multiplicador').update({ whatsapp_enviado_em: agoraIso }).eq('id', id)));
+        linksMultiplicadorCache.forEach(l => { if (linkIdsEnviados.includes(l.id)) l.whatsapp_enviado_em = agoraIso; });
+        renderLideresMultiplicador();
+    } else {
+        alert('Nenhum dos líderes selecionados tem link ativo com WhatsApp disponível.');
+    }
+}
+
+const ROTULOS_STATUS_ENVIO_MULT = {
+    pendente: 'Pendente', aproveitado: 'Validado', rejeitado: 'Rejeitado'
+};
+
+function renderEnviosMultiplicador() {
+    const tbody = document.getElementById('mult-envios-body');
+    if (!cacheEnviosMultiplicador.length) { tbody.innerHTML = linhaVazia(8, 'Nenhum liderado recebido ainda.'); return; }
+
+    const podeValidar = possoValidarFormularios();
+    const nomeLiderPorId = new Map(cachePessoal.map(p => [p.id, p.nome]));
+
+    tbody.innerHTML = cacheEnviosMultiplicador.map(e => {
+        const pendente = e.status === 'pendente';
+        const acao = pendente
+            ? (podeValidar ? `<button class="btn-icon" onclick="validarEnvioMultiplicador(${e.id}, this)" title="Validar">✅</button>` : '—')
+            : (ROTULOS_STATUS_ENVIO_MULT[e.status] || e.status);
+        return `
+        <tr>
+            <td>${formatarData(e.created_at)}</td>
+            <td>${escaparHtml(nomeLiderPorId.get(e.lider_id) || '—')}</td>
+            <td><strong>${escaparHtml(e.nome)}</strong></td>
+            <td>${escaparHtml(mascararCPF(e.cpf))}</td>
+            <td>${escaparHtml(e.telefone)}</td>
+            <td>${escaparHtml(e.endereco)}</td>
+            <td>${escaparHtml(ROTULOS_STATUS_ENVIO_MULT[e.status] || e.status)}</td>
+            <td>${acao}</td>
+        </tr>`;
+    }).join('');
+}
+
+// Mesmo padrão simplificado já usado em validarFormularioPessoal/
+// validarFormularioVeiculo: cria a pessoa direto em pessoal_contratado
+// (função Multiplicador, líder e localidade do link, valor fixo de
+// R$ 1.600, vigência padrão da campanha), sem o passo intermediário de
+// "aproveitar" que a plataforma principal usa.
+async function validarEnvioMultiplicador(id, botao) {
+    const envio = cacheEnviosMultiplicador.find(e => e.id === id);
+    if (!envio || envio.status !== 'pendente') return;
+    const lider = cachePessoal.find(p => p.id === envio.lider_id);
+    if (!confirm(`Validar o multiplicador "${envio.nome}"? Cria a pessoa no Cadastro de Pessoal (função Multiplicador, líder: ${lider ? lider.nome : '—'}) com vigência de 15/08/2026 a 04/10/2026.`)) return;
+    botao.disabled = true;
+
+    const payload = {
+        nome: envio.nome,
+        cpf: envio.cpf,
+        endereco: envio.endereco,
+        telefone: envio.telefone,
+        funcao: 'multiplicador',
+        lider_id: envio.lider_id,
+        local_prestacao: lider ? lider.local_prestacao : null,
+        descricao_atividades: 'Multiplicação',
+        data_inicio: '2026-08-15',
+        data_fim: '2026-10-04',
+        valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
+        contabilizar_campanha: 0
+    };
+    const { data: nova, error: erroInsert } = await supabaseClient.from('pessoal_contratado').insert(payload).select().single();
+    if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
+
+    const { error: erroUpdate } = await supabaseClient.from('envios_multiplicador')
+        .update({ status: 'aproveitado', pessoa_id: nova.id }).eq('id', id);
+    if (erroUpdate) alert('A pessoa foi criada, mas não foi possível marcar o liderado como validado: ' + erroUpdate.message);
+
+    await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
+}
+
 // ─── CADASTRO DE PESSOAL ────────────────────────────────────────────────
 async function carregarPessoal() {
     const tbody = document.getElementById('pessoal-body');
@@ -590,8 +882,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('user-email').textContent = sessao.user.email;
     configurarNavegacao();
     await carregarPapel();
-    // Pessoal carrega antes de Formulários: validar um veículo precisa da
-    // lista de líderes já em cachePessoal pra casar o proprietário.
+    // Aba "Multiplicadores" só aparece pra quem pode validar (validador ou
+    // admin) — mesma regra do botão "Validar" nas outras telas.
+    const podeVerMultiplicadores = possoValidarFormularios();
+    document.getElementById('nav-multiplicadores').style.display = podeVerMultiplicadores ? '' : 'none';
+    // Pessoal carrega antes de Formulários/Multiplicadores: validar um
+    // veículo/multiplicador precisa da lista de líderes já em cachePessoal
+    // pra casar o proprietário/líder.
     await carregarPessoal();
-    await Promise.all([carregarFormularios(), carregarCadastroRapido(), carregarVeiculos()]);
+    const tarefas = [carregarFormularios(), carregarCadastroRapido(), carregarVeiculos()];
+    if (podeVerMultiplicadores) tarefas.push(carregarMultiplicadores());
+    await Promise.all(tarefas);
 });
