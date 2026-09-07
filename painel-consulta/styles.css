@@ -1052,6 +1052,25 @@ textarea { resize: vertical; }
     font-weight: 600;
 }
 
+.cr-aviso p + p { margin-top: 0.6rem; }
+.cr-aviso-sub { font-weight: 500; }
+
+.cr-btn-cadastrar {
+    display: inline-block;
+    margin-top: 0.9rem;
+    background: var(--color-primary);
+    color: #fff;
+    text-decoration: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: var(--radius);
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.cr-btn-cadastrar:hover { background: var(--color-primary-dark); }
+
+.cr-modo-celular .cr-btn-cadastrar { display: block; text-align: center; }
+
 /* Modo celular: uma coluna só, alvos maiores, largura total — sem barra de
    rolagem lateral. Vale tanto pelo botão quanto por telas estreitas. */
 .cr-modo-celular { max-width: 100%; }

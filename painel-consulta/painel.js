@@ -908,8 +908,23 @@ async function carregarVeiculos() {
 // rolagem lateral) mesmo num tablet ou numa janela larga.
 let crTipoConsulta = 'pessoa';
 
+// Link (reutilizável, não expira — é o link do administrador do Cadastro
+// Rápido) para cadastrar um líder + o veículo dele quando a consulta não
+// acha nada. Ver [[project_cadastro_rapido_link_unico]].
+const URL_CADASTRO_RAPIDO_LIDER = 'https://controlefinanceiro2026.github.io/formularios/cadastro.html?t=98c2027ebc56f2a81545ea010d614f31';
+
 function crAviso(texto) {
     return `<div class="cr-aviso">${escaparHtml(texto)}</div>`;
+}
+
+// Aviso de "não encontrado" com o atalho pro formulário de cadastro do
+// líder (Pessoal + Veículo numa tela só).
+function crAvisoNaoEncontrado(texto) {
+    return `<div class="cr-aviso">
+        <p>${escaparHtml(texto)}</p>
+        <p class="cr-aviso-sub">Se for um <strong>líder</strong>, cadastre a pessoa e o veículo dela pelo formulário:</p>
+        <a class="cr-btn-cadastrar" href="${URL_CADASTRO_RAPIDO_LIDER}" target="_blank" rel="noopener">➕ Cadastrar líder e veículo</a>
+    </div>`;
 }
 
 function crLinha(rotulo, valor) {
@@ -970,7 +985,7 @@ function crConsultar(evento) {
         const pessoa = cachePessoal.find(p => apenasDigitos(p.cpf) === digitos);
         alvo.innerHTML = pessoa
             ? crRenderPessoa(pessoa)
-            : crAviso('Nenhum líder ou multiplicador cadastrado com esse CPF.');
+            : crAvisoNaoEncontrado('Nenhum líder ou multiplicador cadastrado com esse CPF.');
         return;
     }
 
@@ -982,7 +997,7 @@ function crConsultar(evento) {
     const veiculo = cacheVeiculos.find(v => normalizarPlaca(v.placa) === placa);
     alvo.innerHTML = veiculo
         ? crRenderVeiculo(veiculo)
-        : crAviso('Nenhum veículo cadastrado com essa placa.');
+        : crAvisoNaoEncontrado('Nenhum veículo cadastrado com essa placa.');
 }
 
 function crSelecionarTipo(tipo, comFoco) {
