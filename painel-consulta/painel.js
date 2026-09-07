@@ -16,6 +16,17 @@ function mascararCPF(valor) {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
+function apenasDigitos(valor) {
+    return String(valor == null ? '' : valor).replace(/\D/g, '');
+}
+
+// Placa sem separadores, maiúsculas, no máximo 7 caracteres — cobre os dois
+// padrões (cinza AAA9999 e Mercosul AAA9A99). Mesma normalização usada pra
+// comparar placas e pra "mascarar" o campo de busca.
+function normalizarPlaca(valor) {
+    return String(valor == null ? '' : valor).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
+}
+
 function formatarData(iso) {
     if (!iso) return '—';
     const data = new Date(iso);
@@ -33,6 +44,16 @@ function escaparHtml(valor) {
     const div = document.createElement('div');
     div.textContent = valor == null ? '' : String(valor);
     return div.innerHTML;
+}
+
+// Nome e endereço vão para pessoal_contratado / veiculos em CAIXA ALTA —
+// mesmo padrão do app.js (nomePessoaCaixaAlta / enderecoCaixaAlta) e do
+// gatilho no Supabase (ver supabase/migracao-nome-endereco-caixa-alta.sql).
+function nomeCaixaAlta(valor) {
+    return String(valor || '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+function enderecoCaixaAlta(valor) {
+    return String(valor || '').trim().replace(/\s+/g, ' ').toUpperCase() || null;
 }
 
 // ─── FILTRO POR COLUNA (mesmo mecanismo da plataforma principal —
@@ -343,6 +364,9 @@ function gerarTermoCessaoVeiculo(veiculo) {
 // ─── FORMULÁRIOS ────────────────────────────────────────────────────────
 let cachePessoal = [];
 let cacheVeiculos = [];
+// Vira true quando Pessoal e Veículos terminaram de carregar — a Consulta
+// Rápida usa pra avisar em vez de dizer "nada encontrado" cedo demais.
+let dadosProntos = false;
 let cacheFormulariosPessoal = [];
 let cacheFormulariosVeiculo = [];
 
@@ -376,9 +400,9 @@ async function validarFormularioPessoal(id, botao) {
     botao.disabled = true;
 
     const payload = {
-        nome: f.nome,
+        nome: nomeCaixaAlta(f.nome),
         cpf: f.cpf,
-        endereco: f.endereco,
+        endereco: enderecoCaixaAlta(f.endereco),
         telefone: f.telefone,
         cep: f.cep,
         funcao: f.funcao,
@@ -416,7 +440,7 @@ async function validarFormularioVeiculo(id, botao) {
         modelo: f.modelo || null,
         ano_fabricacao: f.ano_fabricacao || null,
         cnpj_associado: f.cnpj_associado || CNPJ_ASSOCIADO_PADRAO_VEICULO,
-        nome_proprietario: lider ? lider.nome : (f.nome_proprietario || null),
+        nome_proprietario: lider ? nomeCaixaAlta(lider.nome) : (nomeCaixaAlta(f.nome_proprietario) || null),
         cpf_proprietario: lider ? mascararCPF(lider.cpf) : (f.cpf_proprietario || null),
         localidade_atendimento: lider ? lider.local_prestacao : null,
         lider_id: lider ? lider.id : null,
@@ -525,7 +549,7 @@ async function carregarCadastroRapido() {
 // reimplementada aqui porque este site estático não carrega lib/ (mesmo
 // padrão do resto do arquivo) — mantenha em sincronia se mudar lá.
 const URL_FORMULARIO_MULTIPLICADOR = 'https://controlefinanceiro2026.github.io/formularios/multiplicador.html';
-const EXPIRACAO_MINUTOS_MULTIPLICADOR = 10;
+const EXPIRACAO_MINUTOS_MULTIPLICADOR = 20;
 
 function formatarDataHoraMultiplicador(iso) {
     if (!iso) return '—';
@@ -789,9 +813,9 @@ async function validarEnvioMultiplicador(id, botao) {
     botao.disabled = true;
 
     const payload = {
-        nome: envio.nome,
+        nome: nomeCaixaAlta(envio.nome),
         cpf: envio.cpf,
-        endereco: envio.endereco,
+        endereco: enderecoCaixaAlta(envio.endereco),
         telefone: envio.telefone,
         funcao: 'multiplicador',
         lider_id: envio.lider_id,
@@ -876,11 +900,131 @@ async function carregarVeiculos() {
     aplicarFiltrosColuna('tabela-veiculos');
 }
 
+// ─── CONSULTA RÁPIDA ────────────────────────────────────────────────────
+// Busca somente-leitura em cima do que já está em cachePessoal /
+// cacheVeiculos (não faz request próprio). Pessoa: por CPF; Veículo: por
+// placa. Os campos já entram com a máscara de CPF / placa. Um botão
+// Desktop/Celular deixa o usuário forçar o layout de uma coluna (sem
+// rolagem lateral) mesmo num tablet ou numa janela larga.
+let crTipoConsulta = 'pessoa';
+
+function crAviso(texto) {
+    return `<div class="cr-aviso">${escaparHtml(texto)}</div>`;
+}
+
+function crLinha(rotulo, valor) {
+    return `<div class="cr-linha"><span class="cr-rotulo">${escaparHtml(rotulo)}</span>` +
+        `<span class="cr-valor">${escaparHtml(valor == null || valor === '' ? '—' : valor)}</span></div>`;
+}
+
+function crRotuloFuncao(funcao) {
+    if (funcao === 'lider') return 'Líder';
+    if (funcao === 'multiplicador') return 'Multiplicador';
+    return funcao || '—';
+}
+
+function crRenderPessoa(p) {
+    const linhas = [
+        crLinha('Nome', p.nome),
+        crLinha('CPF', mascararCPF(p.cpf)),
+        crLinha('Telefone', p.telefone),
+        crLinha('Função', crRotuloFuncao(p.funcao))
+    ];
+    if (p.funcao === 'multiplicador') {
+        const lider = p.lider_id ? cachePessoal.find(x => x.id === p.lider_id) : null;
+        linhas.push(crLinha('Líder associado', lider ? lider.nome : '—'));
+    }
+    linhas.push(crLinha('Endereço', p.endereco));
+    linhas.push(crLinha('Localidade', p.local_prestacao));
+    return `<div class="cr-card"><div class="cr-card-head">👤 ${escaparHtml(p.nome)}</div>${linhas.join('')}</div>`;
+}
+
+function crRenderVeiculo(v) {
+    const lider = v.lider_id ? cachePessoal.find(x => x.id === v.lider_id) : null;
+    const nomeLider = lider ? lider.nome : (v.nome_proprietario || '—');
+    const marcaModelo = `${v.marca || ''} ${v.modelo || ''}`.trim() || '—';
+    const linhas = [
+        crLinha('Placa', v.placa),
+        crLinha('Líder associado', nomeLider),
+        crLinha('Localidade', v.localidade_atendimento),
+        crLinha('Marca/Modelo', marcaModelo)
+    ];
+    return `<div class="cr-card"><div class="cr-card-head">🚗 ${escaparHtml(v.placa)}</div>${linhas.join('')}</div>`;
+}
+
+function crConsultar(evento) {
+    if (evento) evento.preventDefault();
+    const alvo = document.getElementById('cr-resultado');
+
+    if (!dadosProntos) {
+        alvo.innerHTML = crAviso('Os dados ainda estão carregando. Tente de novo em alguns instantes.');
+        return;
+    }
+
+    if (crTipoConsulta === 'pessoa') {
+        const digitos = apenasDigitos(document.getElementById('cr-input-cpf').value);
+        if (digitos.length !== 11) {
+            alvo.innerHTML = crAviso('Digite um CPF completo (11 dígitos).');
+            return;
+        }
+        const pessoa = cachePessoal.find(p => apenasDigitos(p.cpf) === digitos);
+        alvo.innerHTML = pessoa
+            ? crRenderPessoa(pessoa)
+            : crAviso('Nenhum líder ou multiplicador cadastrado com esse CPF.');
+        return;
+    }
+
+    const placa = normalizarPlaca(document.getElementById('cr-input-placa').value);
+    if (placa.length !== 7) {
+        alvo.innerHTML = crAviso('Digite uma placa completa (7 caracteres).');
+        return;
+    }
+    const veiculo = cacheVeiculos.find(v => normalizarPlaca(v.placa) === placa);
+    alvo.innerHTML = veiculo
+        ? crRenderVeiculo(veiculo)
+        : crAviso('Nenhum veículo cadastrado com essa placa.');
+}
+
+function crSelecionarTipo(tipo, comFoco) {
+    crTipoConsulta = tipo;
+    document.querySelectorAll('#cr-tipo button').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === tipo));
+    document.getElementById('cr-campo-pessoa').hidden = tipo !== 'pessoa';
+    document.getElementById('cr-campo-veiculo').hidden = tipo !== 'veiculo';
+    document.getElementById('cr-resultado').innerHTML = '';
+    if (comFoco) {
+        const foco = document.getElementById(tipo === 'pessoa' ? 'cr-input-cpf' : 'cr-input-placa');
+        if (foco) foco.focus();
+    }
+}
+
+function crSelecionarDispositivo(disp) {
+    document.getElementById('cr-consulta').classList.toggle('cr-modo-celular', disp === 'celular');
+    document.querySelectorAll('#cr-dispositivo button').forEach(b => b.classList.toggle('ativo', b.dataset.disp === disp));
+    try { localStorage.setItem('cr-dispositivo', disp); } catch (e) { /* modo privado */ }
+}
+
+function crInicializar() {
+    document.getElementById('cr-input-cpf').addEventListener('input', e => { e.target.value = mascararCPF(e.target.value); });
+    document.getElementById('cr-input-placa').addEventListener('input', e => { e.target.value = normalizarPlaca(e.target.value); });
+    document.querySelectorAll('#cr-tipo button').forEach(b => b.addEventListener('click', () => crSelecionarTipo(b.dataset.tipo, true)));
+    document.querySelectorAll('#cr-dispositivo button').forEach(b => b.addEventListener('click', () => crSelecionarDispositivo(b.dataset.disp)));
+    document.getElementById('cr-form').addEventListener('submit', crConsultar);
+
+    let disp = null;
+    try { disp = localStorage.getItem('cr-dispositivo'); } catch (e) { /* modo privado */ }
+    if (disp !== 'desktop' && disp !== 'celular') {
+        disp = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 'celular' : 'desktop';
+    }
+    crSelecionarDispositivo(disp);
+    crSelecionarTipo('pessoa');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const sessao = await exigirSessao();
     if (!sessao) return;
     document.getElementById('user-email').textContent = sessao.user.email;
     configurarNavegacao();
+    crInicializar();
     await carregarPapel();
     // Aba "Multiplicadores" só aparece pra quem pode validar (validador ou
     // admin) — mesma regra do botão "Validar" nas outras telas.
@@ -893,4 +1037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tarefas = [carregarFormularios(), carregarCadastroRapido(), carregarVeiculos()];
     if (podeVerMultiplicadores) tarefas.push(carregarMultiplicadores());
     await Promise.all(tarefas);
+
+    // Pessoal + Veículos já em cache: a Consulta Rápida pode responder.
+    dadosProntos = true;
 });

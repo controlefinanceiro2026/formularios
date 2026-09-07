@@ -946,3 +946,130 @@ textarea { resize: vertical; }
     padding: 0.35rem;
     font-size: 0.8rem;
 }
+
+/* ==========================================
+   CONSULTA RÁPIDA
+   ========================================== */
+.cr-consulta { max-width: 640px; }
+
+.cr-controles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.cr-seg {
+    display: inline-flex;
+    background: #f1f5f9;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 3px;
+}
+
+.cr-seg button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-gray);
+    white-space: nowrap;
+    transition: 0.15s;
+}
+
+.cr-seg button.ativo {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.cr-busca {
+    background: var(--color-white);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--color-primary);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.cr-busca .form-group { flex: 1; min-width: 200px; margin: 0; }
+.cr-busca .btn-primary { flex: 0 0 auto; }
+
+.cr-resultado { margin-top: 1.5rem; }
+
+.cr-card {
+    background: var(--color-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.cr-card-head {
+    background: #f8fafc;
+    padding: 1rem 1.25rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border-bottom: 1px solid var(--color-border);
+    word-break: break-word;
+}
+
+.cr-linha {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    align-items: baseline;
+}
+
+.cr-linha:last-child { border-bottom: none; }
+
+.cr-rotulo {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-gray);
+}
+
+.cr-valor {
+    font-weight: 600;
+    color: var(--color-dark);
+    word-break: break-word;
+}
+
+.cr-aviso {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+}
+
+/* Modo celular: uma coluna só, alvos maiores, largura total — sem barra de
+   rolagem lateral. Vale tanto pelo botão quanto por telas estreitas. */
+.cr-modo-celular { max-width: 100%; }
+.cr-modo-celular .cr-controles { flex-direction: column; align-items: stretch; }
+.cr-modo-celular .cr-seg { width: 100%; }
+.cr-modo-celular .cr-seg button { flex: 1; text-align: center; padding: 0.7rem 0.5rem; }
+.cr-modo-celular .cr-busca { flex-direction: column; align-items: stretch; }
+.cr-modo-celular .cr-busca .form-group { width: 100%; min-width: 0; }
+.cr-modo-celular .cr-busca .btn-primary { width: 100%; padding: 0.9rem; font-size: 1rem; }
+.cr-modo-celular .cr-linha { grid-template-columns: 1fr; gap: 0.2rem; padding: 0.8rem 1rem; }
+.cr-modo-celular .cr-valor { font-size: 1.05rem; }
+
+@media (max-width: 560px) {
+    .cr-controles { flex-direction: column; align-items: stretch; }
+    .cr-seg { width: 100%; }
+    .cr-seg button { flex: 1; text-align: center; }
+    .cr-busca { flex-direction: column; align-items: stretch; }
+    .cr-busca .form-group { min-width: 0; }
+    .cr-busca .btn-primary { width: 100%; }
+    .cr-linha { grid-template-columns: 1fr; gap: 0.2rem; }
+}

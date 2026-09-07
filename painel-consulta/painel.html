@@ -14,7 +14,8 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#formularios" class="nav-link active" data-page="formularios">📄 Formulários</a>
+                <a href="#consulta-rapida" class="nav-link active" data-page="consulta-rapida">🔎 Consulta Rápida</a>
+                <a href="#formularios" class="nav-link" data-page="formularios">📄 Formulários</a>
                 <a href="#cadastro-rapido" class="nav-link" data-page="cadastro-rapido">🪪 Cadastro Rápido</a>
                 <a href="#multiplicadores" class="nav-link" data-page="multiplicadores" id="nav-multiplicadores" style="display:none;">🧑‍🤝‍🧑 Multiplicadores</a>
                 <a href="#pessoal" class="nav-link" data-page="pessoal">👤 Cadastro de Pessoal</a>
@@ -31,11 +32,40 @@
 
         <main class="main-content">
             <header class="top-header">
-                <h2 id="page-title">Formulários</h2>
+                <h2 id="page-title">Consulta Rápida</h2>
             </header>
 
             <div class="page-content">
-                <section id="formularios" class="page active">
+                <section id="consulta-rapida" class="page active">
+                    <div class="cr-consulta" id="cr-consulta">
+                        <div class="cr-controles">
+                            <div class="cr-seg" id="cr-tipo" role="group" aria-label="O que consultar">
+                                <button type="button" data-tipo="pessoa" class="ativo">👤 Pessoa</button>
+                                <button type="button" data-tipo="veiculo">🚗 Veículo</button>
+                            </div>
+                            <div class="cr-seg" id="cr-dispositivo" role="group" aria-label="Dispositivo">
+                                <button type="button" data-disp="desktop" class="ativo">🖥️ Desktop</button>
+                                <button type="button" data-disp="celular">📱 Celular</button>
+                            </div>
+                        </div>
+
+                        <form id="cr-form" class="cr-busca" autocomplete="off">
+                            <div class="form-group" id="cr-campo-pessoa">
+                                <label for="cr-input-cpf">CPF do líder ou multiplicador</label>
+                                <input type="text" id="cr-input-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14">
+                            </div>
+                            <div class="form-group" id="cr-campo-veiculo" hidden>
+                                <label for="cr-input-placa">Placa do veículo</label>
+                                <input type="text" id="cr-input-placa" placeholder="AAA0A00" maxlength="7" style="text-transform:uppercase;">
+                            </div>
+                            <button type="submit" class="btn-primary">🔎 Consultar</button>
+                        </form>
+
+                        <div id="cr-resultado" class="cr-resultado"></div>
+                    </div>
+                </section>
+
+                <section id="formularios" class="page">
                     <div class="table-container">
                         <table class="table-data" id="tabela-formularios">
                             <thead><tr>
@@ -70,7 +100,7 @@
                         </div>
                         <p class="text-muted" style="margin-bottom:1rem;">
                             Cada líder recebe o <strong>próprio link</strong>, de uso único, para cadastrar os
-                            <strong>4 liderados</strong> dele numa tela só. Expira <strong>10 minutos</strong> depois de
+                            <strong>4 liderados</strong> dele numa tela só. Expira <strong>20 minutos</strong> depois de
                             aberto pela primeira vez, ou assim que o cadastro é enviado. Marque os líderes na coluna à
                             esquerda para enviar a mensagem de WhatsApp de vários de uma vez (o navegador abre uma aba
                             por líder — pode ser necessário permitir pop-ups deste site).
