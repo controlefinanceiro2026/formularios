@@ -376,6 +376,12 @@ let cacheFormulariosVeiculo = [];
 // levar os documentos anexados para o cadastro definitivo) não fazem
 // parte deste fluxo.
 const VALOR_CONTRATO_PADRAO_PESSOAL = { lider: 2000, multiplicador: 1600 };
+// Descrição das Atividades é fixa por função (mesmos textos da plataforma principal).
+const ATRIBUICAO_ATIVIDADES_PESSOAL = {
+    fiscalizacao: 'Fiscalização de Campanha',
+    lider: 'Coordenação de Equipe',
+    multiplicador: 'Militância e mobilização de rua'
+};
 const VALOR_ALUGUEL_VEICULO_PADRAO = 2000;
 const CNPJ_ASSOCIADO_PADRAO_VEICULO = '99.999.999/9999-99';
 
@@ -407,7 +413,7 @@ async function validarFormularioPessoal(id, botao) {
         cep: f.cep,
         funcao: f.funcao,
         local_prestacao: f.local_prestacao,
-        descricao_atividades: f.funcao === 'lider' ? 'Liderança' : 'Multiplicação',
+        descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL[f.funcao] || null,
         data_inicio: '2026-08-15',
         data_fim: '2026-10-04',
         valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL[f.funcao] ?? VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
@@ -784,7 +790,7 @@ function renderEnviosMultiplicador() {
     tbody.innerHTML = cacheEnviosMultiplicador.map(e => {
         const pendente = e.status === 'pendente';
         const acao = pendente
-            ? (podeValidar ? `<button class="btn-icon" onclick="validarEnvioMultiplicador(${e.id}, this)" title="Validar">✅</button>` : '—')
+            ? (podeValidar ? `<button class="btn-icon" onclick="validarEnvioMultiplicador(${e.id})" title="Validar">✅</button>` : '—')
             : (ROTULOS_STATUS_ENVIO_MULT[e.status] || e.status);
         return `
         <tr>
@@ -800,27 +806,62 @@ function renderEnviosMultiplicador() {
     }).join('');
 }
 
-// Mesmo padrão simplificado já usado em validarFormularioPessoal/
-// validarFormularioVeiculo: cria a pessoa direto em pessoal_contratado
-// (função Multiplicador, líder e localidade do link, valor fixo de
-// R$ 1.600, vigência padrão da campanha), sem o passo intermediário de
-// "aproveitar" que a plataforma principal usa.
-async function validarEnvioMultiplicador(id, botao) {
+// Ao validar, o validador confirma (ou troca) o líder que o liderado fica
+// associado — vem pré-selecionado no líder do link (envio.lider_id). A
+// localidade do cadastro segue sempre o líder escolhido. Cria a pessoa
+// direto em pessoal_contratado (função Multiplicador, valor fixo de
+// R$ 1.600, vigência padrão da campanha), sem o passo "aproveitar" que a
+// plataforma principal usa.
+let envioMultiplicadorParaValidar = null;
+
+function validarEnvioMultiplicador(id) {
     const envio = cacheEnviosMultiplicador.find(e => e.id === id);
     if (!envio || envio.status !== 'pendente') return;
-    const lider = cachePessoal.find(p => p.id === envio.lider_id);
-    if (!confirm(`Validar o multiplicador "${envio.nome}"? Cria a pessoa no Cadastro de Pessoal (função Multiplicador, líder: ${lider ? lider.nome : '—'}) com vigência de 15/08/2026 a 04/10/2026.`)) return;
-    botao.disabled = true;
+    envioMultiplicadorParaValidar = envio;
 
+    document.getElementById('mult-validar-nome').textContent = envio.nome;
+    document.getElementById('mult-validar-cpf').textContent = ` · ${mascararCPF(envio.cpf)}`;
+
+    const lideres = cachePessoal.filter(p => p.funcao === 'lider')
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    const select = document.getElementById('mult-validar-lider');
+    select.innerHTML = lideres.length
+        ? lideres.map(l => `<option value="${l.id}">${escaparHtml(l.nome)}${l.local_prestacao ? ` — ${escaparHtml(l.local_prestacao)}` : ''}</option>`).join('')
+        : '<option value="">Nenhum líder cadastrado</option>';
+    select.value = String(envio.lider_id || '');
+
+    const liderDoLink = cachePessoal.find(p => p.id === envio.lider_id);
+    document.getElementById('mult-validar-lider-dica').textContent = liderDoLink
+        ? `Link preenchido por ${liderDoLink.nome}.`
+        : 'O líder do link não está mais cadastrado — escolha um.';
+
+    document.getElementById('mult-validar-confirmar').disabled = !lideres.length;
+    document.getElementById('modal-validar-multiplicador').classList.add('show');
+}
+
+function fecharModalValidarMultiplicador() {
+    document.getElementById('modal-validar-multiplicador').classList.remove('show');
+    envioMultiplicadorParaValidar = null;
+}
+
+async function confirmarValidacaoMultiplicador(botao) {
+    const envio = envioMultiplicadorParaValidar;
+    if (!envio) return;
+
+    const liderId = Number(document.getElementById('mult-validar-lider').value) || null;
+    if (!liderId) { alert('Escolha um líder para associar o multiplicador.'); return; }
+    const lider = cachePessoal.find(p => p.id === liderId) || null;
+
+    botao.disabled = true;
     const payload = {
         nome: nomeCaixaAlta(envio.nome),
         cpf: envio.cpf,
         endereco: enderecoCaixaAlta(envio.endereco),
         telefone: envio.telefone,
         funcao: 'multiplicador',
-        lider_id: envio.lider_id,
+        lider_id: liderId,
         local_prestacao: lider ? lider.local_prestacao : null,
-        descricao_atividades: 'Multiplicação',
+        descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL.multiplicador,
         data_inicio: '2026-08-15',
         data_fim: '2026-10-04',
         valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
@@ -830,9 +871,11 @@ async function validarEnvioMultiplicador(id, botao) {
     if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
 
     const { error: erroUpdate } = await supabaseClient.from('envios_multiplicador')
-        .update({ status: 'aproveitado', pessoa_id: nova.id }).eq('id', id);
+        .update({ status: 'aproveitado', pessoa_id: nova.id, lider_id: liderId }).eq('id', envio.id);
     if (erroUpdate) alert('A pessoa foi criada, mas não foi possível marcar o liderado como validado: ' + erroUpdate.message);
 
+    botao.disabled = false;
+    fecharModalValidarMultiplicador();
     await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
 }
 

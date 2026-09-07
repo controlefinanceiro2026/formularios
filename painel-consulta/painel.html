@@ -173,6 +173,33 @@
         </div>
     </div>
 
+    <!-- MODAL VALIDAR MULTIPLICADOR — associar a um líder -->
+    <div id="modal-validar-multiplicador" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✅ Validar Multiplicador</h3>
+                <span class="close-modal" onclick="fecharModalValidarMultiplicador()">&times;</span>
+            </div>
+            <p style="margin-bottom:1rem;">
+                <strong id="mult-validar-nome"></strong>
+                <span class="text-muted" id="mult-validar-cpf"></span>
+            </p>
+            <div class="form-group">
+                <label for="mult-validar-lider">Líder Responsável</label>
+                <select id="mult-validar-lider"></select>
+                <small class="text-muted" id="mult-validar-lider-dica"></small>
+            </div>
+            <p class="text-muted" style="font-size:0.85rem;">
+                Cria a pessoa no Cadastro de Pessoal (função Multiplicador, vigência 15/08/2026 a 04/10/2026,
+                R$ 1.600). A <strong>localidade</strong> fica a mesma do líder escolhido.
+            </p>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalValidarMultiplicador()">Cancelar</button>
+                <button type="button" class="btn-primary" id="mult-validar-confirmar" onclick="confirmarValidacaoMultiplicador(this)">Validar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="config.js"></script>
