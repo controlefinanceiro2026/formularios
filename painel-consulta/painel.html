@@ -200,6 +200,39 @@
         </div>
     </div>
 
+    <!-- MODAL VALIDAR PESSOAL — pré-inscrição sem função (Cadastro Rápido) -->
+    <div id="modal-validar-pessoal-funcao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✅ Validar Pré-inscrição</h3>
+                <span class="close-modal" onclick="fecharModalFuncaoFormularioPessoal()">&times;</span>
+            </div>
+            <p style="margin-bottom:1rem;">
+                <strong id="vpf-nome"></strong><span class="text-muted" id="vpf-cpf"></span>
+            </p>
+            <p class="text-muted" style="font-size:0.85rem;">
+                Este cadastro veio do Cadastro Rápido e não tem função definida. Escolha a função para
+                gerar a Descrição das Atividades e o valor do contrato.
+            </p>
+            <div class="form-group">
+                <label for="vpf-funcao">Função</label>
+                <select id="vpf-funcao" onchange="atualizarVisibilidadeLiderFuncaoFormulario()">
+                    <option value="lider">Líder — R$ 2.000</option>
+                    <option value="multiplicador">Multiplicador — R$ 1.600</option>
+                </select>
+            </div>
+            <div class="form-group" id="vpf-lider-grupo">
+                <label for="vpf-lider">Líder Responsável</label>
+                <select id="vpf-lider"></select>
+                <small class="text-muted">A localidade fica a mesma do líder escolhido.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalFuncaoFormularioPessoal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="confirmarFuncaoFormularioPessoal(this)">Validar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="config.js"></script>

@@ -267,6 +267,48 @@ function caminhoDoBucket(url, bucket) {
     return partes.length > 1 ? decodeURIComponent(partes[1]) : url;
 }
 
+// Sanitização de segmento de caminho do Storage — espelho de app.js
+// (sanitizarSegmentoCaminho): tira acento/cedilha (o Storage rejeita) e
+// troca "/" por "-" pra não criar nível de pasta indesejado.
+function sanitizarSegmentoCaminho(valor) {
+    return String(valor || '')
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .trim().replace(/[\/\\]+/g, '-') || 'sem-nome';
+}
+
+// Pasta individual da pessoa dentro de "documentos-pessoal" — "{NOME}_{CPF}",
+// mesma convenção de app.js#pastaDocumentosPessoal, pra o admin e o validador
+// caírem na mesma pasta.
+function pastaDocumentosPessoal(nome, cpfDigitos) {
+    return `${sanitizarSegmentoCaminho(nome)}_${cpfDigitos}`;
+}
+
+// URL gravada no registro = caminho do proxy autenticado da plataforma
+// principal (mesmo formato que app.js grava, via local-client.js).
+function urlProxyStorage(bucket, caminho) {
+    return `/api/storage/ver/${bucket}/${encodeURIComponent(caminho)}`;
+}
+
+// "documentos-formularios" é só a caixa de entrada do formulário público —
+// ao validar, o documento é baixado de lá, reenviado para o bucket
+// definitivo (na convenção de um upload manual) e o original é apagado.
+// Falha na migração NÃO trava a validação: retorna null e o documento
+// segue acessível pelo caminho original em formularios_*.
+async function migrarDocumentoFormulario(caminhoOrigem, bucketDestino, caminhoDestino) {
+    try {
+        const { data, error } = await supabaseClient.storage.from('documentos-formularios').download(caminhoOrigem);
+        if (error || !data) throw new Error(error ? error.message : 'arquivo não encontrado');
+        const { error: erroUpload } = await supabaseClient.storage.from(bucketDestino).upload(caminhoDestino, data, { upsert: true });
+        if (erroUpload) throw new Error(erroUpload.message);
+        const { error: erroRemove } = await supabaseClient.storage.from('documentos-formularios').remove([caminhoOrigem]);
+        if (erroRemove) console.warn(`Documento migrado, mas o original não foi apagado (${caminhoOrigem}):`, erroRemove.message);
+        return urlProxyStorage(bucketDestino, caminhoDestino);
+    } catch (erro) {
+        console.error(`Falha ao migrar documento do formulário (${caminhoOrigem}) para ${bucketDestino}/${caminhoDestino}:`, erro);
+        return null;
+    }
+}
+
 // ─── NAVEGAÇÃO DA SIDEBAR (mesmo padrão da plataforma principal) ───────
 function configurarNavegacao() {
     const links = document.querySelectorAll('.nav-link');
@@ -312,6 +354,24 @@ async function carregarPapel() {
 
 function possoValidarFormularios() {
     return meuPapel === 'validador' || meuPapel === 'admin';
+}
+
+// Perfil 'leitor' fica restrito a Consulta Rápida e Formulários — as demais
+// telas (Cadastro Rápido, Multiplicadores, Pessoal, Veículos) somem da
+// navegação. 'validador' e 'admin' continuam vendo tudo.
+const TELAS_PERMITIDAS_LEITOR = ['consulta-rapida', 'formularios'];
+
+function ehLeitor() {
+    return meuPapel === 'leitor';
+}
+
+function aplicarRestricoesDeNavegacao() {
+    if (!ehLeitor()) return;
+    document.querySelectorAll('.nav-link').forEach(link => {
+        if (!TELAS_PERMITIDAS_LEITOR.includes(link.dataset.page)) {
+            link.style.display = 'none';
+        }
+    });
 }
 
 function linhaVazia(colspan, texto) {
@@ -399,31 +459,116 @@ function liderPorNome(nome) {
     return cachePessoal.find(p => p.funcao === 'lider' && normalizarNomeComparacao(p.nome) === chave) || null;
 }
 
+let formularioPessoalParaValidar = null;
+
 async function validarFormularioPessoal(id, botao) {
     const f = cacheFormulariosPessoal.find(x => x.id === id);
     if (!f) return;
+
+    // Pré-inscrições vindas do Cadastro Rápido (Pessoal + Veículo numa tela
+    // só) não coletam a função. Sem função não dá para definir a Descrição
+    // das Atividades nem o valor do contrato — então o validador escolhe
+    // no modal antes de gravar.
+    if (f.funcao !== 'lider' && f.funcao !== 'multiplicador') {
+        abrirModalFuncaoFormularioPessoal(f, botao);
+        return;
+    }
+
     if (!confirm(`Validar o cadastro de "${f.nome}"? Cria a pessoa no Cadastro de Pessoal com vigência de 15/08/2026 a 04/10/2026.`)) return;
     botao.disabled = true;
+    await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null, botao });
+}
 
+// Modal de escolha da função para pré-inscrições sem função definida
+// (Cadastro Rápido). Multiplicador exige um líder responsável, igual ao
+// fluxo de validação de multiplicador.
+function abrirModalFuncaoFormularioPessoal(f, botao) {
+    formularioPessoalParaValidar = { f, botao };
+    document.getElementById('vpf-nome').textContent = f.nome || '';
+    document.getElementById('vpf-cpf').textContent = f.cpf ? ` — ${mascararCPF(f.cpf)}` : '';
+    document.getElementById('vpf-funcao').value = 'lider';
+
+    const lideres = cachePessoal.filter(p => p.funcao === 'lider')
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    document.getElementById('vpf-lider').innerHTML = lideres.length
+        ? lideres.map(l => `<option value="${l.id}">${escaparHtml(l.nome)}</option>`).join('')
+        : '<option value="">Nenhum líder cadastrado</option>';
+
+    atualizarVisibilidadeLiderFuncaoFormulario();
+    document.getElementById('modal-validar-pessoal-funcao').classList.add('show');
+}
+
+function fecharModalFuncaoFormularioPessoal() {
+    document.getElementById('modal-validar-pessoal-funcao').classList.remove('show');
+    formularioPessoalParaValidar = null;
+}
+
+function atualizarVisibilidadeLiderFuncaoFormulario() {
+    const ehMultiplicador = document.getElementById('vpf-funcao').value === 'multiplicador';
+    document.getElementById('vpf-lider-grupo').style.display = ehMultiplicador ? 'block' : 'none';
+}
+
+async function confirmarFuncaoFormularioPessoal(botaoModal) {
+    if (!formularioPessoalParaValidar) return;
+    const { f, botao } = formularioPessoalParaValidar;
+    const funcao = document.getElementById('vpf-funcao').value;
+
+    let liderId = null;
+    let localPrestacao = f.local_prestacao;
+    if (funcao === 'multiplicador') {
+        liderId = Number(document.getElementById('vpf-lider').value) || null;
+        if (!liderId) { alert('Escolha um líder responsável para o multiplicador.'); return; }
+        const lider = cachePessoal.find(p => p.id === liderId) || null;
+        if (lider) localPrestacao = lider.local_prestacao;
+    }
+
+    botaoModal.disabled = true;
+    botao.disabled = true;
+    fecharModalFuncaoFormularioPessoal();
+    await executarValidacaoFormularioPessoal(f, { funcao, liderId, localPrestacao, botao });
+    botaoModal.disabled = false;
+}
+
+async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao, botao }) {
     const payload = {
         nome: nomeCaixaAlta(f.nome),
         cpf: f.cpf,
         endereco: enderecoCaixaAlta(f.endereco),
         telefone: f.telefone,
         cep: f.cep,
-        funcao: f.funcao,
-        local_prestacao: f.local_prestacao,
-        descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL[f.funcao] || null,
+        funcao: funcao,
+        lider_id: liderId,
+        local_prestacao: localPrestacao === undefined ? f.local_prestacao : localPrestacao,
+        descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL[funcao],
         data_inicio: '2026-08-15',
         data_fim: '2026-10-04',
-        valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL[f.funcao] ?? VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
+        valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL[funcao] ?? VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
         contabilizar_campanha: 0
     };
+
+    // Move os documentos do pré-cadastro (CPF, comprovante de residência) do
+    // bucket de entrada para "documentos-pessoal" e já vincula ao cadastro —
+    // a URL vai no próprio INSERT (o validador não tem UPDATE nesse bucket).
+    const cpfDigitos = apenasDigitos(f.cpf);
+    const pastaPessoa = pastaDocumentosPessoal(payload.nome, cpfDigitos);
+    const agora = Date.now();
+    const caminhosMigrados = {};
+    if (f.documento_cpf_path) {
+        const ext = (f.documento_cpf_path.split('.').pop() || 'pdf').toLowerCase();
+        const url = await migrarDocumentoFormulario(f.documento_cpf_path, 'documentos-pessoal', `${pastaPessoa}/comprovante_cpf_${agora}.${ext}`);
+        if (url) { payload.comprovante_cpf_url = url; caminhosMigrados.documento_cpf_path = null; }
+    }
+    if (f.comprovante_residencia_path) {
+        const ext = (f.comprovante_residencia_path.split('.').pop() || 'pdf').toLowerCase();
+        const url = await migrarDocumentoFormulario(f.comprovante_residencia_path, 'documentos-pessoal', `${pastaPessoa}/comprovante_residencia_${agora}.${ext}`);
+        if (url) { payload.comprovante_residencia_url = url; caminhosMigrados.comprovante_residencia_path = null; }
+    }
+
     const { data: nova, error: erroInsert } = await supabaseClient.from('pessoal_contratado').insert(payload).select().single();
     if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
 
     const { error: erroUpdate } = await supabaseClient.from('formularios_pessoal')
-        .update({ status: 'validado', pessoa_id: nova.id }).eq('id', f.id);
+        .update({ status: 'validado', pessoa_id: nova.id, ...caminhosMigrados }).eq('id', f.id);
     if (erroUpdate) alert('O cadastro foi criado, mas não foi possível marcar o formulário como validado: ' + erroUpdate.message);
 
     await Promise.all([carregarFormularios(), carregarPessoal()]);
@@ -453,11 +598,22 @@ async function validarFormularioVeiculo(id, botao) {
         valor_contratado: f.valor_contratado || VALOR_ALUGUEL_VEICULO_PADRAO,
         data_inicio_cessao: dataHojeIso
     };
+
+    // Move o CRLV do bucket de entrada para "documentos-veiculo" e vincula ao
+    // cadastro — URL no próprio INSERT (validador não tem UPDATE nesse bucket).
+    const caminhosMigrados = {};
+    if (f.documento_veiculo_path) {
+        const ext = (f.documento_veiculo_path.split('.').pop() || 'pdf').toLowerCase();
+        const pastaVeiculo = normalizarPlaca(f.placa) || String(Date.now());
+        const url = await migrarDocumentoFormulario(f.documento_veiculo_path, 'documentos-veiculo', `${pastaVeiculo}/${Date.now()}.${ext}`);
+        if (url) { payload.documento_url = url; caminhosMigrados.documento_veiculo_path = null; }
+    }
+
     const { data: novo, error: erroInsert } = await supabaseClient.from('veiculos').insert(payload).select().single();
     if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
 
     const { error: erroUpdate } = await supabaseClient.from('formularios_veiculo')
-        .update({ status: 'validado', veiculo_id: novo.id }).eq('id', f.id);
+        .update({ status: 'validado', veiculo_id: novo.id, ...caminhosMigrados }).eq('id', f.id);
     if (erroUpdate) alert('O cadastro foi criado, mas não foi possível marcar o formulário como validado: ' + erroUpdate.message);
 
     await Promise.all([carregarFormularios(), carregarVeiculos()]);
@@ -1084,15 +1240,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     configurarNavegacao();
     crInicializar();
     await carregarPapel();
+    // 'leitor' só enxerga Consulta Rápida e Formulários.
+    aplicarRestricoesDeNavegacao();
     // Aba "Multiplicadores" só aparece pra quem pode validar (validador ou
     // admin) — mesma regra do botão "Validar" nas outras telas.
     const podeVerMultiplicadores = possoValidarFormularios();
     document.getElementById('nav-multiplicadores').style.display = podeVerMultiplicadores ? '' : 'none';
     // Pessoal carrega antes de Formulários/Multiplicadores: validar um
     // veículo/multiplicador precisa da lista de líderes já em cachePessoal
-    // pra casar o proprietário/líder.
+    // pra casar o proprietário/líder. Pessoal + Veículos também alimentam a
+    // Consulta Rápida, então carregam mesmo pro 'leitor' (as telas ficam
+    // ocultas, mas os caches são usados na busca).
     await carregarPessoal();
-    const tarefas = [carregarFormularios(), carregarCadastroRapido(), carregarVeiculos()];
+    const tarefas = [carregarFormularios(), carregarVeiculos()];
+    if (!ehLeitor()) tarefas.push(carregarCadastroRapido());
     if (podeVerMultiplicadores) tarefas.push(carregarMultiplicadores());
     await Promise.all(tarefas);
 
