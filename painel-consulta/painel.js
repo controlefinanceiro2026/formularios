@@ -475,14 +475,13 @@ async function validarFormularioPessoal(id, botao) {
     }
 
     if (!confirm(`Validar o cadastro de "${f.nome}"? Cria a pessoa no Cadastro de Pessoal com vigência de 15/08/2026 a 04/10/2026.`)) return;
-    botao.disabled = true;
-    await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null, botao });
+    await validarFormularioPessoal_confirmado(f, { funcao: f.funcao, liderId: f.lider_id || null }, botao);
 }
 
 // Modal de escolha da função para pré-inscrições sem função definida
 // (Cadastro Rápido). Multiplicador exige um líder responsável, igual ao
 // fluxo de validação de multiplicador.
-function abrirModalFuncaoFormularioPessoal(f, botao) {
+function abrirModalFuncaoFormularioPessoal(f, botao = null) {
     formularioPessoalParaValidar = { f, botao };
     document.getElementById('vpf-nome').textContent = f.nome || '';
     document.getElementById('vpf-cpf').textContent = f.cpf ? ` — ${mascararCPF(f.cpf)}` : '';
@@ -501,6 +500,18 @@ function abrirModalFuncaoFormularioPessoal(f, botao) {
 function fecharModalFuncaoFormularioPessoal() {
     document.getElementById('modal-validar-pessoal-funcao').classList.remove('show');
     formularioPessoalParaValidar = null;
+}
+
+// Botões "Cancelar" / "×" do modal — se estivermos no meio de uma validação
+// em lote, aborta o restante da fila e mostra o resumo do que já rodou.
+function cancelarModalFuncaoFormularioPessoal() {
+    fecharModalFuncaoFormularioPessoal();
+    if (!resumoLoteFormularios) return;
+    resumoLoteFormularios.pulados += filaFuncaoLote.length;
+    const resumo = resumoLoteFormularios;
+    filaFuncaoLote = [];
+    resumoLoteFormularios = null;
+    carregarFormularios().then(() => mostrarResumoLoteFormularios(resumo));
 }
 
 function atualizarVisibilidadeLiderFuncaoFormulario() {
@@ -523,13 +534,27 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
     }
 
     botaoModal.disabled = true;
-    botao.disabled = true;
+    if (botao) botao.disabled = true;
     fecharModalFuncaoFormularioPessoal();
-    await executarValidacaoFormularioPessoal(f, { funcao, liderId, localPrestacao, botao });
+
+    const emLote = !!resumoLoteFormularios;
+    try {
+        await executarValidacaoFormularioPessoal(f, { funcao, liderId, localPrestacao });
+        if (emLote) resumoLoteFormularios.ok++;
+        else await Promise.all([carregarFormularios(), carregarPessoal()]);
+    } catch (e) {
+        if (emLote) resumoLoteFormularios.erros.push(`${f.nome}: ${e.message}`);
+        else alert('Não foi possível validar: ' + e.message);
+    }
     botaoModal.disabled = false;
+    if (botao) botao.disabled = false;
+
+    if (emLote) { filaFuncaoLote.shift(); processarProximoDaFilaFuncao(); }
 }
 
-async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao, botao }) {
+// Cria a pessoa em pessoal_contratado a partir do pré-cadastro. Lança em
+// caso de erro no INSERT — quem chama decide alertar / recarregar.
+async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao }) {
     const payload = {
         nome: nomeCaixaAlta(f.nome),
         cpf: f.cpf,
@@ -565,23 +590,28 @@ async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, l
     }
 
     const { data: nova, error: erroInsert } = await supabaseClient.from('pessoal_contratado').insert(payload).select().single();
-    if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
+    if (erroInsert) throw new Error(erroInsert.message);
 
     const { error: erroUpdate } = await supabaseClient.from('formularios_pessoal')
         .update({ status: 'validado', pessoa_id: nova.id, ...caminhosMigrados }).eq('id', f.id);
-    if (erroUpdate) alert('O cadastro foi criado, mas não foi possível marcar o formulário como validado: ' + erroUpdate.message);
-
-    await Promise.all([carregarFormularios(), carregarPessoal()]);
+    if (erroUpdate) console.warn('pessoa criada mas formulário não marcado como validado:', erroUpdate.message);
 }
 
-async function validarFormularioVeiculo(id, botao) {
-    const f = cacheFormulariosVeiculo.find(x => x.id === id);
-    if (!f) return;
-    const lider = liderPorNome(f.nome_proprietario);
-    const aviso = lider ? ` Será associado ao líder ${lider.nome}.` : ' Nenhum líder cadastrado com esse nome — o veículo fica sem líder associado.';
-    if (!confirm(`Validar o veículo placa "${f.placa}"?${aviso}`)) return;
-    botao.disabled = true;
+async function validarFormularioPessoal_confirmado(f, opts, botao) {
+    if (botao) botao.disabled = true;
+    try {
+        await executarValidacaoFormularioPessoal(f, opts);
+        await Promise.all([carregarFormularios(), carregarPessoal()]);
+    } catch (e) {
+        alert('Não foi possível validar: ' + e.message);
+    }
+    if (botao) botao.disabled = false;
+}
 
+// Cria o veículo em `veiculos` a partir do pré-cadastro. Lança em caso de
+// erro no INSERT — quem chama decide alertar / recarregar.
+async function executarValidacaoFormularioVeiculo(f) {
+    const lider = liderPorNome(f.nome_proprietario);
     const hoje = new Date();
     const dataHojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
@@ -610,13 +640,27 @@ async function validarFormularioVeiculo(id, botao) {
     }
 
     const { data: novo, error: erroInsert } = await supabaseClient.from('veiculos').insert(payload).select().single();
-    if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
+    if (erroInsert) throw new Error(erroInsert.message);
 
     const { error: erroUpdate } = await supabaseClient.from('formularios_veiculo')
         .update({ status: 'validado', veiculo_id: novo.id, ...caminhosMigrados }).eq('id', f.id);
-    if (erroUpdate) alert('O cadastro foi criado, mas não foi possível marcar o formulário como validado: ' + erroUpdate.message);
+    if (erroUpdate) console.warn('veículo criado mas formulário não marcado como validado:', erroUpdate.message);
+}
 
-    await Promise.all([carregarFormularios(), carregarVeiculos()]);
+async function validarFormularioVeiculo(id, botao) {
+    const f = cacheFormulariosVeiculo.find(x => x.id === id);
+    if (!f) return;
+    const lider = liderPorNome(f.nome_proprietario);
+    const aviso = lider ? ` Será associado ao líder ${lider.nome}.` : ' Nenhum líder cadastrado com esse nome — o veículo fica sem líder associado.';
+    if (!confirm(`Validar o veículo placa "${f.placa}"?${aviso}`)) return;
+    botao.disabled = true;
+    try {
+        await executarValidacaoFormularioVeiculo(f);
+        await Promise.all([carregarFormularios(), carregarVeiculos()]);
+    } catch (e) {
+        alert('Não foi possível validar: ' + e.message);
+    }
+    botao.disabled = false;
 }
 
 // Mesmas cores/emoji da coluna "Tipo" na tela Formulários da plataforma
@@ -633,19 +677,22 @@ function badgeTipoFormulario(tipo) {
 
 async function carregarFormularios() {
     const tbody = document.getElementById('formularios-body');
-    inicializarFiltroColunas('tabela-formularios', [8, 9]);
+    inicializarFiltroColunas('tabela-formularios', [0, 9, 10]);
     const [{ data: pessoal, error: eP }, { data: veiculo, error: eV }] = await Promise.all([
         supabaseClient.from('formularios_pessoal').select('*').eq('status', 'pendente'),
         supabaseClient.from('formularios_veiculo').select('*').eq('status', 'pendente')
     ]);
-    if (eP || eV) { tbody.innerHTML = linhaVazia(10, 'Erro ao carregar formulários.'); return; }
+    if (eP || eV) { tbody.innerHTML = linhaVazia(11, 'Erro ao carregar formulários.'); return; }
     cacheFormulariosPessoal = pessoal || [];
     cacheFormulariosVeiculo = veiculo || [];
 
     const podeValidar = possoValidarFormularios();
+    const acoesLote = document.getElementById('formularios-acoes-lote');
+    if (acoesLote) acoesLote.style.display = podeValidar ? 'flex' : 'none';
 
     const linhasPessoal = cacheFormulariosPessoal.map(f => `
         <tr>
+            <td>${podeValidar ? `<input type="checkbox" class="chk-form" data-tipo="pessoal" value="${f.id}">` : ''}</td>
             <td>${badgeTipoFormulario('pessoal')}</td>
             <td>${escaparHtml(f.nome)}</td>
             <td>${escaparHtml(mascararCPF(f.cpf))}</td>
@@ -664,6 +711,7 @@ async function carregarFormularios() {
 
     const linhasVeiculo = cacheFormulariosVeiculo.map(f => `
         <tr>
+            <td>${podeValidar ? `<input type="checkbox" class="chk-form" data-tipo="veiculo" value="${f.id}">` : ''}</td>
             <td>${badgeTipoFormulario('veiculo')}</td>
             <td>${escaparHtml(f.nome_proprietario || '—')}</td>
             <td>${escaparHtml(f.placa)}</td>
@@ -679,8 +727,80 @@ async function carregarFormularios() {
         </tr>`);
 
     const linhas = [...linhasPessoal, ...linhasVeiculo];
-    tbody.innerHTML = linhas.length ? linhas.join('') : linhaVazia(10, 'Nenhum formulário pendente.');
+    tbody.innerHTML = linhas.length ? linhas.join('') : linhaVazia(11, 'Nenhum formulário pendente.');
     aplicarFiltrosColuna('tabela-formularios');
+}
+
+// Marca/desmarca todas as checkboxes de uma classe que não estejam
+// desabilitadas (usado pelos "marcar todos" dos cabeçalhos das telas de
+// validação em lote).
+function marcarTodosPendentes(classe, marcar) {
+    document.querySelectorAll(`.${classe}:not(:disabled)`).forEach(c => { c.checked = marcar; });
+}
+
+// ─── VALIDAÇÃO EM LOTE — FORMULÁRIOS ────────────────────────────────────
+// Veículos e Pessoal COM função validam direto (sem modal por item). As
+// pré-inscrições de Pessoal SEM função (vindas do Cadastro Rápido) entram
+// numa fila: o modal de função/líder abre uma vez para cada, em sequência.
+let filaFuncaoLote = [];
+let resumoLoteFormularios = null;
+
+async function validarFormulariosSelecionados(botao) {
+    const marcados = Array.from(document.querySelectorAll('.chk-form:checked'));
+    if (!marcados.length) { alert('Marque ao menos um formulário pendente.'); return; }
+
+    const pessoalIds = marcados.filter(c => c.dataset.tipo === 'pessoal').map(c => Number(c.value));
+    const veiculoIds = marcados.filter(c => c.dataset.tipo === 'veiculo').map(c => Number(c.value));
+    if (!confirm(`Validar ${marcados.length} formulário(s) selecionado(s)?`)) return;
+
+    botao.disabled = true;
+    const resumo = { ok: 0, pulados: 0, erros: [] };
+
+    for (const id of veiculoIds) {
+        const f = cacheFormulariosVeiculo.find(x => x.id === id);
+        if (!f) { resumo.pulados++; continue; }
+        try { await executarValidacaoFormularioVeiculo(f); resumo.ok++; }
+        catch (e) { resumo.erros.push(`Veículo ${f.placa}: ${e.message}`); }
+    }
+
+    const pessoas = pessoalIds.map(id => cacheFormulariosPessoal.find(x => x.id === id)).filter(Boolean);
+    const comFuncao = pessoas.filter(f => f.funcao === 'lider' || f.funcao === 'multiplicador');
+    const semFuncao = pessoas.filter(f => f.funcao !== 'lider' && f.funcao !== 'multiplicador');
+
+    for (const f of comFuncao) {
+        try { await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null }); resumo.ok++; }
+        catch (e) { resumo.erros.push(`${f.nome}: ${e.message}`); }
+    }
+
+    botao.disabled = false;
+
+    if (semFuncao.length) {
+        // Fila do modal de função — o resumo é mostrado quando a fila esvazia.
+        filaFuncaoLote = semFuncao.slice();
+        resumoLoteFormularios = resumo;
+        processarProximoDaFilaFuncao();
+        return;
+    }
+
+    await carregarFormularios();
+    mostrarResumoLoteFormularios(resumo);
+}
+
+function processarProximoDaFilaFuncao() {
+    if (!filaFuncaoLote.length) {
+        const resumo = resumoLoteFormularios;
+        resumoLoteFormularios = null;
+        carregarFormularios().then(() => mostrarResumoLoteFormularios(resumo));
+        return;
+    }
+    abrirModalFuncaoFormularioPessoal(filaFuncaoLote[0]);
+}
+
+function mostrarResumoLoteFormularios(resumo) {
+    let msg = `${resumo.ok} validado(s).`;
+    if (resumo.pulados) msg += ` ${resumo.pulados} pulado(s).`;
+    if (resumo.erros.length) msg += `\n\nNão validados:\n- ${resumo.erros.join('\n- ')}`;
+    alert(msg);
 }
 
 // ─── CADASTRO RÁPIDO ────────────────────────────────────────────────────
@@ -693,21 +813,25 @@ let cacheCadastroRapido = [];
 
 async function carregarCadastroRapido() {
     const tbody = document.getElementById('cadastro-rapido-body');
-    inicializarFiltroColunas('tabela-cadastro-rapido', [8]);
+    inicializarFiltroColunas('tabela-cadastro-rapido', [0, 9]);
     const { data, error } = await supabaseClient.from('formularios_cadastro_rapido').select('*').order('created_at', { ascending: false });
-    if (error) { tbody.innerHTML = linhaVazia(9, 'Erro ao carregar cadastros.'); return; }
+    if (error) { tbody.innerHTML = linhaVazia(10, 'Erro ao carregar cadastros.'); return; }
     cacheCadastroRapido = data || [];
-    if (!cacheCadastroRapido.length) { tbody.innerHTML = linhaVazia(9, 'Nenhum cadastro recebido.'); aplicarFiltrosColuna('tabela-cadastro-rapido'); return; }
-
     const podeAproveitar = possoValidarFormularios();
+    const acoesLote = document.getElementById('cadastro-rapido-acoes-lote');
+    const temPendente = cacheCadastroRapido.some(f => f.status === 'pendente');
+    if (acoesLote) acoesLote.style.display = (podeAproveitar && temPendente) ? 'flex' : 'none';
+    if (!cacheCadastroRapido.length) { tbody.innerHTML = linhaVazia(10, 'Nenhum cadastro recebido.'); aplicarFiltrosColuna('tabela-cadastro-rapido'); return; }
 
     tbody.innerHTML = cacheCadastroRapido.map(f => {
         const rotuloStatus = ROTULOS_STATUS_CADASTRO_RAPIDO[f.status] || f.status;
-        const acao = (podeAproveitar && f.status === 'pendente')
+        const pendente = f.status === 'pendente';
+        const acao = (podeAproveitar && pendente)
             ? `<button class="btn-icon" onclick="aproveitarCadastroRapido(${f.id}, this)" title="Aproveitar (criar pré-inscrição de Pessoal + Veículo)">✅</button>`
             : '—';
         return `
         <tr>
+            <td>${podeAproveitar && pendente ? `<input type="checkbox" class="chk-cr" value="${f.id}">` : ''}</td>
             <td>${formatarData(f.created_at)}</td>
             <td>${escaparHtml(f.nome)}</td>
             <td>${escaparHtml(mascararCPF(f.cpf))}</td>
@@ -729,16 +853,10 @@ async function carregarCadastroRapido() {
 // (status 'pendente'), que aí seguem o fluxo normal da tela Formulários
 // (onde o validador confirma função, líder, valores etc.). A pré-inscrição
 // de Pessoal entra sem função — o modal de validação em Formulários pede.
-async function aproveitarCadastroRapido(id, botao) {
-    const envio = cacheCadastroRapido.find(e => e.id === id);
-    if (!envio || envio.status !== 'pendente') return;
-    if (!confirm(`Aproveitar o cadastro de "${envio.nome}"? Isso cria uma pré-inscrição de Pessoal e uma de Veículo, que você valida na tela Formulários.`)) return;
-
-    if (botao) botao.disabled = true;
-
-    // Pessoal primeiro; se o Veículo falhar, marca a linha de Pessoal
-    // recém-criada como 'rejeitado' pra não deixar meio cadastro pendente
-    // na tela Formulários (o validador não tem DELETE nessas tabelas).
+// Cria as duas pré-inscrições (Pessoal + Veículo) a partir de um envio.
+// Pessoal primeiro; se o Veículo falhar, marca a linha de Pessoal como
+// 'rejeitado' (o validador não tem DELETE nessas tabelas) e lança.
+async function executarAproveitarCadastroRapido(envio) {
     let fpId = null;
     try {
         const { data: fp, error: eP } = await supabaseClient.from('formularios_pessoal').insert({
@@ -764,22 +882,53 @@ async function aproveitarCadastroRapido(id, botao) {
 
         const { error: eU } = await supabaseClient.from('formularios_cadastro_rapido')
             .update({ status: 'aproveitado', formulario_pessoal_id: fpId, formulario_veiculo_id: fv.id })
-            .eq('id', id);
+            .eq('id', envio.id);
         if (eU) throw new Error('marcação do envio: ' + eU.message);
-
-        alert('Cadastro aproveitado. Valide as pré-inscrições na tela Formulários.');
-        await Promise.all([carregarCadastroRapido(), carregarFormularios()]);
     } catch (erro) {
-        console.error('aproveitarCadastroRapido:', erro);
         if (fpId) {
             await supabaseClient.from('formularios_pessoal')
                 .update({ status: 'rejeitado', motivo_rejeicao: 'Falha ao aproveitar o Cadastro Rápido (veículo não criado).' })
                 .eq('id', fpId);
-            await carregarFormularios();
         }
-        alert('Não foi possível aproveitar o cadastro — ' + erro.message);
-        if (botao) botao.disabled = false;
+        throw erro;
     }
+}
+
+async function aproveitarCadastroRapido(id, botao) {
+    const envio = cacheCadastroRapido.find(e => e.id === id);
+    if (!envio || envio.status !== 'pendente') return;
+    if (!confirm(`Aproveitar o cadastro de "${envio.nome}"? Isso cria uma pré-inscrição de Pessoal e uma de Veículo, que você valida na tela Formulários.`)) return;
+    if (botao) botao.disabled = true;
+    try {
+        await executarAproveitarCadastroRapido(envio);
+        alert('Cadastro aproveitado. Valide as pré-inscrições na tela Formulários.');
+    } catch (erro) {
+        console.error('aproveitarCadastroRapido:', erro);
+        alert('Não foi possível aproveitar o cadastro — ' + erro.message);
+    }
+    await Promise.all([carregarCadastroRapido(), carregarFormularios()]);
+    if (botao) botao.disabled = false;
+}
+
+async function aproveitarCadastroRapidoSelecionados(botao) {
+    const marcados = Array.from(document.querySelectorAll('.chk-cr:checked')).map(c => Number(c.value));
+    if (!marcados.length) { alert('Marque ao menos um cadastro pendente.'); return; }
+    if (!confirm(`Aproveitar ${marcados.length} cadastro(s)? Cada um vira uma pré-inscrição de Pessoal + Veículo, que você valida na tela Formulários.`)) return;
+
+    botao.disabled = true;
+    const resumo = { ok: 0, erros: [] };
+    for (const id of marcados) {
+        const envio = cacheCadastroRapido.find(e => e.id === id);
+        if (!envio || envio.status !== 'pendente') continue;
+        try { await executarAproveitarCadastroRapido(envio); resumo.ok++; }
+        catch (e) { resumo.erros.push(`${envio.nome}: ${e.message}`); }
+    }
+    await Promise.all([carregarCadastroRapido(), carregarFormularios()]);
+    botao.disabled = false;
+
+    let msg = `${resumo.ok} cadastro(s) aproveitado(s). Valide as pré-inscrições na tela Formulários.`;
+    if (resumo.erros.length) msg += `\n\nNão aproveitados:\n- ${resumo.erros.join('\n- ')}`;
+    alert(msg);
 }
 
 // ─── MULTIPLICADORES (só validador/admin — ver possoValidarFormularios) ──
@@ -1014,9 +1163,11 @@ const ROTULOS_STATUS_ENVIO_MULT = {
 
 function renderEnviosMultiplicador() {
     const tbody = document.getElementById('mult-envios-body');
-    if (!cacheEnviosMultiplicador.length) { tbody.innerHTML = linhaVazia(8, 'Nenhum liderado recebido ainda.'); return; }
-
     const podeValidar = possoValidarFormularios();
+    const btnLote = document.getElementById('mult-envios-validar-lote');
+    if (btnLote) btnLote.hidden = !podeValidar || !cacheEnviosMultiplicador.some(e => e.status === 'pendente');
+    if (!cacheEnviosMultiplicador.length) { tbody.innerHTML = linhaVazia(9, 'Nenhum liderado recebido ainda.'); return; }
+
     const nomeLiderPorId = new Map(cachePessoal.map(p => [p.id, p.nome]));
 
     tbody.innerHTML = cacheEnviosMultiplicador.map(e => {
@@ -1026,6 +1177,7 @@ function renderEnviosMultiplicador() {
             : (ROTULOS_STATUS_ENVIO_MULT[e.status] || e.status);
         return `
         <tr>
+            <td>${podeValidar && pendente ? `<input type="checkbox" class="chk-envio-mult" value="${e.id}">` : ''}</td>
             <td>${formatarData(e.created_at)}</td>
             <td>${escaparHtml(nomeLiderPorId.get(e.lider_id) || '—')}</td>
             <td><strong>${escaparHtml(e.nome)}</strong></td>
@@ -1076,15 +1228,10 @@ function fecharModalValidarMultiplicador() {
     envioMultiplicadorParaValidar = null;
 }
 
-async function confirmarValidacaoMultiplicador(botao) {
-    const envio = envioMultiplicadorParaValidar;
-    if (!envio) return;
-
-    const liderId = Number(document.getElementById('mult-validar-lider').value) || null;
-    if (!liderId) { alert('Escolha um líder para associar o multiplicador.'); return; }
+// Cria o multiplicador em pessoal_contratado associado a liderId. Lança em
+// caso de erro no INSERT — quem chama decide alertar / recarregar.
+async function executarValidacaoMultiplicador(envio, liderId) {
     const lider = cachePessoal.find(p => p.id === liderId) || null;
-
-    botao.disabled = true;
     const payload = {
         nome: nomeCaixaAlta(envio.nome),
         cpf: envio.cpf,
@@ -1100,15 +1247,55 @@ async function confirmarValidacaoMultiplicador(botao) {
         contabilizar_campanha: 0
     };
     const { data: nova, error: erroInsert } = await supabaseClient.from('pessoal_contratado').insert(payload).select().single();
-    if (erroInsert) { alert('Não foi possível validar: ' + erroInsert.message); botao.disabled = false; return; }
+    if (erroInsert) throw new Error(erroInsert.message);
 
     const { error: erroUpdate } = await supabaseClient.from('envios_multiplicador')
         .update({ status: 'aproveitado', pessoa_id: nova.id, lider_id: liderId }).eq('id', envio.id);
-    if (erroUpdate) alert('A pessoa foi criada, mas não foi possível marcar o liderado como validado: ' + erroUpdate.message);
+    if (erroUpdate) console.warn('multiplicador criado mas envio não marcado como validado:', erroUpdate.message);
+}
 
+async function confirmarValidacaoMultiplicador(botao) {
+    const envio = envioMultiplicadorParaValidar;
+    if (!envio) return;
+
+    const liderId = Number(document.getElementById('mult-validar-lider').value) || null;
+    if (!liderId) { alert('Escolha um líder para associar o multiplicador.'); return; }
+
+    botao.disabled = true;
+    try {
+        await executarValidacaoMultiplicador(envio, liderId);
+        fecharModalValidarMultiplicador();
+        await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
+    } catch (e) {
+        alert('Não foi possível validar: ' + e.message);
+    }
     botao.disabled = false;
-    fecharModalValidarMultiplicador();
+}
+
+// Valida em lote os liderados marcados usando o LÍDER DO PRÓPRIO LINK
+// (envio.lider_id) — igual à plataforma principal. Liderado cujo líder do
+// link não está mais cadastrado é pulado e listado no fim.
+async function validarEnviosMultiplicadorSelecionados(botao) {
+    const marcados = Array.from(document.querySelectorAll('.chk-envio-mult:checked')).map(c => Number(c.value));
+    if (!marcados.length) { alert('Marque ao menos um liderado pendente.'); return; }
+    if (!confirm(`Validar ${marcados.length} liderado(s)? Cada um é criado como Multiplicador associado ao líder do link.`)) return;
+
+    botao.disabled = true;
+    const resumo = { ok: 0, erros: [] };
+    for (const id of marcados) {
+        const envio = cacheEnviosMultiplicador.find(e => e.id === id);
+        if (!envio || envio.status !== 'pendente') continue;
+        const lider = cachePessoal.find(p => p.id === envio.lider_id);
+        if (!lider) { resumo.erros.push(`${envio.nome}: líder do link não está mais cadastrado — valide pelo ✅`); continue; }
+        try { await executarValidacaoMultiplicador(envio, lider.id); resumo.ok++; }
+        catch (e) { resumo.erros.push(`${envio.nome}: ${e.message}`); }
+    }
     await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
+    botao.disabled = false;
+
+    let msg = `${resumo.ok} liderado(s) validado(s).`;
+    if (resumo.erros.length) msg += `\n\nNão validados:\n- ${resumo.erros.join('\n- ')}`;
+    alert(msg);
 }
 
 // ─── CADASTRO DE PESSOAL ────────────────────────────────────────────────
@@ -1159,6 +1346,11 @@ async function carregarVeiculos() {
 
     tbody.innerHTML = cacheVeiculos.map(v => {
         const caminhoDocumento = caminhoDoBucket(v.documento_url, 'documentos-veiculo');
+        const caminhoTermo = caminhoDoBucket(v.termo_cessao_url, 'documentos-veiculo');
+        const botoesDoc = [
+            caminhoDocumento ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-veiculo','${caminhoDocumento}','CRLV — ${escaparHtml(v.placa)}')" title="Ver documento do veículo (CRLV)">📎</button>` : '',
+            caminhoTermo ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-veiculo','${caminhoTermo}','Termo de Cessão assinado — ${escaparHtml(v.placa)}')" title="Ver Termo de Cessão assinado">📝</button>` : ''
+        ].filter(Boolean).join(' ');
         return `
         <tr>
             <td>${escaparHtml(v.placa)}</td>
@@ -1167,8 +1359,8 @@ async function carregarVeiculos() {
             <td>${escaparHtml(v.cnpj_associado)}</td>
             <td>${escaparHtml(v.localidade_atendimento)}</td>
             <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
-            <td>${caminhoDocumento ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-veiculo','${caminhoDocumento}','CRLV — ${escaparHtml(v.placa)}')" title="Ver documento do veículo">📎</button>` : '<span style="color:#cbd5e1;">—</span>'}</td>
-            <td><button class="btn-icon" onclick="gerarTermoCessaoVeiculo(cacheVeiculos.find(x => x.id === ${v.id}))" title="Gerar Termo de Cessão">📄</button></td>
+            <td>${botoesDoc || '<span style="color:#cbd5e1;">—</span>'}</td>
+            <td><button class="btn-icon" onclick="gerarTermoCessaoVeiculo(cacheVeiculos.find(x => x.id === ${v.id}))" title="Gerar Termo de Cessão (modelo em branco)">📄</button></td>
         </tr>`;
     }).join('');
 

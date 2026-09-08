@@ -66,9 +66,14 @@
                 </section>
 
                 <section id="formularios" class="page">
+                    <div id="formularios-acoes-lote" style="display:none; padding:0 0 0.8rem; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+                        <button type="button" class="btn-primary" onclick="validarFormulariosSelecionados(this)">✅ Validar selecionados</button>
+                        <span class="text-muted" style="font-size:0.82rem;">Marque as linhas pendentes na 1ª coluna.</span>
+                    </div>
                     <div class="table-container">
                         <table class="table-data" id="tabela-formularios">
                             <thead><tr>
+                                <th><input type="checkbox" onclick="marcarTodosPendentes('chk-form', this.checked)" title="Marcar/desmarcar pendentes"></th>
                                 <th>Tipo</th><th>Nome</th><th>CPF / Placa</th><th>Marca/Modelo</th>
                                 <th>Função</th><th>Local / CNPJ</th><th>Status</th><th>Enviado em</th><th>Documentos</th><th>Ações</th>
                             </tr></thead>
@@ -78,9 +83,14 @@
                 </section>
 
                 <section id="cadastro-rapido" class="page">
+                    <div id="cadastro-rapido-acoes-lote" style="display:none; padding:0 0 0.8rem; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+                        <button type="button" class="btn-primary" onclick="aproveitarCadastroRapidoSelecionados(this)">✅ Aproveitar selecionados</button>
+                        <span class="text-muted" style="font-size:0.82rem;">Marque as linhas pendentes na 1ª coluna.</span>
+                    </div>
                     <div class="table-container">
                         <table class="table-data" id="tabela-cadastro-rapido">
                             <thead><tr>
+                                <th><input type="checkbox" onclick="marcarTodosPendentes('chk-cr', this.checked)" title="Marcar/desmarcar pendentes"></th>
                                 <th>Enviado em</th><th>Nome</th><th>CPF</th><th>Telefone</th>
                                 <th>Localidade</th><th>Placa</th><th>Modelo</th><th>Status</th><th>Ações</th>
                             </tr></thead>
@@ -118,11 +128,13 @@
                     </div>
 
                     <div class="table-container">
-                        <div style="padding:1rem 1rem 0;">
-                            <h3>Liderados recebidos</h3>
+                        <div style="padding:1rem 1rem 0; display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap;">
+                            <h3 style="margin:0;">Liderados recebidos</h3>
+                            <button type="button" id="mult-envios-validar-lote" hidden class="btn-primary" onclick="validarEnviosMultiplicadorSelecionados(this)">✅ Validar selecionados</button>
                         </div>
                         <table class="table-data" id="tabela-envios-multiplicador">
                             <thead><tr>
+                                <th><input type="checkbox" onclick="marcarTodosPendentes('chk-envio-mult', this.checked)" title="Marcar/desmarcar pendentes"></th>
                                 <th>Enviado em</th><th>Líder</th><th>Nome do liderado</th><th>CPF</th>
                                 <th>Telefone</th><th>Endereço</th><th>Status</th><th>Ações</th>
                             </tr></thead>
@@ -205,7 +217,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>✅ Validar Pré-inscrição</h3>
-                <span class="close-modal" onclick="fecharModalFuncaoFormularioPessoal()">&times;</span>
+                <span class="close-modal" onclick="cancelarModalFuncaoFormularioPessoal()">&times;</span>
             </div>
             <p style="margin-bottom:1rem;">
                 <strong id="vpf-nome"></strong><span class="text-muted" id="vpf-cpf"></span>
@@ -227,7 +239,7 @@
                 <small class="text-muted">A localidade fica a mesma do líder escolhido.</small>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="fecharModalFuncaoFormularioPessoal()">Cancelar</button>
+                <button type="button" class="btn-secondary" onclick="cancelarModalFuncaoFormularioPessoal()">Cancelar</button>
                 <button type="button" class="btn-primary" onclick="confirmarFuncaoFormularioPessoal(this)">Validar</button>
             </div>
         </div>

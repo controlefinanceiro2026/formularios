@@ -187,8 +187,7 @@ function gerarPdfTermoCessao(veiculo) {
     const w = criarEscritorPdf();
 
     w.texto('TERMO DE CESSÃO DE VEÍCULO', { tamanho: 14, negrito: true, centro: true, alturaLinha: 18 });
-    w.texto('ESTIMÁVEL EM DINHEIRO — CAMPANHA ELEITORAL 2026', { tamanho: 12, centro: true, alturaLinha: 16 });
-    w.moveDown(13);
+    w.moveDown(16);
 
     w.texto(
         `Pelo presente termo de cessão de veículo, estimável em dinheiro, de um lado ${CONTRATANTE.nome}, ` +
