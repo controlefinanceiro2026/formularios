@@ -684,14 +684,29 @@ async function carregarFormularios() {
 }
 
 // ─── CADASTRO RÁPIDO ────────────────────────────────────────────────────
+// Rótulos do status de cada envio (mesma ideia de ROTULOS_STATUS_ENVIO_MULT).
+const ROTULOS_STATUS_CADASTRO_RAPIDO = {
+    pendente: 'Pendente', aproveitado: 'Aproveitado', rejeitado: 'Rejeitado'
+};
+
+let cacheCadastroRapido = [];
+
 async function carregarCadastroRapido() {
     const tbody = document.getElementById('cadastro-rapido-body');
-    inicializarFiltroColunas('tabela-cadastro-rapido');
+    inicializarFiltroColunas('tabela-cadastro-rapido', [8]);
     const { data, error } = await supabaseClient.from('formularios_cadastro_rapido').select('*').order('created_at', { ascending: false });
-    if (error) { tbody.innerHTML = linhaVazia(8, 'Erro ao carregar cadastros.'); return; }
-    if (!data || !data.length) { tbody.innerHTML = linhaVazia(8, 'Nenhum cadastro recebido.'); aplicarFiltrosColuna('tabela-cadastro-rapido'); return; }
+    if (error) { tbody.innerHTML = linhaVazia(9, 'Erro ao carregar cadastros.'); return; }
+    cacheCadastroRapido = data || [];
+    if (!cacheCadastroRapido.length) { tbody.innerHTML = linhaVazia(9, 'Nenhum cadastro recebido.'); aplicarFiltrosColuna('tabela-cadastro-rapido'); return; }
 
-    tbody.innerHTML = data.map(f => `
+    const podeAproveitar = possoValidarFormularios();
+
+    tbody.innerHTML = cacheCadastroRapido.map(f => {
+        const rotuloStatus = ROTULOS_STATUS_CADASTRO_RAPIDO[f.status] || f.status;
+        const acao = (podeAproveitar && f.status === 'pendente')
+            ? `<button class="btn-icon" onclick="aproveitarCadastroRapido(${f.id}, this)" title="Aproveitar (criar pré-inscrição de Pessoal + Veículo)">✅</button>`
+            : '—';
+        return `
         <tr>
             <td>${formatarData(f.created_at)}</td>
             <td>${escaparHtml(f.nome)}</td>
@@ -700,10 +715,71 @@ async function carregarCadastroRapido() {
             <td>${escaparHtml(f.local_prestacao)}</td>
             <td>${escaparHtml(f.placa)}</td>
             <td>${escaparHtml(f.modelo)}</td>
-            <td>${escaparHtml(f.status)}</td>
-        </tr>`).join('');
+            <td>${escaparHtml(rotuloStatus)}</td>
+            <td>${acao}</td>
+        </tr>`;
+    }).join('');
 
     aplicarFiltrosColuna('tabela-cadastro-rapido');
+}
+
+// "Aproveitar" um envio do Cadastro Rápido — espelha
+// aproveitarEnvioCadastroRapido do app.js da plataforma principal: cria
+// uma pré-inscrição em formularios_pessoal + uma em formularios_veiculo
+// (status 'pendente'), que aí seguem o fluxo normal da tela Formulários
+// (onde o validador confirma função, líder, valores etc.). A pré-inscrição
+// de Pessoal entra sem função — o modal de validação em Formulários pede.
+async function aproveitarCadastroRapido(id, botao) {
+    const envio = cacheCadastroRapido.find(e => e.id === id);
+    if (!envio || envio.status !== 'pendente') return;
+    if (!confirm(`Aproveitar o cadastro de "${envio.nome}"? Isso cria uma pré-inscrição de Pessoal e uma de Veículo, que você valida na tela Formulários.`)) return;
+
+    if (botao) botao.disabled = true;
+
+    // Pessoal primeiro; se o Veículo falhar, marca a linha de Pessoal
+    // recém-criada como 'rejeitado' pra não deixar meio cadastro pendente
+    // na tela Formulários (o validador não tem DELETE nessas tabelas).
+    let fpId = null;
+    try {
+        const { data: fp, error: eP } = await supabaseClient.from('formularios_pessoal').insert({
+            nome: nomeCaixaAlta(envio.nome),
+            cpf: envio.cpf,
+            endereco: enderecoCaixaAlta(envio.endereco),
+            telefone: envio.telefone,
+            local_prestacao: envio.local_prestacao,
+            lgpd_aceite: true,
+            status: 'pendente'
+        }).select().single();
+        if (eP) throw new Error('pré-inscrição de Pessoal: ' + eP.message);
+        fpId = fp.id;
+
+        const { data: fv, error: eV } = await supabaseClient.from('formularios_veiculo').insert({
+            placa: envio.placa,
+            modelo: envio.modelo,
+            nome_proprietario: nomeCaixaAlta(envio.nome),
+            cpf_proprietario: envio.cpf,
+            status: 'pendente'
+        }).select().single();
+        if (eV) throw new Error('pré-inscrição de Veículo: ' + eV.message);
+
+        const { error: eU } = await supabaseClient.from('formularios_cadastro_rapido')
+            .update({ status: 'aproveitado', formulario_pessoal_id: fpId, formulario_veiculo_id: fv.id })
+            .eq('id', id);
+        if (eU) throw new Error('marcação do envio: ' + eU.message);
+
+        alert('Cadastro aproveitado. Valide as pré-inscrições na tela Formulários.');
+        await Promise.all([carregarCadastroRapido(), carregarFormularios()]);
+    } catch (erro) {
+        console.error('aproveitarCadastroRapido:', erro);
+        if (fpId) {
+            await supabaseClient.from('formularios_pessoal')
+                .update({ status: 'rejeitado', motivo_rejeicao: 'Falha ao aproveitar o Cadastro Rápido (veículo não criado).' })
+                .eq('id', fpId);
+            await carregarFormularios();
+        }
+        alert('Não foi possível aproveitar o cadastro — ' + erro.message);
+        if (botao) botao.disabled = false;
+    }
 }
 
 // ─── MULTIPLICADORES (só validador/admin — ver possoValidarFormularios) ──
