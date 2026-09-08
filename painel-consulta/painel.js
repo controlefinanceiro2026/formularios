@@ -464,34 +464,28 @@ let formularioPessoalParaValidar = null;
 async function validarFormularioPessoal(id, botao) {
     const f = cacheFormulariosPessoal.find(x => x.id === id);
     if (!f) return;
-
-    // Pré-inscrições vindas do Cadastro Rápido (Pessoal + Veículo numa tela
-    // só) não coletam a função. Sem função não dá para definir a Descrição
-    // das Atividades nem o valor do contrato — então o validador escolhe
-    // no modal antes de gravar.
-    if (f.funcao !== 'lider' && f.funcao !== 'multiplicador') {
-        abrirModalFuncaoFormularioPessoal(f, botao);
-        return;
-    }
-
-    if (!confirm(`Validar o cadastro de "${f.nome}"? Cria a pessoa no Cadastro de Pessoal com vigência de 15/08/2026 a 04/10/2026.`)) return;
-    await validarFormularioPessoal_confirmado(f, { funcao: f.funcao, liderId: f.lider_id || null }, botao);
+    // Toda validação de Pessoal passa pelo modal: confirma a função (vem
+    // preenchida quando o formulário já traz) e pede o Coordenador (texto
+    // livre) antes de gravar.
+    abrirModalFuncaoFormularioPessoal(f, botao);
 }
 
-// Modal de escolha da função para pré-inscrições sem função definida
-// (Cadastro Rápido). Multiplicador exige um líder responsável, igual ao
-// fluxo de validação de multiplicador.
-function abrirModalFuncaoFormularioPessoal(f, botao = null) {
+// Modal de validação de uma pré-inscrição de Pessoal: função (+ líder se
+// multiplicador) e Coordenador. `coordenadorInicial` pré-preenche o campo
+// (usado pela validação em lote, que pergunta o coordenador uma vez só).
+function abrirModalFuncaoFormularioPessoal(f, botao = null, coordenadorInicial = '') {
     formularioPessoalParaValidar = { f, botao };
     document.getElementById('vpf-nome').textContent = f.nome || '';
     document.getElementById('vpf-cpf').textContent = f.cpf ? ` — ${mascararCPF(f.cpf)}` : '';
-    document.getElementById('vpf-funcao').value = 'lider';
+    document.getElementById('vpf-funcao').value = (f.funcao === 'lider' || f.funcao === 'multiplicador') ? f.funcao : 'lider';
+    document.getElementById('vpf-coordenador').value = coordenadorInicial || '';
 
     const lideres = cachePessoal.filter(p => p.funcao === 'lider')
         .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
     document.getElementById('vpf-lider').innerHTML = lideres.length
         ? lideres.map(l => `<option value="${l.id}">${escaparHtml(l.nome)}</option>`).join('')
         : '<option value="">Nenhum líder cadastrado</option>';
+    if (f.lider_id) document.getElementById('vpf-lider').value = String(f.lider_id);
 
     atualizarVisibilidadeLiderFuncaoFormulario();
     document.getElementById('modal-validar-pessoal-funcao').classList.add('show');
@@ -532,6 +526,7 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
         const lider = cachePessoal.find(p => p.id === liderId) || null;
         if (lider) localPrestacao = lider.local_prestacao;
     }
+    const coordenador = document.getElementById('vpf-coordenador').value.trim() || null;
 
     botaoModal.disabled = true;
     if (botao) botao.disabled = true;
@@ -539,7 +534,7 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
 
     const emLote = !!resumoLoteFormularios;
     try {
-        await executarValidacaoFormularioPessoal(f, { funcao, liderId, localPrestacao });
+        await executarValidacaoFormularioPessoal(f, { funcao, liderId, localPrestacao, coordenador });
         if (emLote) resumoLoteFormularios.ok++;
         else await Promise.all([carregarFormularios(), carregarPessoal()]);
     } catch (e) {
@@ -554,7 +549,7 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
 
 // Cria a pessoa em pessoal_contratado a partir do pré-cadastro. Lança em
 // caso de erro no INSERT — quem chama decide alertar / recarregar.
-async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao }) {
+async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao, coordenador = null }) {
     const payload = {
         nome: nomeCaixaAlta(f.nome),
         cpf: f.cpf,
@@ -565,6 +560,7 @@ async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, l
         lider_id: liderId,
         local_prestacao: localPrestacao === undefined ? f.local_prestacao : localPrestacao,
         descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL[funcao],
+        coordenador: coordenador || null,
         data_inicio: '2026-08-15',
         data_fim: '2026-10-04',
         valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL[funcao] ?? VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
@@ -595,17 +591,6 @@ async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, l
     const { error: erroUpdate } = await supabaseClient.from('formularios_pessoal')
         .update({ status: 'validado', pessoa_id: nova.id, ...caminhosMigrados }).eq('id', f.id);
     if (erroUpdate) console.warn('pessoa criada mas formulário não marcado como validado:', erroUpdate.message);
-}
-
-async function validarFormularioPessoal_confirmado(f, opts, botao) {
-    if (botao) botao.disabled = true;
-    try {
-        await executarValidacaoFormularioPessoal(f, opts);
-        await Promise.all([carregarFormularios(), carregarPessoal()]);
-    } catch (e) {
-        alert('Não foi possível validar: ' + e.message);
-    }
-    if (botao) botao.disabled = false;
 }
 
 // Cria o veículo em `veiculos` a partir do pré-cadastro. Lança em caso de
@@ -741,9 +726,11 @@ function marcarTodosPendentes(classe, marcar) {
 // ─── VALIDAÇÃO EM LOTE — FORMULÁRIOS ────────────────────────────────────
 // Veículos e Pessoal COM função validam direto (sem modal por item). As
 // pré-inscrições de Pessoal SEM função (vindas do Cadastro Rápido) entram
-// numa fila: o modal de função/líder abre uma vez para cada, em sequência.
+// numa fila: o modal de função/coordenador abre uma vez para cada, em
+// sequência. O Coordenador é perguntado UMA vez para o lote inteiro.
 let filaFuncaoLote = [];
 let resumoLoteFormularios = null;
+let coordenadorLoteAtual = '';
 
 async function validarFormulariosSelecionados(botao) {
     const marcados = Array.from(document.querySelectorAll('.chk-form:checked'));
@@ -752,6 +739,14 @@ async function validarFormulariosSelecionados(botao) {
     const pessoalIds = marcados.filter(c => c.dataset.tipo === 'pessoal').map(c => Number(c.value));
     const veiculoIds = marcados.filter(c => c.dataset.tipo === 'veiculo').map(c => Number(c.value));
     if (!confirm(`Validar ${marcados.length} formulário(s) selecionado(s)?`)) return;
+
+    let coordenadorLote = '';
+    if (pessoalIds.length) {
+        const resp = prompt('Coordenador desta turma? (texto livre — deixe em branco se não se aplica)', '');
+        if (resp === null) { return; } // cancelou o lote
+        coordenadorLote = resp.trim();
+    }
+    coordenadorLoteAtual = coordenadorLote;
 
     botao.disabled = true;
     const resumo = { ok: 0, pulados: 0, erros: [] };
@@ -768,14 +763,15 @@ async function validarFormulariosSelecionados(botao) {
     const semFuncao = pessoas.filter(f => f.funcao !== 'lider' && f.funcao !== 'multiplicador');
 
     for (const f of comFuncao) {
-        try { await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null }); resumo.ok++; }
+        try { await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null, coordenador: coordenadorLote || null }); resumo.ok++; }
         catch (e) { resumo.erros.push(`${f.nome}: ${e.message}`); }
     }
 
     botao.disabled = false;
 
     if (semFuncao.length) {
-        // Fila do modal de função — o resumo é mostrado quando a fila esvazia.
+        // Fila do modal — o resumo é mostrado quando a fila esvazia. O campo
+        // Coordenador de cada modal vem pré-preenchido com coordenadorLote.
         filaFuncaoLote = semFuncao.slice();
         resumoLoteFormularios = resumo;
         processarProximoDaFilaFuncao();
@@ -793,7 +789,7 @@ function processarProximoDaFilaFuncao() {
         carregarFormularios().then(() => mostrarResumoLoteFormularios(resumo));
         return;
     }
-    abrirModalFuncaoFormularioPessoal(filaFuncaoLote[0]);
+    abrirModalFuncaoFormularioPessoal(filaFuncaoLote[0], null, coordenadorLoteAtual);
 }
 
 function mostrarResumoLoteFormularios(resumo) {
@@ -1219,6 +1215,7 @@ function validarEnvioMultiplicador(id) {
         ? `Link preenchido por ${liderDoLink.nome}.`
         : 'O líder do link não está mais cadastrado — escolha um.';
 
+    document.getElementById('mult-validar-coordenador').value = '';
     document.getElementById('mult-validar-confirmar').disabled = !lideres.length;
     document.getElementById('modal-validar-multiplicador').classList.add('show');
 }
@@ -1230,7 +1227,7 @@ function fecharModalValidarMultiplicador() {
 
 // Cria o multiplicador em pessoal_contratado associado a liderId. Lança em
 // caso de erro no INSERT — quem chama decide alertar / recarregar.
-async function executarValidacaoMultiplicador(envio, liderId) {
+async function executarValidacaoMultiplicador(envio, liderId, coordenador = null) {
     const lider = cachePessoal.find(p => p.id === liderId) || null;
     const payload = {
         nome: nomeCaixaAlta(envio.nome),
@@ -1241,6 +1238,7 @@ async function executarValidacaoMultiplicador(envio, liderId) {
         lider_id: liderId,
         local_prestacao: lider ? lider.local_prestacao : null,
         descricao_atividades: ATRIBUICAO_ATIVIDADES_PESSOAL.multiplicador,
+        coordenador: coordenador || null,
         data_inicio: '2026-08-15',
         data_fim: '2026-10-04',
         valor_contrato: VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador,
@@ -1260,10 +1258,11 @@ async function confirmarValidacaoMultiplicador(botao) {
 
     const liderId = Number(document.getElementById('mult-validar-lider').value) || null;
     if (!liderId) { alert('Escolha um líder para associar o multiplicador.'); return; }
+    const coordenador = document.getElementById('mult-validar-coordenador').value.trim() || null;
 
     botao.disabled = true;
     try {
-        await executarValidacaoMultiplicador(envio, liderId);
+        await executarValidacaoMultiplicador(envio, liderId, coordenador);
         fecharModalValidarMultiplicador();
         await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
     } catch (e) {
@@ -1280,6 +1279,10 @@ async function validarEnviosMultiplicadorSelecionados(botao) {
     if (!marcados.length) { alert('Marque ao menos um liderado pendente.'); return; }
     if (!confirm(`Validar ${marcados.length} liderado(s)? Cada um é criado como Multiplicador associado ao líder do link.`)) return;
 
+    const respCoord = prompt('Coordenador desta turma? (texto livre — deixe em branco se não se aplica)', '');
+    if (respCoord === null) return;
+    const coordenadorLote = respCoord.trim() || null;
+
     botao.disabled = true;
     const resumo = { ok: 0, erros: [] };
     for (const id of marcados) {
@@ -1287,7 +1290,7 @@ async function validarEnviosMultiplicadorSelecionados(botao) {
         if (!envio || envio.status !== 'pendente') continue;
         const lider = cachePessoal.find(p => p.id === envio.lider_id);
         if (!lider) { resumo.erros.push(`${envio.nome}: líder do link não está mais cadastrado — valide pelo ✅`); continue; }
-        try { await executarValidacaoMultiplicador(envio, lider.id); resumo.ok++; }
+        try { await executarValidacaoMultiplicador(envio, lider.id, coordenadorLote); resumo.ok++; }
         catch (e) { resumo.erros.push(`${envio.nome}: ${e.message}`); }
     }
     await Promise.all([carregarMultiplicadores(), carregarPessoal()]);
@@ -1301,11 +1304,11 @@ async function validarEnviosMultiplicadorSelecionados(botao) {
 // ─── CADASTRO DE PESSOAL ────────────────────────────────────────────────
 async function carregarPessoal() {
     const tbody = document.getElementById('pessoal-body');
-    inicializarFiltroColunas('tabela-pessoal', [9, 10]);
+    inicializarFiltroColunas('tabela-pessoal', [10, 11]);
     const { data, error } = await supabaseClient.rpc('leitor_listar_pessoal');
-    if (error) { tbody.innerHTML = linhaVazia(11, 'Erro ao carregar Pessoal.'); return; }
+    if (error) { tbody.innerHTML = linhaVazia(12, 'Erro ao carregar Pessoal.'); return; }
     cachePessoal = data || [];
-    if (!cachePessoal.length) { tbody.innerHTML = linhaVazia(11, 'Nenhuma pessoa cadastrada.'); aplicarFiltrosColuna('tabela-pessoal'); return; }
+    if (!cachePessoal.length) { tbody.innerHTML = linhaVazia(12, 'Nenhuma pessoa cadastrada.'); aplicarFiltrosColuna('tabela-pessoal'); return; }
 
     tbody.innerHTML = cachePessoal.map(p => {
         const caminhoContrato = caminhoDoBucket(p.contrato_url, 'documentos-pessoal');
@@ -1318,6 +1321,7 @@ async function carregarPessoal() {
             <td>${escaparHtml(p.telefone)}</td>
             <td>${escaparHtml(p.descricao_atividades)}</td>
             <td>${escaparHtml(p.local_prestacao)}</td>
+            <td>${escaparHtml(p.coordenador || '—')}</td>
             <td>${escaparHtml(p.jornada_trabalho)}</td>
             <td>${p.data_inicio ? formatarData(p.data_inicio) : '—'}</td>
             <td>${p.data_fim ? formatarData(p.data_fim) : '—'}</td>

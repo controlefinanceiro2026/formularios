@@ -148,6 +148,7 @@
                         <table class="table-data" id="tabela-pessoal">
                             <thead><tr>
                                 <th>Nome</th><th>CPF</th><th>Telefone</th><th>Atividades</th><th>Local</th>
+                                <th>Coordenador</th>
                                 <th>Jornada</th><th>Início</th><th>Fim</th><th>Contrato</th>
                                 <th>Documentos</th><th>Ações</th>
                             </tr></thead>
@@ -201,6 +202,10 @@
                 <select id="mult-validar-lider"></select>
                 <small class="text-muted" id="mult-validar-lider-dica"></small>
             </div>
+            <div class="form-group">
+                <label for="mult-validar-coordenador">Coordenador</label>
+                <input type="text" id="mult-validar-coordenador" placeholder="Nome do coordenador (texto livre, opcional)">
+            </div>
             <p class="text-muted" style="font-size:0.85rem;">
                 Cria a pessoa no Cadastro de Pessoal (função Multiplicador, vigência 15/08/2026 a 04/10/2026,
                 R$ 1.600). A <strong>localidade</strong> fica a mesma do líder escolhido.
@@ -212,7 +217,7 @@
         </div>
     </div>
 
-    <!-- MODAL VALIDAR PESSOAL — pré-inscrição sem função (Cadastro Rápido) -->
+    <!-- MODAL VALIDAR PESSOAL — confirma função/líder/coordenador antes de gravar -->
     <div id="modal-validar-pessoal-funcao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -223,8 +228,8 @@
                 <strong id="vpf-nome"></strong><span class="text-muted" id="vpf-cpf"></span>
             </p>
             <p class="text-muted" style="font-size:0.85rem;">
-                Este cadastro veio do Cadastro Rápido e não tem função definida. Escolha a função para
-                gerar a Descrição das Atividades e o valor do contrato.
+                Confirme a função (define a Descrição das Atividades e o valor do contrato) e informe o
+                coordenador responsável.
             </p>
             <div class="form-group">
                 <label for="vpf-funcao">Função</label>
@@ -237,6 +242,10 @@
                 <label for="vpf-lider">Líder Responsável</label>
                 <select id="vpf-lider"></select>
                 <small class="text-muted">A localidade fica a mesma do líder escolhido.</small>
+            </div>
+            <div class="form-group">
+                <label for="vpf-coordenador">Coordenador</label>
+                <input type="text" id="vpf-coordenador" placeholder="Nome do coordenador (texto livre, opcional)">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="cancelarModalFuncaoFormularioPessoal()">Cancelar</button>
