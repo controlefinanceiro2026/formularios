@@ -413,7 +413,14 @@ function fecharModalDocumento() {
 // Ver pdfDocumentos.js — mesmo texto de lib/pdfContrato.js /
 // lib/pdfTermoCessao.js (servidor), portado pra jsPDF porque este site é
 // estático (sem servidor próprio).
+// Se a pessoa tem o contrato ASSINADO anexado, abre esse arquivo; senão
+// gera o PDF do contrato a partir dos dados.
 function gerarContratoPessoal(pessoa) {
+    const caminhoAssinado = caminhoDoBucket(pessoa && pessoa.contrato_url, 'documentos-pessoal');
+    if (caminhoAssinado) {
+        visualizarDocumento('documentos-pessoal', caminhoAssinado, `Contrato assinado — ${pessoa.nome || ''}`);
+        return;
+    }
     abrirPdfEmNovaAba(gerarPdfContrato(pessoa));
 }
 
@@ -485,7 +492,23 @@ function abrirModalFuncaoFormularioPessoal(f, botao = null, coordenadorInicial =
     document.getElementById('vpf-lider').innerHTML = lideres.length
         ? lideres.map(l => `<option value="${l.id}">${escaparHtml(l.nome)}</option>`).join('')
         : '<option value="">Nenhum líder cadastrado</option>';
-    if (f.lider_id) document.getElementById('vpf-lider').value = String(f.lider_id);
+
+    // Pré-seleciona o líder: pelo id, ou pelo nome pretendido (f.lider_nome,
+    // fluxo do formulário do administrador). Se o líder ainda não existe,
+    // avisa que ele precisa ser validado antes.
+    const dica = document.getElementById('vpf-lider-dica');
+    dica.textContent = 'A localidade fica a mesma do líder escolhido.';
+    if (f.lider_id) {
+        document.getElementById('vpf-lider').value = String(f.lider_id);
+    } else if (f.lider_nome) {
+        const lider = liderPorNome(f.lider_nome);
+        if (lider) {
+            document.getElementById('vpf-lider').value = String(lider.id);
+            dica.textContent = `Líder do formulário: ${lider.nome} (associado automaticamente).`;
+        } else {
+            dica.textContent = `Líder do formulário: "${f.lider_nome}" — ainda não cadastrado. Valide o líder antes, ou escolha um da lista.`;
+        }
+    }
 
     atualizarVisibilidadeLiderFuncaoFormulario();
     document.getElementById('modal-validar-pessoal-funcao').classList.add('show');
@@ -549,7 +572,14 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
 
 // Cria a pessoa em pessoal_contratado a partir do pré-cadastro. Lança em
 // caso de erro no INSERT — quem chama decide alertar / recarregar.
+// Multiplicador sem lider_id mas com f.lider_nome (fluxo do formulário do
+// administrador): associa automaticamente ao líder de mesmo nome já
+// cadastrado (cachePessoal precisa estar fresco — o lote recarrega antes).
 async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao, coordenador = null }) {
+    if (funcao === 'multiplicador' && !liderId && f.lider_nome) {
+        const lider = liderPorNome(f.lider_nome);
+        if (lider) liderId = lider.id;
+    }
     const payload = {
         nome: nomeCaixaAlta(f.nome),
         cpf: f.cpf,
@@ -759,20 +789,34 @@ async function validarFormulariosSelecionados(botao) {
     }
 
     const pessoas = pessoalIds.map(id => cacheFormulariosPessoal.find(x => x.id === id)).filter(Boolean);
-    const comFuncao = pessoas.filter(f => f.funcao === 'lider' || f.funcao === 'multiplicador');
+    const lideres = pessoas.filter(f => f.funcao === 'lider');
+    const multiplicadores = pessoas.filter(f => f.funcao === 'multiplicador');
     const semFuncao = pessoas.filter(f => f.funcao !== 'lider' && f.funcao !== 'multiplicador');
 
-    for (const f of comFuncao) {
-        try { await executarValidacaoFormularioPessoal(f, { funcao: f.funcao, liderId: f.lider_id || null, coordenador: coordenadorLote || null }); resumo.ok++; }
+    // 1º os líderes — assim os multiplicadores já podem casar pelo nome.
+    for (const f of lideres) {
+        try { await executarValidacaoFormularioPessoal(f, { funcao: 'lider', coordenador: coordenadorLote || null }); resumo.ok++; }
+        catch (e) { resumo.erros.push(`${f.nome}: ${e.message}`); }
+    }
+    if (lideres.length) await carregarPessoal(); // atualiza cachePessoal com os líderes recém-criados
+
+    // 2º os multiplicadores — líder pelo id, ou pelo nome (f.lider_nome).
+    // Quem não resolve o líder cai na fila do modal.
+    const multSemLider = [];
+    for (const f of multiplicadores) {
+        const temLider = f.lider_id || (f.lider_nome && liderPorNome(f.lider_nome));
+        if (!temLider) { multSemLider.push(f); continue; }
+        try { await executarValidacaoFormularioPessoal(f, { funcao: 'multiplicador', liderId: f.lider_id || null, coordenador: coordenadorLote || null }); resumo.ok++; }
         catch (e) { resumo.erros.push(`${f.nome}: ${e.message}`); }
     }
 
     botao.disabled = false;
 
-    if (semFuncao.length) {
+    const paraFila = [...semFuncao, ...multSemLider];
+    if (paraFila.length) {
         // Fila do modal — o resumo é mostrado quando a fila esvazia. O campo
         // Coordenador de cada modal vem pré-preenchido com coordenadorLote.
-        filaFuncaoLote = semFuncao.slice();
+        filaFuncaoLote = paraFila;
         resumoLoteFormularios = resumo;
         processarProximoDaFilaFuncao();
         return;
@@ -1327,12 +1371,12 @@ async function carregarPessoal() {
             <td>${p.data_fim ? formatarData(p.data_fim) : '—'}</td>
             <td>${p.valor_contrato ? formatarMoeda(p.valor_contrato) : '—'}</td>
             <td>
-                ${caminhoContrato ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-pessoal','${caminhoContrato}','Contrato anexado — ${escaparHtml(p.nome)}')" title="Ver contrato anexado">📎</button>` : ''}
+                ${caminhoContrato ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-pessoal','${caminhoContrato}','Contrato assinado — ${escaparHtml(p.nome)}')" title="Ver contrato assinado">📎</button>` : ''}
                 ${caminhoComprovanteCpf ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-pessoal','${caminhoComprovanteCpf}','CPF — ${escaparHtml(p.nome)}')" title="Ver documento de CPF">🪪</button>` : ''}
                 ${caminhoComprovanteResidencia ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-pessoal','${caminhoComprovanteResidencia}','Comprovante de Residência — ${escaparHtml(p.nome)}')" title="Ver comprovante de residência">🏠</button>` : ''}
                 ${!caminhoContrato && !caminhoComprovanteCpf && !caminhoComprovanteResidencia ? '<span style="color:#cbd5e1;">—</span>' : ''}
             </td>
-            <td><button class="btn-icon" onclick="gerarContratoPessoal(cachePessoal.find(x => x.id === ${p.id}))" title="Gerar Contrato de Prestação de Serviços">📄</button></td>
+            <td><button class="btn-icon" onclick="gerarContratoPessoal(cachePessoal.find(x => x.id === ${p.id}))" title="${caminhoContrato ? 'Ver contrato assinado' : 'Gerar Contrato de Prestação de Serviços'}">📄</button></td>
         </tr>`;
     }).join('');
 
