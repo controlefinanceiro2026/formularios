@@ -7,7 +7,7 @@
 //   - a tela inicial NÃO fala com o servidor (link preview de WhatsApp
 //     não arma nada). Só quando a pessoa toca em "Começar" é que chamamos
 //     a RPC multiplicador_abrir, que grava aberto_em = now() na primeira
-//     vez e devolve o instante de expiração (aberto_em + 10 min) e o nome
+//     vez e devolve o instante de expiração (aberto_em + 20 min) e o nome
 //     do líder;
 //   - o envio vai pela RPC multiplicador_enviar, que confere o link, grava
 //     os 4 liderados e CONSOME o link na mesma transação.
@@ -19,7 +19,7 @@
 // o lib/).
 
 const QUANTIDADE_LIDERADOS = 4;
-const EXPIRACAO_MINUTOS = 10;
+const EXPIRACAO_MINUTOS = 20;
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
@@ -30,6 +30,10 @@ let enviado = false;
 
 // ---------- máscaras / validações (espelho de lib/cadastroRapido.js) ----------
 function soDigitos(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
+
+// Nome e endereço são gravados em CAIXA ALTA (mesmo padrão do app.js e do
+// gatilho no Supabase — supabase/migracao-nome-endereco-caixa-alta.sql).
+function caixaAlta(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trimStart().toUpperCase(); }
 
 function mascararCpf(v) {
     return soDigitos(v).slice(0, 11)
@@ -106,6 +110,8 @@ function montarBlocosLiderados() {
     for (let i = 1; i <= QUANTIDADE_LIDERADOS; i++) {
         document.getElementById(`mult-cpf-${i}`).addEventListener('input', function () { this.value = mascararCpf(this.value); });
         document.getElementById(`mult-telefone-${i}`).addEventListener('input', function () { this.value = mascararTelefone(this.value); });
+        document.getElementById(`mult-nome-${i}`).addEventListener('input', function () { this.value = caixaAlta(this.value); });
+        document.getElementById(`mult-endereco-${i}`).addEventListener('input', function () { this.value = caixaAlta(this.value); });
     }
 }
 
@@ -167,7 +173,7 @@ async function comecar() {
     if (resposta.estado === 'ok') {
         if (resposta.lider_nome) {
             document.getElementById('hero-subtitulo').textContent =
-                `Você está cadastrando os ${QUANTIDADE_LIDERADOS} liderados de ${resposta.lider_nome}. O link é pessoal, de uso único, e vale por 10 minutos depois que você começar.`;
+                `Você está cadastrando os ${QUANTIDADE_LIDERADOS} liderados de ${resposta.lider_nome}. O link é pessoal, de uso único, e vale por 20 minutos depois que você começar.`;
         }
         montarBlocosLiderados();
         mostrarTela('tela-formulario');
@@ -189,10 +195,10 @@ function validarFormulario() {
     for (let i = 1; i <= QUANTIDADE_LIDERADOS; i++) {
         document.getElementById(`mult-cpf-erro-${i}`).style.display = 'none';
 
-        const nome = document.getElementById(`mult-nome-${i}`).value.trim();
+        const nome = caixaAlta(document.getElementById(`mult-nome-${i}`).value).trim();
         const cpf = document.getElementById(`mult-cpf-${i}`).value;
         const telefone = document.getElementById(`mult-telefone-${i}`).value.trim();
-        const endereco = document.getElementById(`mult-endereco-${i}`).value.trim();
+        const endereco = caixaAlta(document.getElementById(`mult-endereco-${i}`).value).trim();
 
         if (!nome) return { erro: `Informe o nome do liderado ${i}.` };
         if (!cpfValido(cpf)) {

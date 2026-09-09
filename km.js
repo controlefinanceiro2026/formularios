@@ -1,26 +1,18 @@
 // Formulário público de Controle de Km — hospedado no GitHub Pages, sem
 // servidor próprio. Grava direto no Supabase (chave "anon public" — só
 // INSERT, graças ao RLS de supabase/schema-formulario-km.sql). A lista de
-// veículos vem de veiculos-snapshot.json, publicado pelo sistema local da
-// campanha (Controle de Km → "Publicar lista para formulário público").
-// O sistema local puxa esses envios periodicamente e os importa como
-// leituras de km — nomeando as fotos do veículo antes de subir para o
-// bucket definitivo (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}).
+// veículos vem AO VIVO do banco, pela função SECURITY DEFINER
+// km_veiculos_por_lista(<slug>) (ver supabase/migracao-km-veiculos-por-lista.sql):
+// dado o slug da equipe (?lista=<slug>), devolve nome da lista, localidades
+// e os veículos daquelas localidades já com o último km aferido. O sistema
+// local puxa os envios periodicamente e os importa como leituras de km —
+// nomeando as fotos do veículo antes de subir para o bucket definitivo
+// (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}).
 
 const SEM_LOCALIDADE = 'Sem localidade definida';
 const TAMANHO_MAX_FOTO = 10 * 1024 * 1024; // 10 MB por foto
 const MIN_FOTOS = 1;
 const MAX_FOTOS = 3; // o líder de campo anexa de 1 a 3 fotos do veículo
-const VALIDADE_LINK_HORAS = 24; // o link vale 1 dia a partir da publicação da lista
-
-// Mesma regra de lib/kmFormulario.js#snapshotExpirado — reimplementada
-// porque o formulário público tem deploy isolado. Sem gerado_em válido não
-// expira (compat. com snapshot antigo).
-function snapshotExpirado(geradoEm) {
-    const t = Date.parse(geradoEm);
-    if (!Number.isFinite(t)) return false;
-    return (Date.now() - t) > VALIDADE_LINK_HORAS * 3600 * 1000;
-}
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
@@ -41,7 +33,7 @@ function salvarResponsavel(valor) {
     } catch (e) { /* modo privado / storage bloqueado — segue sem persistir */ }
 }
 
-// Estado por veículo (índice = posição no snapshot).
+// Estado por veículo (índice = posição na lista recebida da RPC).
 let veiculos = [];
 const enviados = {}; // idx -> true depois de enviado com sucesso
 // idx dos veículos travados porque o Supabase já tem um envio deles nesta
@@ -52,19 +44,8 @@ const travadosPorEnvioDoDia = new Set();
 // envio a linha trava e não dá mais pra mexer.
 const fotosPorLinha = {};
 
-// Lista por equipe ativa (quando a URL tem ?lista=<slug>): { nome, localidades }.
-// Sem ?lista, o formulário mostra todos os veículos (uso do admin / link antigo).
+// Lista por equipe ativa (a URL sempre tem ?lista=<slug>): { nome, localidades }.
 let listaAtiva = null;
-
-// Mesma regra de lib/kmFormulario.js#filtrarVeiculosPorLocalidades — aqui
-// reimplementada porque o formulário público tem deploy isolado e não
-// carrega aquele arquivo. Veículos sem localidade definida entram em TODA
-// lista, pra nenhum carro cadastrado ficar fora de todos os formulários.
-function filtrarVeiculosPorLocalidades(lista, localidades) {
-    if (!localidades || !localidades.length) return lista.slice();
-    const permitidas = new Set(localidades.map(l => String(l)));
-    return lista.filter(v => permitidas.has(String(v.localidade)) || String(v.localidade) === SEM_LOCALIDADE);
-}
 
 // ---------- helpers de formatação ----------
 function mascararData(valor) {
@@ -183,7 +164,7 @@ function renderTabelas() {
     const itens = veiculos.map((v, idx) => ({ veiculo: v, idx }));
 
     if (itens.length === 0) {
-        container.innerHTML = '<div class="fp-msg info" style="display:block;">Nenhum veículo na lista publicada. Fale com a administração da campanha.</div>';
+        container.innerHTML = '<div class="fp-msg info" style="display:block;">Nenhum veículo na lista desta equipe. Fale com a administração da campanha.</div>';
         return;
     }
 
@@ -659,19 +640,19 @@ function pararComErro(texto) {
     if (semResultado) semResultado.style.display = 'none';
 }
 
-// Busca a definição da lista da equipe pelo slug da URL (?lista=<slug>).
-// Devolve { nome, localidades } ou null se o slug não existir.
+// Busca ao vivo, pelo slug da URL, a lista da equipe + os veículos das
+// localidades dela já com o último km aferido. Função SECURITY DEFINER
+// (supabase/migracao-km-veiculos-por-lista.sql) — o "anon" não lê a tabela
+// veiculos direto. Devolve { nome, localidades, veiculos } ou null se o
+// slug não existir.
 async function carregarListaPorSlug(slug) {
-    const { data, error } = await supabaseClient
-        .from('listas_km')
-        .select('nome, localidades')
-        .eq('slug', slug)
-        .maybeSingle();
+    const { data, error } = await supabaseClient.rpc('km_veiculos_por_lista', { p_slug: slug });
     if (error) throw new Error(error.message);
     if (!data) return null;
     return {
         nome: data.nome,
-        localidades: Array.isArray(data.localidades) ? data.localidades : []
+        localidades: Array.isArray(data.localidades) ? data.localidades : [],
+        veiculos: Array.isArray(data.veiculos) ? data.veiculos : []
     };
 }
 
@@ -718,23 +699,10 @@ async function carregar() {
     }
     mostrarNomeDaLista(listaAtiva.nome);
 
-    let snap;
-    try {
-        const resp = await fetch('veiculos-snapshot.json', { cache: 'no-store' });
-        if (!resp.ok) throw new Error(`status ${resp.status}`);
-        snap = await resp.json();
-        veiculos = Array.isArray(snap.veiculos) ? snap.veiculos : [];
-    } catch (e) {
-        pararComErro('Não foi possível carregar a lista de veículos. Recarregue a página ou fale com a administração da campanha.');
-        return;
-    }
-
-    if (snapshotExpirado(snap.gerado_em)) {
-        pararComErro('Este link expirou. A lista de veículos vale por 1 dia após ser publicada — peça um link atualizado à administração da campanha.');
-        return;
-    }
-
-    veiculos = filtrarVeiculosPorLocalidades(veiculos, listaAtiva.localidades);
+    // A RPC já devolve os veículos das localidades desta lista (mais os sem
+    // localidade), ordenados por localidade (ordem da lista) e placa, com o
+    // último km aferido de cada um.
+    veiculos = listaAtiva.veiculos;
     if (veiculos.length === 0) {
         pararComErro('Nenhum veículo cadastrado nas regiões desta lista. Fale com a administração da campanha.');
         return;

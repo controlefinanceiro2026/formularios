@@ -40,6 +40,10 @@ let modoAdmin = false;      // link do administrador: sem prazo, vários envios
 // ---------- máscaras / validações (espelho de lib/cadastroRapido.js) ----------
 function soDigitos(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
 
+// Nome e endereço são gravados em CAIXA ALTA (mesmo padrão do app.js e do
+// gatilho no Supabase — supabase/migracao-nome-endereco-caixa-alta.sql).
+function caixaAlta(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trimStart().toUpperCase(); }
+
 function mascararCpf(v) {
     return soDigitos(v).slice(0, 11)
         .replace(/(\d{3})(\d)/, '$1.$2')
@@ -202,10 +206,10 @@ function validarFormulario() {
     document.getElementById('cr-cpf-erro').style.display = 'none';
     document.getElementById('cr-placa-erro').style.display = 'none';
 
-    const nome = document.getElementById('cr-nome').value.trim();
+    const nome = caixaAlta(document.getElementById('cr-nome').value).trim();
     const cpf = document.getElementById('cr-cpf').value;
     const telefone = document.getElementById('cr-telefone').value.trim();
-    const endereco = document.getElementById('cr-endereco').value.trim();
+    const endereco = caixaAlta(document.getElementById('cr-endereco').value).trim();
     const localidade = document.getElementById('cr-localidade').value;
     const placa = mascararPlaca(document.getElementById('cr-placa').value);
     const modelo = document.getElementById('cr-modelo').value.trim();
@@ -312,6 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cr-cpf').addEventListener('input', function () { this.value = mascararCpf(this.value); });
     document.getElementById('cr-telefone').addEventListener('input', function () { this.value = mascararTelefone(this.value); });
     document.getElementById('cr-placa').addEventListener('input', function () { this.value = mascararPlaca(this.value); });
+    document.getElementById('cr-nome').addEventListener('input', function () { this.value = caixaAlta(this.value); });
+    document.getElementById('cr-endereco').addEventListener('input', function () { this.value = caixaAlta(this.value); });
     document.getElementById('btn-comecar').addEventListener('click', comecar);
     document.getElementById('form-cadastro-rapido').addEventListener('submit', enviarFormulario);
 

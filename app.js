@@ -94,18 +94,27 @@ function validarAnoVeiculo() {
 
 // A seção de veículo só aparece pra quem se declara Líder — o líder é o
 // proprietário do veículo cedido à campanha (ver lib/regioesDF.js /
-// veiculos.lider_id no app admin).
+// veiculos.lider_id no app admin). Para o líder o preenchimento é
+// OPCIONAL: se ele não usa veículo no serviço, deixa tudo em branco e
+// nenhuma pré-inscrição de veículo é criada.
 function ehLider() {
     return document.getElementById('fp-funcao').value === 'lider';
+}
+
+// Campos da seção de veículo (a placa é o "gatilho": se ela vier
+// preenchida, o líder está declarando um veículo e os demais campos são
+// gravados junto).
+const CAMPOS_VEICULO = ['fv-placa', 'fv-marca', 'fv-modelo', 'fv-cnpj', 'fv-ano'];
+
+function algumCampoVeiculoPreenchido() {
+    const textos = CAMPOS_VEICULO.some(id => document.getElementById(id).value.trim());
+    return textos || !!document.getElementById('fv-doc-veiculo').files[0];
 }
 
 function atualizarVisibilidadeVeiculo() {
     const mostrar = ehLider();
     document.getElementById('fp-secao-veiculo').style.display = mostrar ? 'block' : 'none';
     document.getElementById('fp-doc-veiculo-grupo').style.display = mostrar ? 'block' : 'none';
-    ['fv-placa', 'fv-marca', 'fv-modelo', 'fv-cnpj', 'fv-ano', 'fv-doc-veiculo'].forEach(id => {
-        document.getElementById(id).required = mostrar;
-    });
 }
 
 function preencherLocais() {
@@ -128,6 +137,10 @@ function mostrarMensagem(texto, tipo) {
     el.className = `fp-msg ${tipo}`;
 }
 
+// Nome e endereço são gravados em CAIXA ALTA (mesmo padrão do app.js e do
+// gatilho no Supabase — supabase/migracao-nome-endereco-caixa-alta.sql).
+function caixaAlta(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trimStart().toUpperCase(); }
+
 // Usado só pra montar a pasta do documento (nome digitado vira parte de um
 // caminho de Storage) — troca "/" por "-" pra nunca criar um nível de pasta
 // indesejado a partir de um nome com barra.
@@ -140,37 +153,31 @@ function sanitizarSegmentoCaminho(valor) {
 async function enviarFormulario(e) {
     e.preventDefault();
 
-    const arquivoCpf = document.getElementById('fp-doc-cpf').files[0];
-    const arquivoComprovante = document.getElementById('fp-doc-comprovante').files[0];
-    if (!arquivoCpf || !arquivoComprovante) {
-        mostrarMensagem('Anexe a documentação (CPF e comprovante de residência) antes de enviar.', 'erro');
-        return;
-    }
+    // Anexos são OPCIONAIS — a documentação pode ser entregue depois. O
+    // envio segue mesmo sem nenhum arquivo.
+    const arquivoCpf = document.getElementById('fp-doc-cpf').files[0] || null;
+    const arquivoComprovante = document.getElementById('fp-doc-comprovante').files[0] || null;
 
     const lider = ehLider();
+    // Veículo é OPCIONAL para o líder: só entra no envio se a placa vier
+    // preenchida. Sem placa, nenhum registro em formularios_veiculo é criado.
+    const informouVeiculo = lider && !!document.getElementById('fv-placa').value.trim();
     let arquivoVeiculo = null;
-    if (lider) {
-        if (!document.getElementById('fv-placa').value.trim()) {
-            mostrarMensagem('Informe a placa do veículo.', 'erro');
-            return;
-        }
-        if (!document.getElementById('fv-cnpj').value.replace(/\D/g, '')) {
-            mostrarMensagem('Informe o CNPJ associado ao veículo.', 'erro');
-            return;
-        }
+    if (lider && !informouVeiculo && algumCampoVeiculoPreenchido()) {
+        mostrarMensagem('Informe a placa do veículo ou deixe todos os campos do veículo em branco.', 'erro');
+        return;
+    }
+    if (informouVeiculo) {
         if (!validarAnoVeiculo()) {
             mostrarMensagem(`Veículos do ano ${ANO_VEICULO_PROIBIDO} não podem ser cadastrados. Corrija o campo "Ano do Veículo" antes de enviar.`, 'erro');
             return;
         }
-        if (document.getElementById('fv-ano').value.length !== 4) {
-            mostrarMensagem('Informe o ano do veículo com 4 dígitos (ex: 2019).', 'erro');
+        const ano = document.getElementById('fv-ano').value;
+        if (ano && ano.length !== 4) {
+            mostrarMensagem('Informe o ano do veículo com 4 dígitos (ex: 2019) ou deixe o campo em branco.', 'erro');
             return;
         }
-        arquivoVeiculo = document.getElementById('fv-doc-veiculo').files[0];
-        if (!arquivoVeiculo) {
-            mostrarMensagem('Anexe o documento do veículo (CRLV) antes de enviar.', 'erro');
-            return;
-        }
+        arquivoVeiculo = document.getElementById('fv-doc-veiculo').files[0] || null;
     }
 
     if (!document.getElementById('fp-lgpd-aceite').checked) {
@@ -196,39 +203,48 @@ async function enviarFormulario(e) {
         // soubesse o nome dela).
         const agora = Date.now();
         const nomeSanitizado = sanitizarSegmentoCaminho(document.getElementById('fp-nome').value);
-        const extCpf = arquivoCpf.name.split('.').pop();
-        const extComprovante = arquivoComprovante.name.split('.').pop();
-        const caminhoDocCpf = `pessoal/${nomeSanitizado}/CPF_${agora}.${extCpf}`;
-        const caminhoComprovante = `pessoal/${nomeSanitizado}/Comprovante_Residencia_${agora}.${extComprovante}`;
 
-        const { error: erroUploadCpf } = await supabaseClient.storage
-            .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf);
-        if (erroUploadCpf) throw new Error('Falha ao enviar o documento de CPF: ' + erroUploadCpf.message);
+        let caminhoDocCpf = null;
+        if (arquivoCpf) {
+            const extCpf = arquivoCpf.name.split('.').pop();
+            caminhoDocCpf = `pessoal/${nomeSanitizado}/CPF_${agora}.${extCpf}`;
+            const { error: erroUploadCpf } = await supabaseClient.storage
+                .from('documentos-formularios').upload(caminhoDocCpf, arquivoCpf);
+            if (erroUploadCpf) throw new Error('Falha ao enviar o documento de CPF: ' + erroUploadCpf.message);
+        }
 
-        const { error: erroUploadComprovante } = await supabaseClient.storage
-            .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante);
-        if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
+        let caminhoComprovante = null;
+        if (arquivoComprovante) {
+            const extComprovante = arquivoComprovante.name.split('.').pop();
+            caminhoComprovante = `pessoal/${nomeSanitizado}/Comprovante_Residencia_${agora}.${extComprovante}`;
+            const { error: erroUploadComprovante } = await supabaseClient.storage
+                .from('documentos-formularios').upload(caminhoComprovante, arquivoComprovante);
+            if (erroUploadComprovante) throw new Error('Falha ao enviar o comprovante de residência: ' + erroUploadComprovante.message);
+        }
 
-        // O veículo (quando líder) é inserido antes do formulário de pessoal:
+        // O veículo (quando o líder informa) é inserido antes do formulário de pessoal:
         // as duas tabelas são independentes (sem FK), então cadastrar o
         // veículo primeiro evita deixar uma pré-inscrição de Pessoal órfã
         // caso o envio do veículo falhe.
-        if (lider) {
-            const extVeiculo = arquivoVeiculo.name.split('.').pop();
-            const caminhoVeiculo = `veiculo/${nomeSanitizado}/CRLV_${agora}.${extVeiculo}`;
+        if (informouVeiculo) {
+            let caminhoVeiculo = null;
+            if (arquivoVeiculo) {
+                const extVeiculo = arquivoVeiculo.name.split('.').pop();
+                caminhoVeiculo = `veiculo/${nomeSanitizado}/CRLV_${agora}.${extVeiculo}`;
 
-            const { error: erroUploadVeiculo } = await supabaseClient.storage
-                .from('documentos-formularios').upload(caminhoVeiculo, arquivoVeiculo);
-            if (erroUploadVeiculo) throw new Error('Falha ao enviar o documento do veículo: ' + erroUploadVeiculo.message);
+                const { error: erroUploadVeiculo } = await supabaseClient.storage
+                    .from('documentos-formularios').upload(caminhoVeiculo, arquivoVeiculo);
+                if (erroUploadVeiculo) throw new Error('Falha ao enviar o documento do veículo: ' + erroUploadVeiculo.message);
+            }
 
             const { error: erroInsertVeiculo } = await supabaseClient.from('formularios_veiculo').insert({
                 placa: mascararPlaca(document.getElementById('fv-placa').value),
                 marca: document.getElementById('fv-marca').value.trim() || null,
                 modelo: document.getElementById('fv-modelo').value.trim() || null,
                 ano_fabricacao: document.getElementById('fv-ano').value || null,
-                nome_proprietario: document.getElementById('fp-nome').value,
+                nome_proprietario: caixaAlta(document.getElementById('fp-nome').value).trim(),
                 cpf_proprietario: cpfDigitos,
-                cnpj_associado: document.getElementById('fv-cnpj').value,
+                cnpj_associado: document.getElementById('fv-cnpj').value || null,
                 documento_veiculo_path: caminhoVeiculo,
                 status: 'pendente'
             });
@@ -236,9 +252,9 @@ async function enviarFormulario(e) {
         }
 
         const { error: erroInsert } = await supabaseClient.from('formularios_pessoal').insert({
-            nome: document.getElementById('fp-nome').value,
+            nome: caixaAlta(document.getElementById('fp-nome').value).trim(),
             cpf: cpfDigitos,
-            endereco: document.getElementById('fp-endereco').value,
+            endereco: caixaAlta(document.getElementById('fp-endereco').value).trim(),
             telefone: document.getElementById('fp-telefone').value,
             cep: document.getElementById('fp-cep').value,
             funcao: document.getElementById('fp-funcao').value,
@@ -264,6 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fp-cpf').addEventListener('input', function () { this.value = mascararCPF(this.value); });
     document.getElementById('fp-telefone').addEventListener('input', function () { this.value = mascararTelefone(this.value); });
     document.getElementById('fp-cep').addEventListener('input', function () { this.value = mascararCEP(this.value); });
+    document.getElementById('fp-nome').addEventListener('input', function () { this.value = caixaAlta(this.value); });
+    document.getElementById('fp-endereco').addEventListener('input', function () { this.value = caixaAlta(this.value); });
     document.getElementById('fp-funcao').addEventListener('change', atualizarVisibilidadeVeiculo);
     document.getElementById('fv-placa').addEventListener('input', function () { this.value = mascararPlaca(this.value); });
     document.getElementById('fv-cnpj').addEventListener('input', function () { this.value = mascararCNPJ(this.value); });
