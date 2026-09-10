@@ -21,6 +21,10 @@ const ROTULOS_PERIODICIDADE = {
 
 const FIM_CESSAO_TEXTO = '03 de outubro de 2026';
 
+// Vigência padrão impressa em todo contrato — espelha lib/pdfContrato.js.
+const DATA_INICIO_PRESTACAO = '09/09/2026';
+const DATA_FIM_PRESTACAO = '04/10/2026';
+
 function formatarDataBR(dataString) {
     if (!dataString) return null;
     const data = new Date(dataString);
@@ -138,11 +142,9 @@ function gerarPdfContrato(pessoa) {
     w.moveDown(10);
 
     w.texto('CLÁUSULA SEGUNDA — DO PRAZO DE VIGÊNCIA', { negrito: true });
-    const inicio = formatarDataBR(pessoa.data_inicio);
-    const fim = formatarDataBR(pessoa.data_fim);
     w.texto(
-        `O presente contrato terá início na data de ${inicio || 'sua assinatura'} e vigorará até o dia ` +
-        `${fim || '03 de outubro de 2026'}.`,
+        `O presente contrato terá início na data de ${DATA_INICIO_PRESTACAO} e vigorará até o dia ` +
+        `${DATA_FIM_PRESTACAO}.`,
         { justificar: true }
     );
     w.moveDown(10);
