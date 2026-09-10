@@ -56,6 +56,32 @@ function enderecoCaixaAlta(valor) {
     return String(valor || '').trim().replace(/\s+/g, ' ').toUpperCase() || null;
 }
 
+// ─── PAGINAÇÃO ─────────────────────────────────────────────────────────
+// O PostgREST corta cada resposta em ~1000 linhas (db-max-rows). A
+// plataforma principal contorna isso em lib/queryEngine.js (toda leitura
+// passa por lá); este site fala DIRETO com o Supabase, sem esse
+// intermediário, então cada tela que pode passar de 1000 linhas
+// (Pessoal, Veículos, Formulários, Cadastro Rápido, Multiplicadores)
+// precisa paginar aqui — senão some com o resto da lista.
+//
+// `construirQuery(de, ate)` deve devolver uma query NOVA a cada chamada,
+// já com .range(de, ate) e uma ORDENAÇÃO DETERMINÍSTICA (ex: .order('id'));
+// sem isso o range() repete/pula linhas na virada de página. Retorna
+// { data, error } no mesmo formato de uma query única.
+const TAMANHO_PAGINA_SUPABASE = 1000;
+
+async function lerTodasAsPaginas(construirQuery) {
+    const todas = [];
+    for (let inicio = 0; ; inicio += TAMANHO_PAGINA_SUPABASE) {
+        const { data, error } = await construirQuery(inicio, inicio + TAMANHO_PAGINA_SUPABASE - 1);
+        if (error) return { data: null, error };
+        if (!data || data.length === 0) break;
+        todas.push(...data);
+        if (data.length < TAMANHO_PAGINA_SUPABASE) break;
+    }
+    return { data: todas, error: null };
+}
+
 // ─── FILTRO POR COLUNA (mesmo mecanismo da plataforma principal —
 // app.js#inicializarFiltroColunas — portado aqui porque este site não
 // carrega app.js). Cada botão "▾" no cabeçalho abre um painel flutuante
@@ -694,8 +720,8 @@ async function carregarFormularios() {
     const tbody = document.getElementById('formularios-body');
     inicializarFiltroColunas('tabela-formularios', [0, 9, 10]);
     const [{ data: pessoal, error: eP }, { data: veiculo, error: eV }] = await Promise.all([
-        supabaseClient.from('formularios_pessoal').select('*').eq('status', 'pendente'),
-        supabaseClient.from('formularios_veiculo').select('*').eq('status', 'pendente')
+        lerTodasAsPaginas((de, ate) => supabaseClient.from('formularios_pessoal').select('*').eq('status', 'pendente').order('id', { ascending: true }).range(de, ate)),
+        lerTodasAsPaginas((de, ate) => supabaseClient.from('formularios_veiculo').select('*').eq('status', 'pendente').order('id', { ascending: true }).range(de, ate))
     ]);
     if (eP || eV) { tbody.innerHTML = linhaVazia(11, 'Erro ao carregar formulários.'); return; }
     cacheFormulariosPessoal = pessoal || [];
@@ -854,7 +880,8 @@ let cacheCadastroRapido = [];
 async function carregarCadastroRapido() {
     const tbody = document.getElementById('cadastro-rapido-body');
     inicializarFiltroColunas('tabela-cadastro-rapido', [0, 9]);
-    const { data, error } = await supabaseClient.from('formularios_cadastro_rapido').select('*').order('created_at', { ascending: false });
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('formularios_cadastro_rapido').select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).range(de, ate));
     if (error) { tbody.innerHTML = linhaVazia(10, 'Erro ao carregar cadastros.'); return; }
     cacheCadastroRapido = data || [];
     const podeAproveitar = possoValidarFormularios();
@@ -1042,8 +1069,8 @@ async function carregarMultiplicadores() {
     tbodyEnvios.innerHTML = linhaVazia(8, 'Carregando…');
 
     const [{ data: links, error: eL }, { data: envios, error: eE }] = await Promise.all([
-        supabaseClient.from('links_multiplicador').select('*').order('gerado_em', { ascending: false }),
-        supabaseClient.from('envios_multiplicador').select('*').order('created_at', { ascending: false })
+        lerTodasAsPaginas((de, ate) => supabaseClient.from('links_multiplicador').select('*').order('gerado_em', { ascending: false }).order('id', { ascending: false }).range(de, ate)),
+        lerTodasAsPaginas((de, ate) => supabaseClient.from('envios_multiplicador').select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).range(de, ate))
     ]);
     if (eL) { tbodyLideres.innerHTML = linhaVazia(6, 'Erro ao carregar os links: ' + eL.message); }
     if (eE) { tbodyEnvios.innerHTML = linhaVazia(8, 'Erro ao carregar os envios: ' + eE.message); }
@@ -1349,7 +1376,12 @@ async function validarEnviosMultiplicadorSelecionados(botao) {
 async function carregarPessoal() {
     const tbody = document.getElementById('pessoal-body');
     inicializarFiltroColunas('tabela-pessoal', [10, 11]);
-    const { data, error } = await supabaseClient.rpc('leitor_listar_pessoal');
+    // Paginado: pessoal_contratado já passa de 1000 linhas. O .order('id')
+    // na RPC é o par do "order by id" dentro de leitor_listar_pessoal()
+    // (ver supabase/migracao-painel-consulta-paginacao.sql) — garante a
+    // paginação estável mesmo se a migração ainda não tiver sido aplicada.
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.rpc('leitor_listar_pessoal').order('id', { ascending: true }).range(de, ate));
     if (error) { tbody.innerHTML = linhaVazia(12, 'Erro ao carregar Pessoal.'); return; }
     cachePessoal = data || [];
     if (!cachePessoal.length) { tbody.innerHTML = linhaVazia(12, 'Nenhuma pessoa cadastrada.'); aplicarFiltrosColuna('tabela-pessoal'); return; }
@@ -1387,7 +1419,9 @@ async function carregarPessoal() {
 async function carregarVeiculos() {
     const tbody = document.getElementById('veiculos-body');
     inicializarFiltroColunas('tabela-veiculos', [6, 7]);
-    const { data, error } = await supabaseClient.from('veiculos').select('*').order('placa');
+    // Paginado (placa não é única — desempate por id pra o range() não pular linha).
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('veiculos').select('*').order('placa').order('id', { ascending: true }).range(de, ate));
     if (error) { tbody.innerHTML = linhaVazia(8, 'Erro ao carregar Veículos.'); return; }
     cacheVeiculos = data || [];
     if (!cacheVeiculos.length) { tbody.innerHTML = linhaVazia(8, 'Nenhum veículo cadastrado.'); aplicarFiltrosColuna('tabela-veiculos'); return; }
