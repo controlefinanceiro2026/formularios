@@ -238,10 +238,18 @@
 
                     <div class="table-container" style="padding:1.5rem;">
                         <h3 style="margin:0 0 0.5rem;">🛣️ Controle de Km</h3>
-                        <p class="text-muted" style="margin-bottom:1rem;">Selecione as localidades (opcional — nenhuma marcada = todas) e gere a situação de leitura de cada veículo.</p>
-                        <div class="form-group" style="max-width:320px; margin-bottom:1rem;">
-                            <label for="rel-km-localidades">Localidades</label>
-                            <select id="rel-km-localidades" multiple size="8" style="width:100%;"></select>
+                        <p class="text-muted" style="margin-bottom:1rem;">Selecione as localidades (opcional — nenhuma marcada = todas) ou um veículo específico, e gere a situação de leitura.</p>
+                        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+                            <div class="form-group" style="max-width:320px;">
+                                <label for="rel-km-localidades">Localidades</label>
+                                <select id="rel-km-localidades" multiple size="8" style="width:100%;"></select>
+                            </div>
+                            <div class="form-group" style="max-width:320px;">
+                                <label for="rel-km-veiculo">Veículo específico (opcional)</label>
+                                <select id="rel-km-veiculo" style="width:100%;">
+                                    <option value="">Todos os veículos (usar localidades)</option>
+                                </select>
+                            </div>
                         </div>
                         <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
                             <button type="button" class="btn-secondary" onclick="gerarRelatorioKmPdf()">📄 PDF</button>

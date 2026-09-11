@@ -1934,6 +1934,14 @@ function prepararTelaRelatorios() {
     const localidades = [...new Set((cacheVeiculos || []).map(v => v.localidade_atendimento).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'pt-BR'));
     select.innerHTML = localidades.map(l => `<option value="${escaparHtml(l)}">${escaparHtml(l)}</option>`).join('');
+
+    const selectVeiculo = document.getElementById('rel-km-veiculo');
+    const veiculosOrdenados = [...(cacheVeiculos || [])].sort((a, b) => (a.placa || '').localeCompare(b.placa || '', 'pt-BR'));
+    selectVeiculo.innerHTML = '<option value="">Todos os veículos (usar localidades)</option>' + veiculosOrdenados.map(v => {
+        const rotulo = `${v.placa || '—'} — ${(`${v.marca || ''} ${v.modelo || ''}`.trim()) || '—'} (${v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO})`;
+        return `<option value="${v.id}">${escaparHtml(rotulo)}</option>`;
+    }).join('');
+
     garantirLeiturasKm();
 }
 
@@ -2091,23 +2099,30 @@ function gerarRelatorioGerencialVeiculosExcel() {
 }
 
 // ── 5) Controle de Km ────────────────────────────────────────────────────
-const CABECALHO_CONTROLE_KM = ['Localidade', 'Placa', 'Veículo', 'Proprietário', 'Última leitura', 'Km aferido', 'Km rodado', 'Situação'];
+const CABECALHO_CONTROLE_KM = ['Localidade', 'Placa', 'Veículo', 'Proprietário', 'Última leitura', 'Km aferido', 'Assinatura (recebimento do voucher)'];
 const linhaControleKm = l => [
     l.localidade, l.placa, l.veiculo, l.proprietario,
-    l.data ? formatarData(l.data) : '—', l.kmAferido != null ? l.kmAferido : '—',
-    l.kmRodado != null ? l.kmRodado : '—', l.semLeitura ? 'SEM LEITURA' : 'OK'
+    l.data ? formatarData(l.data) : '—', l.kmAferido != null ? l.kmAferido : '—', ''
 ];
 
 function localidadesSelecionadasKm() {
     return Array.from(document.getElementById('rel-km-localidades').selectedOptions).map(o => o.value);
 }
 
+function veiculoSelecionadoKm() {
+    return document.getElementById('rel-km-veiculo').value;
+}
+
 // Espelha app.js#leiturasKmComRodado / #ultimaLeituraKmDoVeiculo: percorre
 // as leituras em ordem cronológica por veículo pra calcular o km rodado
 // (delta desde a leitura anterior) e guarda a mais recente de cada um.
-function dadosControleKm(localidadesFiltro) {
+// Quando veiculoIdFiltro é informado, ignora o filtro de localidades e
+// gera o relatório só para aquele veículo específico.
+function dadosControleKm(localidadesFiltro, veiculoIdFiltro) {
     const filtroSet = localidadesFiltro.length ? new Set(localidadesFiltro) : null;
-    const veiculos = (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento));
+    const veiculos = veiculoIdFiltro
+        ? (cacheVeiculos || []).filter(v => String(v.id) === String(veiculoIdFiltro))
+        : (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento));
 
     const ordenadas = [...cacheLeiturasKm].sort((a, b) => (a.data !== b.data ? (a.data < b.data ? -1 : 1) : (a.id || 0) - (b.id || 0)));
     const anteriorPorVeiculo = {};
@@ -2132,12 +2147,13 @@ function dadosControleKm(localidadesFiltro) {
 
 async function gerarRelatorioKmPdf() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculoSelecionadoKm());
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const doc = iniciarPdfRelatorio('Controle de Km');
     doc.autoTable({
         startY: 28, head: [CABECALHO_CONTROLE_KM], body: linhas.map(linhaControleKm),
         styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] },
+        columnStyles: { 6: { minCellHeight: 12 } },
         didParseCell: (dados) => {
             if (dados.section === 'body' && linhas[dados.row.index] && linhas[dados.row.index].semLeitura) {
                 dados.cell.styles.textColor = [180, 0, 0];
@@ -2149,10 +2165,12 @@ async function gerarRelatorioKmPdf() {
 
 async function gerarRelatorioKmExcel() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculoSelecionadoKm());
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const livro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]), 'Controle de Km');
+    const planilha = XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]);
+    planilha['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 36 }];
+    XLSX.utils.book_append_sheet(livro, planilha, 'Controle de Km');
     XLSX.writeFile(livro, nomeArquivoRelatorio('controle-km', 'xlsx'));
 }
 
