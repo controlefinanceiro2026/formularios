@@ -50,6 +50,10 @@ const pagamentoNaoRealizado = {};
 // idx -> motivo digitado no modal. Fica guardado mesmo se o líder
 // desmarcar e marcar de novo, pra não perder o que já escreveu.
 const motivoPagamentoNaoRealizado = {};
+// idx -> true só depois que o líder clica em um dos dois botões de status
+// do pagamento. Nenhum vem pré-marcado — enquanto não houver escolha
+// explícita, a linha não pode ser enviada (ver validarLinha).
+const statusPagamentoEscolhido = {};
 
 // Lista por equipe ativa (a URL sempre tem ?lista=<slug>): { nome, localidades }.
 let listaAtiva = null;
@@ -206,7 +210,7 @@ function renderTabelas() {
                                 <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
                                 <td class="km-td-bloco" data-label="Status do Pagamento *">
                                     <div class="km-pagamento-toggle" role="group" aria-label="Status do pagamento do combustível">
-                                        <button type="button" class="km-pagamento-btn km-pagamento-btn-realizado ativo" data-idx="${idx}" data-status="realizado">✅ Realizado</button>
+                                        <button type="button" class="km-pagamento-btn km-pagamento-btn-realizado" data-idx="${idx}" data-status="realizado">✅ Realizado</button>
                                         <button type="button" class="km-pagamento-btn km-pagamento-btn-nao-realizado" data-idx="${idx}" data-status="nao_realizado">⛽ Não realizado</button>
                                     </div>
                                     <div class="km-pagamento-motivo" data-idx="${idx}" style="display:none;"></div>
@@ -370,6 +374,12 @@ function validarLinha(idx) {
     if (!responsavel) return 'Informe o "Responsável pelas Informações" antes de enviar.';
 
     const tr = document.getElementById(linhaId(idx));
+
+    // Nenhum dos dois botões vem pré-marcado — o líder precisa escolher
+    // explicitamente antes de enviar.
+    if (!statusPagamentoEscolhido[idx]) {
+        return `Veículo ${veiculos[idx].placa}: escolha o status do pagamento (Realizado ou Não realizado).`;
+    }
 
     // Pagamento não realizado: sem combustível pago, o líder pode não ter
     // rodado o veículo nem conseguido fotografá-lo — Km no Dia e Fotos
@@ -593,18 +603,20 @@ function abrirModalMotivoPagamento(idx) {
     });
 }
 
-// Reflete o status de pagamento na linha: "Não realizado" desabilita e
-// limpa Km no Dia/Fotos (deixam de ser obrigatórios) e mostra o motivo
+// Reflete o status de pagamento na linha. Nenhum botão vem marcado até o
+// líder escolher (ver statusPagamentoEscolhido); "Não realizado" desabilita
+// e limpa Km no Dia/Fotos (deixam de ser obrigatórios) e mostra o motivo
 // embaixo do toggle, com um link para editar.
 function atualizarUiPagamento(idx) {
     const tr = document.getElementById(linhaId(idx));
     if (!tr) return;
+    const escolhido = !!statusPagamentoEscolhido[idx];
     const ativo = !!pagamentoNaoRealizado[idx];
 
     const btnRealizado = tr.querySelector('.km-pagamento-btn-realizado');
     const btnNaoRealizado = tr.querySelector('.km-pagamento-btn-nao-realizado');
-    if (btnRealizado) btnRealizado.classList.toggle('ativo', !ativo);
-    if (btnNaoRealizado) btnNaoRealizado.classList.toggle('ativo', ativo);
+    if (btnRealizado) btnRealizado.classList.toggle('ativo', escolhido && !ativo);
+    if (btnNaoRealizado) btnNaoRealizado.classList.toggle('ativo', escolhido && ativo);
 
     const campoKm = tr.querySelector('.km-no-dia');
     const btnFoto = tr.querySelector('.km-add-foto');
@@ -642,6 +654,7 @@ async function onClickBotaoPagamento(e) {
     } else {
         pagamentoNaoRealizado[idx] = false;
     }
+    statusPagamentoEscolhido[idx] = true;
     atualizarUiPagamento(idx);
 }
 
