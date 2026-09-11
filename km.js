@@ -43,6 +43,13 @@ const travadosPorEnvioDoDia = new Set();
 // campo pode adicionar/remover/trocar à vontade ATÉ enviar; depois do
 // envio a linha trava e não dá mais pra mexer.
 const fotosPorLinha = {};
+// idx -> true quando o líder marcou "Pagamento não realizado" pro veículo
+// (não conseguiu abastecer/rodar por falta do pagamento do combustível).
+// Enquanto marcado, Km no Dia e Fotos deixam de ser obrigatórios.
+const pagamentoNaoRealizado = {};
+// idx -> motivo digitado no modal. Fica guardado mesmo se o líder
+// desmarcar e marcar de novo, pra não perder o que já escreveu.
+const motivoPagamentoNaoRealizado = {};
 
 // Lista por equipe ativa (a URL sempre tem ?lista=<slug>): { nome, localidades }.
 let listaAtiva = null;
@@ -178,7 +185,8 @@ function renderTabelas() {
                     <thead>
                         <tr>
                             <th>Placa</th><th>Proprietário</th><th>Km Atual</th>
-                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th>Observações</th><th></th>
+                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th>Observações</th>
+                            <th>⛽ Pagamento</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -196,10 +204,17 @@ function renderTabelas() {
                                     <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
                                 <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
+                                <td class="km-td-bloco" data-label="⛽ Pagamento">
+                                    <label class="km-chk-pagamento-label">
+                                        <input type="checkbox" class="km-chk-pagamento" data-idx="${idx}">
+                                        Pagamento não realizado
+                                    </label>
+                                    <div class="km-pagamento-motivo" data-idx="${idx}" style="display:none;"></div>
+                                </td>
                                 <td class="km-td-bloco km-td-acao"><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
                             </tr>
                             <tr class="km-erro-linha" id="km-erro-${idx}" style="display:none">
-                                <td colspan="8"><div class="km-erro-box"></div></td>
+                                <td colspan="9"><div class="km-erro-box"></div></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -214,6 +229,8 @@ function renderTabelas() {
         btn.closest('tr').querySelector('.km-foto').click();
     }));
     container.querySelectorAll('.km-btn-linha').forEach(btn => btn.addEventListener('click', () => enviarLinha(Number(btn.dataset.idx))));
+    container.querySelectorAll('.km-chk-pagamento').forEach(chk => chk.addEventListener('change', onChkPagamentoChange));
+    Object.keys(pagamentoNaoRealizado).forEach(idx => atualizarUiPagamento(Number(idx)));
 
     aplicarFiltros();
 }
@@ -353,6 +370,12 @@ function validarLinha(idx) {
     if (!responsavel) return 'Informe o "Responsável pelas Informações" antes de enviar.';
 
     const tr = document.getElementById(linhaId(idx));
+
+    // Pagamento não realizado: sem combustível pago, o líder pode não ter
+    // rodado o veículo nem conseguido fotografá-lo — Km no Dia e Fotos
+    // deixam de ser obrigatórios (o motivo já foi exigido no modal).
+    if (pagamentoNaoRealizado[idx]) return null;
+
     const kmNoDia = tr.querySelector('.km-no-dia').value;
     if (kmNoDia === '' || !Number.isFinite(Number(kmNoDia)) || Number(kmNoDia) < 0) {
         return `Veículo ${veiculos[idx].placa}: informe um "Km no Dia" válido (número maior ou igual a zero).`;
@@ -449,9 +472,10 @@ async function persistirLinha(idx) {
     const tr = document.getElementById(linhaId(idx));
     const dataISO = dataParaISO(document.getElementById('km-data').value);
     const responsavel = document.getElementById('km-responsavel').value.trim();
-    const kmNoDia = Number(tr.querySelector('.km-no-dia').value);
+    const naoPago = !!pagamentoNaoRealizado[idx];
+    const kmNoDia = naoPago ? null : Number(tr.querySelector('.km-no-dia').value);
     const observacoes = tr.querySelector('.km-obs').value.trim();
-    const arquivos = (fotosPorLinha[idx] || []).slice(0, MAX_FOTOS);
+    const arquivos = naoPago ? [] : (fotosPorLinha[idx] || []).slice(0, MAX_FOTOS);
 
     // As fotos entram na caixa de entrada com nome provisório; a
     // administração renomeia (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}) ao aceitar.
@@ -472,10 +496,12 @@ async function persistirLinha(idx) {
         nome_proprietario: v.nome_proprietario || null,
         km_atual: (v.km_atual === null || v.km_atual === undefined) ? null : Number(v.km_atual),
         km_no_dia: kmNoDia,
-        km_rodado: calcularKmRodado(v.km_atual, kmNoDia),
+        km_rodado: naoPago ? null : calcularKmRodado(v.km_atual, kmNoDia),
         veiculo_fotos_paths: caminhosFotos,
         observacoes: observacoes || null,
         responsavel_informacoes: responsavel,
+        pagamento_nao_realizado: naoPago,
+        motivo_pagamento_nao_realizado: naoPago ? (motivoPagamentoNaoRealizado[idx] || null) : null,
         status: 'pendente'
     });
     if (erroInsert) throw new Error('Falha ao enviar os dados do veículo: ' + erroInsert.message);
@@ -527,6 +553,90 @@ function garantirResponsavel() {
         input.addEventListener('keydown', onKey);
         modal.addEventListener('click', onBackdrop);
     });
+}
+
+// ---------- Pagamento não realizado ----------
+// Abre o modal pedindo o motivo do não pagamento do combustível. Resolve
+// true (e já grava motivoPagamentoNaoRealizado[idx]) se o líder confirmar
+// com um motivo preenchido, ou false se cancelar.
+function abrirModalMotivoPagamento(idx) {
+    const modal = document.getElementById('km-modal-pagamento');
+    const input = document.getElementById('km-modal-pagamento-motivo');
+    const erro = document.getElementById('km-modal-pagamento-erro');
+    const btnOk = document.getElementById('km-modal-pagamento-confirmar');
+    const btnCancelar = document.getElementById('km-modal-pagamento-cancelar');
+
+    input.value = motivoPagamentoNaoRealizado[idx] || '';
+    erro.style.display = 'none';
+    modal.classList.add('show');
+    setTimeout(() => input.focus(), 50);
+
+    return new Promise(resolve => {
+        function fechar(resultado) {
+            modal.classList.remove('show');
+            btnOk.removeEventListener('click', onOk);
+            btnCancelar.removeEventListener('click', onCancelar);
+            modal.removeEventListener('click', onBackdrop);
+            resolve(resultado);
+        }
+        function onOk() {
+            const motivo = input.value.trim();
+            if (!motivo) { erro.style.display = 'block'; input.focus(); return; }
+            motivoPagamentoNaoRealizado[idx] = motivo;
+            fechar(true);
+        }
+        function onCancelar() { fechar(false); }
+        function onBackdrop(e) { if (e.target === modal) onCancelar(); }
+        btnOk.addEventListener('click', onOk);
+        btnCancelar.addEventListener('click', onCancelar);
+        modal.addEventListener('click', onBackdrop);
+    });
+}
+
+// Reflete o estado do flag na linha: Km no Dia e Fotos deixam de ser
+// obrigatórios (campos desabilitados e limpos) enquanto marcado, e o
+// motivo aparece embaixo do checkbox com um link para editar.
+function atualizarUiPagamento(idx) {
+    const tr = document.getElementById(linhaId(idx));
+    if (!tr) return;
+    const ativo = !!pagamentoNaoRealizado[idx];
+
+    const chk = tr.querySelector('.km-chk-pagamento');
+    if (chk) chk.checked = ativo;
+
+    const campoKm = tr.querySelector('.km-no-dia');
+    const btnFoto = tr.querySelector('.km-add-foto');
+    if (campoKm) {
+        campoKm.disabled = ativo || !!enviados[idx];
+        if (ativo) { campoKm.value = ''; tr.querySelector('.km-rodado').textContent = '—'; }
+    }
+    if (btnFoto) btnFoto.disabled = (ativo || !!enviados[idx]) || (fotosPorLinha[idx] || []).length >= MAX_FOTOS;
+
+    const motivoBox = tr.querySelector('.km-pagamento-motivo');
+    if (motivoBox) {
+        if (ativo) {
+            motivoBox.style.display = 'block';
+            motivoBox.innerHTML = `<span class="km-pagamento-motivo-texto">Motivo: ${(motivoPagamentoNaoRealizado[idx] || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</span>` +
+                (enviados[idx] ? '' : ' <button type="button" class="km-pagamento-editar" data-idx="' + idx + '">editar</button>');
+            const btnEditar = motivoBox.querySelector('.km-pagamento-editar');
+            if (btnEditar) btnEditar.addEventListener('click', async () => { if (await abrirModalMotivoPagamento(idx)) atualizarUiPagamento(idx); });
+        } else {
+            motivoBox.style.display = 'none';
+            motivoBox.innerHTML = '';
+        }
+    }
+}
+
+async function onChkPagamentoChange(e) {
+    const idx = Number(e.target.dataset.idx);
+    if (e.target.checked) {
+        const confirmou = await abrirModalMotivoPagamento(idx);
+        if (!confirmou) { e.target.checked = false; return; }
+        pagamentoNaoRealizado[idx] = true;
+    } else {
+        pagamentoNaoRealizado[idx] = false;
+    }
+    atualizarUiPagamento(idx);
 }
 
 async function enviarLinha(idx) {

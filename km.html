@@ -72,6 +72,13 @@
         .km-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .km-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
 
+        .km-chk-pagamento-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: #92400e; white-space: nowrap; cursor: pointer; }
+        .km-chk-pagamento-label input { width: 16px; height: 16px; cursor: pointer; }
+        .km-pagamento-motivo { margin-top: 0.4rem; font-size: 0.8rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.4rem 0.55rem; max-width: 220px; }
+        .km-pagamento-motivo-texto { white-space: pre-wrap; word-break: break-word; }
+        .km-pagamento-editar { margin-left: 0.3rem; border: none; background: none; color: #b45309; font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0; }
+        html.km-layout-mobile td.km-td-bloco .km-pagamento-motivo { max-width: none; }
+
         /* ---------- Experiência no celular ----------
            No modo Celular a tabela deixa de rolar na horizontal: cada
            veículo vira um cartão com os campos empilhados. */
@@ -206,6 +213,27 @@
         </div>
     </div>
 
+    <div id="km-modal-pagamento" class="modal" role="dialog" aria-modal="true" aria-labelledby="km-modal-pagamento-titulo">
+        <div class="modal-content" style="max-width:460px;">
+            <div class="modal-header">
+                <h3 id="km-modal-pagamento-titulo" style="margin:0; font-size:1.1rem;">⛽ Pagamento não realizado</h3>
+            </div>
+            <p style="color:#64748b; font-size:0.88rem; margin-bottom:0.9rem;">
+                Explique por que o pagamento do combustível não foi realizado. Enquanto isso, não é
+                obrigatório informar o Km no Dia nem anexar fotos deste veículo.
+            </p>
+            <div class="form-group">
+                <label for="km-modal-pagamento-motivo">Motivo do não pagamento</label>
+                <textarea id="km-modal-pagamento-motivo" rows="3" maxlength="500" style="width:100%; font-size:16px; font:inherit; padding:0.5rem 0.6rem; border:1px solid #cbd5e1; border-radius:6px;" placeholder="Ex: voucher não liberado, CNPJ sem saldo, etc."></textarea>
+            </div>
+            <div id="km-modal-pagamento-erro" style="display:none; color:#b91c1c; font-size:0.85rem; margin-top:0.4rem;">Descreva o motivo para continuar.</div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="km-modal-pagamento-cancelar">Cancelar</button>
+                <button type="button" class="btn-primary" id="km-modal-pagamento-confirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Liga os botões do seletor de layout e guarda a escolha.
         (function () {
@@ -230,6 +258,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=12"></script>
+    <script src="km.js?v=13"></script>
 </body>
 </html>
