@@ -352,6 +352,8 @@ function configurarNavegacao() {
             document.getElementById(pageId).classList.add('active');
 
             title.textContent = link.textContent.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji_Presentation}/gu, '').trim();
+
+            if (pageId === 'relatorios') prepararTelaRelatorios();
         });
     });
 }
@@ -1447,6 +1449,261 @@ async function carregarVeiculos() {
     }).join('');
 
     aplicarFiltrosColuna('tabela-veiculos');
+}
+
+// ─── RELATÓRIOS ─────────────────────────────────────────────────────────
+// 5 relatórios gerenciais/de controle, espelhando os da plataforma
+// principal (app.js), mas usando só dados já expostos ao validador/admin:
+// cachePessoal (leitor_listar_pessoal()), cacheVeiculos e leituras_km —
+// esta última tem policy "to authenticated using(true)" (qualquer conta
+// logada no painel já lê), só faltava o painel buscar. Por decisão do
+// usuário, os relatórios "Gerencial por Localidade" mostram só
+// contagem/status documental, nunca valores de contrato ou pagamento.
+
+const ROTULO_FUNCAO_RELATORIO = { lider: 'Líder', multiplicador: 'Multiplicador', fiscalizacao: 'Fiscalização' };
+const SEM_LOCALIDADE_RELATORIO = 'Sem localidade fixa';
+
+let cacheLeiturasKm = [];
+let leiturasKmCarregadas = false;
+let relatoriosPreparados = false;
+
+async function garantirLeiturasKm() {
+    if (leiturasKmCarregadas) return;
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('leituras_km').select('*').order('veiculo_id', { ascending: true }).order('id', { ascending: true }).range(de, ate));
+    if (!error) { cacheLeiturasKm = data || []; leiturasKmCarregadas = true; }
+}
+
+// Preenche o multi-select de localidades do Controle de Km e já dispara o
+// carregamento de leituras_km em segundo plano — chamada ao abrir a aba
+// pela 1ª vez (idempotente).
+function prepararTelaRelatorios() {
+    if (relatoriosPreparados) return;
+    relatoriosPreparados = true;
+    const select = document.getElementById('rel-km-localidades');
+    const localidades = [...new Set((cacheVeiculos || []).map(v => v.localidade_atendimento).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    select.innerHTML = localidades.map(l => `<option value="${escaparHtml(l)}">${escaparHtml(l)}</option>`).join('');
+    garantirLeiturasKm();
+}
+
+// Cabeçalho preto + título dourado — mesmo estilo dos relatórios da
+// plataforma principal (app.js#gerarPdfRelatorioAgenda).
+function iniciarPdfRelatorio(titulo, orientacao = 'landscape') {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: orientacao, unit: 'mm', format: 'a4' });
+    const largura = doc.internal.pageSize.getWidth();
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, largura, 22, 'F');
+    doc.setTextColor(245, 183, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Painel de Consulta', largura / 2, 11, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`${titulo} — gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 19.5);
+    doc.setTextColor(0, 0, 0);
+    return doc;
+}
+
+function nomeArquivoRelatorio(prefixo, extensao) {
+    return `${prefixo}_${new Date().toISOString().slice(0, 10)}.${extensao}`;
+}
+
+// ── 1) Cadastro de Pessoal ───────────────────────────────────────────────
+const CABECALHO_RELATORIO_PESSOAL = ['Nome', 'CPF', 'Telefone', 'Função', 'Localidade', 'Coordenador', 'Jornada', 'Início', 'Fim'];
+
+function linhasRelatorioPessoal() {
+    return (cachePessoal || []).map(p => [
+        p.nome, mascararCPF(p.cpf), p.telefone || '—',
+        ROTULO_FUNCAO_RELATORIO[p.funcao] || p.funcao || '—',
+        p.local_prestacao || SEM_LOCALIDADE_RELATORIO, p.coordenador || '—',
+        p.jornada_trabalho || '—', formatarData(p.data_inicio), formatarData(p.data_fim)
+    ]);
+}
+
+function gerarRelatorioPessoalPdf() {
+    const doc = iniciarPdfRelatorio('Cadastro de Pessoal');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_RELATORIO_PESSOAL], body: linhasRelatorioPessoal(),
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] }
+    });
+    doc.save(nomeArquivoRelatorio('cadastro-pessoal', 'pdf'));
+}
+
+function gerarRelatorioPessoalExcel() {
+    const livro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet([CABECALHO_RELATORIO_PESSOAL, ...linhasRelatorioPessoal()]), 'Cadastro de Pessoal');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('cadastro-pessoal', 'xlsx'));
+}
+
+// ── 2) Cadastro de Veículos ──────────────────────────────────────────────
+const CABECALHO_RELATORIO_VEICULOS = ['Placa', 'Marca/Modelo', 'Proprietário', 'CNPJ Associado', 'Localidade'];
+
+function linhasRelatorioVeiculos() {
+    return (cacheVeiculos || []).map(v => [
+        v.placa, `${v.marca || ''} ${v.modelo || ''}`.trim() || '—',
+        v.nome_proprietario || '—', v.cnpj_associado || '—', v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO
+    ]);
+}
+
+function gerarRelatorioVeiculosPdf() {
+    const doc = iniciarPdfRelatorio('Cadastro de Veículos');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_RELATORIO_VEICULOS], body: linhasRelatorioVeiculos(),
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] }
+    });
+    doc.save(nomeArquivoRelatorio('cadastro-veiculos', 'pdf'));
+}
+
+function gerarRelatorioVeiculosExcel() {
+    const livro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet([CABECALHO_RELATORIO_VEICULOS, ...linhasRelatorioVeiculos()]), 'Cadastro de Veículos');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('cadastro-veiculos', 'xlsx'));
+}
+
+// ── 3) Gerencial de Pessoal por Localidade ───────────────────────────────
+const CABECALHO_GERENCIAL_PESSOAL = ['Localidade', 'Líderes', 'Multiplicadores', 'Fiscalização', 'Total', 'Contrato assinado', 'Pendente'];
+const linhaGerencialPessoal = g => [g.localidade, g.lider, g.multiplicador, g.fiscalizacao, g.total, g.comContrato, g.semContrato];
+
+function dadosGerencialPessoal() {
+    const grupos = {};
+    (cachePessoal || []).forEach(p => {
+        const loc = p.local_prestacao || SEM_LOCALIDADE_RELATORIO;
+        const g = grupos[loc] || (grupos[loc] = { localidade: loc, lider: 0, multiplicador: 0, fiscalizacao: 0, total: 0, comContrato: 0, semContrato: 0 });
+        g.total++;
+        if (g[p.funcao] !== undefined) g[p.funcao]++;
+        if (p.contrato_url) g.comContrato++; else g.semContrato++;
+    });
+    const linhas = Object.values(grupos).sort((a, b) => a.localidade.localeCompare(b.localidade, 'pt-BR'));
+    const totais = linhas.reduce((t, g) => ({
+        lider: t.lider + g.lider, multiplicador: t.multiplicador + g.multiplicador, fiscalizacao: t.fiscalizacao + g.fiscalizacao,
+        total: t.total + g.total, comContrato: t.comContrato + g.comContrato, semContrato: t.semContrato + g.semContrato
+    }), { lider: 0, multiplicador: 0, fiscalizacao: 0, total: 0, comContrato: 0, semContrato: 0 });
+    return { linhas, totais };
+}
+
+function gerarRelatorioGerencialPessoalPdf() {
+    const { linhas, totais } = dadosGerencialPessoal();
+    const doc = iniciarPdfRelatorio('Gerencial de Pessoal por Localidade');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_GERENCIAL_PESSOAL],
+        body: [...linhas.map(linhaGerencialPessoal), ['Total geral', totais.lider, totais.multiplicador, totais.fiscalizacao, totais.total, totais.comContrato, totais.semContrato]],
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] }
+    });
+    doc.save(nomeArquivoRelatorio('gerencial-pessoal-localidade', 'pdf'));
+}
+
+function gerarRelatorioGerencialPessoalExcel() {
+    const { linhas, totais } = dadosGerencialPessoal();
+    const livro = XLSX.utils.book_new();
+    const aoa = [CABECALHO_GERENCIAL_PESSOAL, ...linhas.map(linhaGerencialPessoal), ['Total geral', totais.lider, totais.multiplicador, totais.fiscalizacao, totais.total, totais.comContrato, totais.semContrato]];
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aoa), 'Gerencial Pessoal');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('gerencial-pessoal-localidade', 'xlsx'));
+}
+
+// ── 4) Gerencial de Veículos por Localidade ──────────────────────────────
+const CABECALHO_GERENCIAL_VEICULOS = ['Localidade', 'Qtde. Veículos', 'Com CRLV', 'Com Termo de Cessão assinado'];
+const linhaGerencialVeiculos = g => [g.localidade, g.total, g.comCrlv, g.comTermo];
+
+function dadosGerencialVeiculos() {
+    const grupos = {};
+    (cacheVeiculos || []).forEach(v => {
+        const loc = v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO;
+        const g = grupos[loc] || (grupos[loc] = { localidade: loc, total: 0, comCrlv: 0, comTermo: 0 });
+        g.total++;
+        if (v.documento_url) g.comCrlv++;
+        if (v.termo_cessao_url) g.comTermo++;
+    });
+    const linhas = Object.values(grupos).sort((a, b) => a.localidade.localeCompare(b.localidade, 'pt-BR'));
+    const totais = linhas.reduce((t, g) => ({ total: t.total + g.total, comCrlv: t.comCrlv + g.comCrlv, comTermo: t.comTermo + g.comTermo }), { total: 0, comCrlv: 0, comTermo: 0 });
+    return { linhas, totais };
+}
+
+function gerarRelatorioGerencialVeiculosPdf() {
+    const { linhas, totais } = dadosGerencialVeiculos();
+    const doc = iniciarPdfRelatorio('Gerencial de Veículos por Localidade');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_GERENCIAL_VEICULOS],
+        body: [...linhas.map(linhaGerencialVeiculos), ['Total geral', totais.total, totais.comCrlv, totais.comTermo]],
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] }
+    });
+    doc.save(nomeArquivoRelatorio('gerencial-veiculos-localidade', 'pdf'));
+}
+
+function gerarRelatorioGerencialVeiculosExcel() {
+    const { linhas, totais } = dadosGerencialVeiculos();
+    const livro = XLSX.utils.book_new();
+    const aoa = [CABECALHO_GERENCIAL_VEICULOS, ...linhas.map(linhaGerencialVeiculos), ['Total geral', totais.total, totais.comCrlv, totais.comTermo]];
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aoa), 'Gerencial Veículos');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('gerencial-veiculos-localidade', 'xlsx'));
+}
+
+// ── 5) Controle de Km ────────────────────────────────────────────────────
+const CABECALHO_CONTROLE_KM = ['Localidade', 'Placa', 'Veículo', 'Proprietário', 'Última leitura', 'Km aferido', 'Km rodado', 'Situação'];
+const linhaControleKm = l => [
+    l.localidade, l.placa, l.veiculo, l.proprietario,
+    l.data ? formatarData(l.data) : '—', l.kmAferido != null ? l.kmAferido : '—',
+    l.kmRodado != null ? l.kmRodado : '—', l.semLeitura ? 'SEM LEITURA' : 'OK'
+];
+
+function localidadesSelecionadasKm() {
+    return Array.from(document.getElementById('rel-km-localidades').selectedOptions).map(o => o.value);
+}
+
+// Espelha app.js#leiturasKmComRodado / #ultimaLeituraKmDoVeiculo: percorre
+// as leituras em ordem cronológica por veículo pra calcular o km rodado
+// (delta desde a leitura anterior) e guarda a mais recente de cada um.
+function dadosControleKm(localidadesFiltro) {
+    const filtroSet = localidadesFiltro.length ? new Set(localidadesFiltro) : null;
+    const veiculos = (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento));
+
+    const ordenadas = [...cacheLeiturasKm].sort((a, b) => (a.data !== b.data ? (a.data < b.data ? -1 : 1) : (a.id || 0) - (b.id || 0)));
+    const anteriorPorVeiculo = {};
+    const ultimaPorVeiculo = {};
+    ordenadas.forEach(l => {
+        const anterior = anteriorPorVeiculo[l.veiculo_id];
+        l._kmRodado = anterior != null ? Number(l.km_aferido) - anterior : null;
+        anteriorPorVeiculo[l.veiculo_id] = Number(l.km_aferido);
+        if (!ultimaPorVeiculo[l.veiculo_id] || l.data >= ultimaPorVeiculo[l.veiculo_id].data) ultimaPorVeiculo[l.veiculo_id] = l;
+    });
+
+    return veiculos.map(v => {
+        const ultima = ultimaPorVeiculo[v.id];
+        return {
+            placa: v.placa, veiculo: `${v.marca || ''} ${v.modelo || ''}`.trim() || '—',
+            proprietario: v.nome_proprietario || '—', localidade: v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO,
+            data: ultima ? ultima.data : null, kmAferido: ultima ? Number(ultima.km_aferido) : null,
+            kmRodado: ultima ? ultima._kmRodado : null, semLeitura: !ultima
+        };
+    }).sort((a, b) => a.localidade.localeCompare(b.localidade, 'pt-BR') || a.placa.localeCompare(b.placa, 'pt-BR'));
+}
+
+async function gerarRelatorioKmPdf() {
+    await garantirLeiturasKm();
+    const linhas = dadosControleKm(localidadesSelecionadasKm());
+    if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
+    const doc = iniciarPdfRelatorio('Controle de Km');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_CONTROLE_KM], body: linhas.map(linhaControleKm),
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] },
+        didParseCell: (dados) => {
+            if (dados.section === 'body' && linhas[dados.row.index] && linhas[dados.row.index].semLeitura) {
+                dados.cell.styles.textColor = [180, 0, 0];
+            }
+        }
+    });
+    doc.save(nomeArquivoRelatorio('controle-km', 'pdf'));
+}
+
+async function gerarRelatorioKmExcel() {
+    await garantirLeiturasKm();
+    const linhas = dadosControleKm(localidadesSelecionadasKm());
+    if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
+    const livro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]), 'Controle de Km');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('controle-km', 'xlsx'));
 }
 
 // ─── CONSULTA RÁPIDA ────────────────────────────────────────────────────

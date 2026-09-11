@@ -21,6 +21,7 @@
                 <a href="#multiplicadores" class="nav-link" data-page="multiplicadores" id="nav-multiplicadores" style="display:none;">🧑‍🤝‍🧑 Multiplicadores</a>
                 <a href="#pessoal" class="nav-link" data-page="pessoal">👤 Cadastro de Pessoal</a>
                 <a href="#veiculos" class="nav-link" data-page="veiculos">🚗 Cadastro de Veículos</a>
+                <a href="#relatorios" class="nav-link" data-page="relatorios">📊 Relatórios</a>
             </nav>
 
             <div class="sidebar-footer">
@@ -169,6 +170,57 @@
                         </table>
                     </div>
                 </section>
+
+                <section id="relatorios" class="page">
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">👤 Cadastro de Pessoal</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Listagem completa das pessoas cadastradas.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioPessoalPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioPessoalExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">🚗 Cadastro de Veículos</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Listagem completa dos veículos cadastrados.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioVeiculosPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioVeiculosExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">📋 Gerencial de Pessoal por Localidade</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Quantidade por função e controle documental (contrato assinado), agrupado por localidade. Sem valores financeiros.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialPessoalPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialPessoalExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">📋 Gerencial de Veículos por Localidade</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Quantidade e controle documental (CRLV / Termo de Cessão), agrupado por localidade. Sem valores financeiros.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialVeiculosPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialVeiculosExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">🛣️ Controle de Km</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Selecione as localidades (opcional — nenhuma marcada = todas) e gere a situação de leitura de cada veículo.</p>
+                        <div class="form-group" style="max-width:320px; margin-bottom:1rem;">
+                            <label for="rel-km-localidades">Localidades</label>
+                            <select id="rel-km-localidades" multiple size="8" style="width:100%;"></select>
+                        </div>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioKmPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioKmExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -257,6 +309,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="config.js"></script>
     <script src="pdfDocumentos.js"></script>
     <script src="painel.js"></script>
