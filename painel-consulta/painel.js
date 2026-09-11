@@ -455,13 +455,6 @@ function podeEditarCadastro() {
     return meuPapel === 'master' || meuPapel === 'admin';
 }
 
-// Gestão de Líderes (busca + edição + exclusão em cascata) é só para
-// 'master' — pedido explícito do usuário, nem 'admin' comum do painel vê
-// esta aba (a RLS de DELETE também só libera eh_master()).
-function ehMaster() {
-    return meuPapel === 'master';
-}
-
 // Perfil 'leitor' fica restrito a Consulta Rápida e Formulários — as demais
 // telas (Cadastro Rápido, Multiplicadores, Pessoal, Veículos) somem da
 // navegação. 'validador', 'master' e 'admin' continuam vendo tudo.
@@ -2310,10 +2303,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // admin) — mesma regra do botão "Validar" nas outras telas.
     const podeVerMultiplicadores = possoValidarFormularios();
     document.getElementById('nav-multiplicadores').style.display = podeVerMultiplicadores ? '' : 'none';
-    // Gestão de Líderes é só para master — nem admin/validador comuns veem
-    // (pedido explícito do usuário), diferente de "editar cadastro" que
-    // também vale pra admin.
-    document.getElementById('nav-gestao-lideres').style.display = ehMaster() ? '' : 'none';
+    // Gestão de Líderes é para master e admin (validador/leitor comuns não
+    // veem) — mesma regra de podeEditarCadastro().
+    document.getElementById('nav-gestao-lideres').style.display = podeEditarCadastro() ? '' : 'none';
     // Pessoal carrega antes de Formulários/Multiplicadores: validar um
     // veículo/multiplicador precisa da lista de líderes já em cachePessoal
     // pra casar o proprietário/líder. Pessoal + Veículos também alimentam a
