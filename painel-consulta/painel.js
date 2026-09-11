@@ -413,6 +413,7 @@ function configurarNavegacao() {
             title.textContent = link.textContent.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji_Presentation}/gu, '').trim();
 
             if (pageId === 'relatorios') prepararTelaRelatorios();
+            if (pageId === 'gestao-lideres') { prepararFiltrosGestaoLideres(); renderizarGestaoLideres(); }
         });
     });
 }
@@ -452,6 +453,13 @@ function possoValidarFormularios() {
 // aparece na tela.
 function podeEditarCadastro() {
     return meuPapel === 'master' || meuPapel === 'admin';
+}
+
+// Gestão de Líderes (busca + edição + exclusão em cascata) é só para
+// 'master' — pedido explícito do usuário, nem 'admin' comum do painel vê
+// esta aba (a RLS de DELETE também só libera eh_master()).
+function ehMaster() {
+    return meuPapel === 'master';
 }
 
 // Perfil 'leitor' fica restrito a Consulta Rápida e Formulários — as demais
@@ -1705,6 +1713,201 @@ async function salvarEdicaoVeiculo(botao) {
     await carregarVeiculos();
 }
 
+// ─── GESTÃO DE LÍDERES (perfil master) ──────────────────────────────────
+// Só master vê esta aba (nav-gestao-lideres escondido para os demais no
+// DOMContentLoaded) — busca líderes por nome/CPF/localidade/coordenador,
+// mostra os multiplicadores e o(s) veículo(s) vinculados (lider_id) e deixa
+// editar (reaproveita abrirModalEditarPessoal/abrirModalEditarVeiculo) ou
+// excluir. Excluir o líder apaga em cascata multiplicadores + veículos
+// vinculados — nunca lançamentos financeiros (o painel nem lê essa
+// tabela). Espelha app.js#excluirLiderComDependentes da plataforma
+// principal; aqui, depois de excluir, recarrega Pessoal/Veículos do zero
+// (carregarPessoal/carregarVeiculos) em vez de corrigir o cache na mão —
+// já resolve sozinho qualquer falha parcial no meio da cascata.
+
+function normalizarBuscaTexto(v) {
+    return String(v == null ? '' : v)
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .toLowerCase().trim();
+}
+
+function prepararFiltrosGestaoLideres() {
+    const lideres = (cachePessoal || []).filter(p => p.funcao === 'lider');
+    const localidades = [...new Set(lideres.map(p => p.local_prestacao).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const coordenadores = [...new Set(lideres.map(p => p.coordenador).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    const selLoc = document.getElementById('gl-localidade');
+    const valorLocAtual = selLoc.value;
+    selLoc.innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${escaparHtml(l)}">${escaparHtml(l)}</option>`).join('');
+    if (localidades.includes(valorLocAtual)) selLoc.value = valorLocAtual;
+
+    const selCoord = document.getElementById('gl-coordenador');
+    const valorCoordAtual = selCoord.value;
+    selCoord.innerHTML = '<option value="">Todos</option>' + coordenadores.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
+    if (coordenadores.includes(valorCoordAtual)) selCoord.value = valorCoordAtual;
+}
+
+function limparFiltrosGestaoLideres() {
+    document.getElementById('gl-busca').value = '';
+    document.getElementById('gl-localidade').value = '';
+    document.getElementById('gl-coordenador').value = '';
+    renderizarGestaoLideres();
+}
+
+function renderizarGestaoLideres() {
+    const container = document.getElementById('gestao-lideres-lista');
+    if (!container) return;
+
+    const busca = normalizarBuscaTexto(document.getElementById('gl-busca').value);
+    const buscaDigitos = apenasDigitos(document.getElementById('gl-busca').value);
+    const localidade = document.getElementById('gl-localidade').value;
+    const coordenador = document.getElementById('gl-coordenador').value;
+
+    let lideres = (cachePessoal || []).filter(p => p.funcao === 'lider');
+    if (busca) {
+        lideres = lideres.filter(p =>
+            normalizarBuscaTexto(p.nome).includes(busca) ||
+            (buscaDigitos && apenasDigitos(p.cpf).includes(buscaDigitos)));
+    }
+    if (localidade) lideres = lideres.filter(p => p.local_prestacao === localidade);
+    if (coordenador) lideres = lideres.filter(p => p.coordenador === coordenador);
+    lideres = lideres.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+
+    document.getElementById('gl-contagem').textContent =
+        `${lideres.length} líder(es) encontrado(s) de ${(cachePessoal || []).filter(p => p.funcao === 'lider').length} no total.`;
+
+    if (!lideres.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:2rem; text-align:center;">Nenhum líder encontrado com esses filtros.</p>';
+        return;
+    }
+
+    container.innerHTML = lideres.map(lider => {
+        const multiplicadores = (cachePessoal || [])
+            .filter(p => p.lider_id === lider.id)
+            .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+        const veiculosDoLider = (cacheVeiculos || [])
+            .filter(v => v.lider_id === lider.id)
+            .sort((a, b) => String(a.placa).localeCompare(String(b.placa), 'pt-BR'));
+
+        const linhasMultiplicador = multiplicadores.map(m => `
+            <tr>
+                <td>${escaparHtml(m.nome)}</td>
+                <td>${escaparHtml(mascararCPF(m.cpf))}</td>
+                <td>${escaparHtml(m.telefone || '—')}</td>
+                <td>
+                    <button class="btn-icon" onclick="abrirModalEditarPessoal(${m.id})" title="Editar">✏️</button>
+                    <button class="btn-icon" onclick="excluirMultiplicadorGestaoLideres(${m.id})" title="Excluir">🗑️</button>
+                </td>
+            </tr>`).join('');
+
+        const linhasVeiculo = veiculosDoLider.map(v => `
+            <tr>
+                <td>${escaparHtml(v.placa)}</td>
+                <td>${escaparHtml([v.marca, v.modelo].filter(Boolean).join(' ') || '—')}</td>
+                <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
+                <td>
+                    <button class="btn-icon" onclick="abrirModalEditarVeiculo(${v.id})" title="Editar">✏️</button>
+                    <button class="btn-icon" onclick="excluirVeiculoGestaoLideres(${v.id})" title="Excluir">🗑️</button>
+                </td>
+            </tr>`).join('');
+
+        return `
+        <div class="table-container" style="padding:1.5rem; margin-bottom:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+                <div>
+                    <h3 style="margin:0;">${escaparHtml(lider.nome)}</h3>
+                    <p class="text-muted" style="margin:0.25rem 0 0;">
+                        CPF ${escaparHtml(mascararCPF(lider.cpf))}
+                        · ${escaparHtml(lider.local_prestacao || 'sem localidade')}
+                        ${lider.coordenador ? ` · Coordenador: ${escaparHtml(lider.coordenador)}` : ''}
+                        ${lider.telefone ? ` · ${escaparHtml(lider.telefone)}` : ''}
+                    </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button class="btn-secondary" onclick="abrirModalEditarPessoal(${lider.id})">✏️ Editar Líder</button>
+                    <button class="btn-danger" onclick="excluirLiderComDependentesGestaoLideres(${lider.id})">🗑️ Excluir Líder</button>
+                </div>
+            </div>
+
+            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
+            ${multiplicadores.length ? `
+            <table class="table-data">
+                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
+                <tbody>${linhasMultiplicador}</tbody>
+            </table>` : '<p class="text-muted">Nenhum multiplicador vinculado.</p>'}
+
+            <h4 style="margin:1.25rem 0 0.5rem; font-size:0.95rem;">🚗 Veículo(s) (${veiculosDoLider.length})</h4>
+            ${veiculosDoLider.length ? `
+            <table class="table-data">
+                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Ações</th></tr></thead>
+                <tbody>${linhasVeiculo}</tbody>
+            </table>` : '<p class="text-muted">Nenhum veículo vinculado.</p>'}
+        </div>`;
+    }).join('');
+}
+
+async function excluirMultiplicadorGestaoLideres(id) {
+    const m = cachePessoal.find(x => x.id === id);
+    if (!m) return;
+    if (!confirm(`Excluir ${m.nome}? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabaseClient.from('pessoal_contratado').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    await carregarPessoal();
+    renderizarGestaoLideres();
+}
+
+async function excluirVeiculoGestaoLideres(id) {
+    const v = cacheVeiculos.find(x => x.id === id);
+    if (!v) return;
+    if (!confirm(`Excluir o veículo ${v.placa}? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabaseClient.from('veiculos').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    await carregarVeiculos();
+    renderizarGestaoLideres();
+}
+
+// Exclui o líder E, em cascata, todos os multiplicadores e veículos
+// vinculados a ele — nunca lançamentos financeiros. Pede confirmação com a
+// lista do que será apagado, e uma segunda confirmação quando há
+// dependentes.
+async function excluirLiderComDependentesGestaoLideres(liderId) {
+    const lider = cachePessoal.find(p => p.id === liderId);
+    if (!lider) return;
+    const multiplicadores = cachePessoal.filter(p => p.lider_id === liderId);
+    const veiculosDoLider = cacheVeiculos.filter(v => v.lider_id === liderId);
+
+    const itensDependentes = [
+        ...multiplicadores.map(m => `• ${m.nome} (multiplicador)`),
+        ...veiculosDoLider.map(v => `• ${v.placa} (veículo)`)
+    ];
+
+    const mensagem = itensDependentes.length
+        ? `Excluir o líder ${lider.nome}?\n\nISSO TAMBÉM VAI EXCLUIR:\n${itensDependentes.join('\n')}\n\nEsta ação não pode ser desfeita.`
+        : `Excluir o líder ${lider.nome}? Esta ação não pode ser desfeita.`;
+    if (!confirm(mensagem)) return;
+    if (itensDependentes.length && !confirm(`Confirme mais uma vez: apagar ${lider.nome} junto com ${multiplicadores.length} multiplicador(es) e ${veiculosDoLider.length} veículo(s)?`)) return;
+
+    let erroOcorrido = null;
+    for (const v of veiculosDoLider) {
+        const { error } = await supabaseClient.from('veiculos').delete().eq('id', v.id);
+        if (error) { erroOcorrido = `Veículo ${v.placa}: ${error.message}`; break; }
+    }
+    if (!erroOcorrido) {
+        for (const m of multiplicadores) {
+            const { error } = await supabaseClient.from('pessoal_contratado').delete().eq('id', m.id);
+            if (error) { erroOcorrido = `Multiplicador ${m.nome}: ${error.message}`; break; }
+        }
+    }
+    if (!erroOcorrido) {
+        const { error } = await supabaseClient.from('pessoal_contratado').delete().eq('id', liderId);
+        if (error) erroOcorrido = error.message;
+    }
+    if (erroOcorrido) alert('Erro ao excluir: ' + erroOcorrido + '\n\nOs registros já apagados até aqui não voltam — confira a tela antes de tentar de novo.');
+
+    await Promise.all([carregarPessoal(), carregarVeiculos()]);
+    renderizarGestaoLideres();
+}
+
 // ─── RELATÓRIOS ─────────────────────────────────────────────────────────
 // 5 relatórios gerenciais/de controle, espelhando os da plataforma
 // principal (app.js), mas usando só dados já expostos ao validador/admin:
@@ -2107,6 +2310,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // admin) — mesma regra do botão "Validar" nas outras telas.
     const podeVerMultiplicadores = possoValidarFormularios();
     document.getElementById('nav-multiplicadores').style.display = podeVerMultiplicadores ? '' : 'none';
+    // Gestão de Líderes é só para master — nem admin/validador comuns veem
+    // (pedido explícito do usuário), diferente de "editar cadastro" que
+    // também vale pra admin.
+    document.getElementById('nav-gestao-lideres').style.display = ehMaster() ? '' : 'none';
     // Pessoal carrega antes de Formulários/Multiplicadores: validar um
     // veículo/multiplicador precisa da lista de líderes já em cachePessoal
     // pra casar o proprietário/líder. Pessoal + Veículos também alimentam a

@@ -22,6 +22,7 @@
                 <a href="#pessoal" class="nav-link" data-page="pessoal">👤 Cadastro de Pessoal</a>
                 <a href="#veiculos" class="nav-link" data-page="veiculos">🚗 Cadastro de Veículos</a>
                 <a href="#relatorios" class="nav-link" data-page="relatorios">📊 Relatórios</a>
+                <a href="#gestao-lideres" class="nav-link" data-page="gestao-lideres" id="nav-gestao-lideres" style="display:none;">🧑‍✈️ Gestão de Líderes</a>
             </nav>
 
             <div class="sidebar-footer">
@@ -169,6 +170,33 @@
                             <tbody id="veiculos-body"></tbody>
                         </table>
                     </div>
+                </section>
+
+                <section id="gestao-lideres" class="page">
+                    <div class="table-container" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem;">
+                        <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+                            <div class="form-group" style="flex:2; min-width:220px; margin-bottom:0;">
+                                <label for="gl-busca">Buscar líder (nome ou CPF)</label>
+                                <input type="text" id="gl-busca" placeholder="Digite o nome ou CPF..." oninput="renderizarGestaoLideres()">
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+                                <label for="gl-localidade">Localidade</label>
+                                <select id="gl-localidade" onchange="renderizarGestaoLideres()">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+                                <label for="gl-coordenador">Coordenador</label>
+                                <select id="gl-coordenador" onchange="renderizarGestaoLideres()">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-secondary" onclick="limparFiltrosGestaoLideres()">Limpar filtros</button>
+                        </div>
+                        <p id="gl-contagem" class="text-muted" style="margin:0.75rem 0 0;"></p>
+                    </div>
+
+                    <div id="gestao-lideres-lista"></div>
                 </section>
 
                 <section id="relatorios" class="page">
