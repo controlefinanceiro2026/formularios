@@ -1857,13 +1857,11 @@ function renderizarGestaoLideres() {
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn-secondary" onclick="abrirModalEditarPessoal(${lider.id})">✏️ Editar Líder</button>
                     <button class="btn-danger" onclick="excluirLiderComDependentesGestaoLideres(${lider.id})">🗑️ Excluir Líder</button>
+                    <button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
                 </div>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin:1rem 0 0.5rem;">
-                <h4 style="margin:0; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
-                <button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
-            </div>
+            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
             ${multiplicadores.length ? `
             <table class="table-data">
                 <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
