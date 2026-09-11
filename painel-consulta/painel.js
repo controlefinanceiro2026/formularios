@@ -20,6 +20,65 @@ function apenasDigitos(valor) {
     return String(valor == null ? '' : valor).replace(/\D/g, '');
 }
 
+// Máscaras de edição (Cadastro de Pessoal/Veículos, perfil master) —
+// mesmas funções de app.js, reimplementadas aqui porque este site não
+// carrega app.js. Mantenha em sincronia se mudarem lá.
+function mascararTelefone(valor) {
+    const digitos = apenasDigitos(valor).slice(0, 11);
+    if (digitos.length <= 10) return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+    return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+}
+
+function mascararCEP(valor) {
+    return apenasDigitos(valor).slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2');
+}
+
+function mascararCNPJ(valor) {
+    return apenasDigitos(valor).slice(0, 14)
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+function mascararMoeda(valor) {
+    let digitos = apenasDigitos(valor).replace(/^0+(?=\d)/, '');
+    if (!digitos) return '';
+    digitos = digitos.padStart(3, '0');
+    const centavos = digitos.slice(-2);
+    const inteiro = digitos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `R$ ${inteiro},${centavos}`;
+}
+
+// Inverso de mascararMoeda — "R$ 1.234,56" -> 1234.56.
+function valorMoedaParaNumero(valorMascarado) {
+    const digitos = apenasDigitos(valorMascarado);
+    if (!digitos) return null;
+    return parseInt(digitos, 10) / 100;
+}
+
+// Máscara de data — insere as barras enquanto digita (DD/MM/AAAA).
+function mascararData(valor) {
+    const digitos = apenasDigitos(valor).slice(0, 8);
+    if (digitos.length <= 2) return digitos;
+    if (digitos.length <= 4) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+    return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+}
+
+// "DD/MM/AAAA" -> "AAAA-MM-DD" (formato do banco). '' se incompleta.
+function dataParaISO(valorMascarado) {
+    const m = String(valorMascarado || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return '';
+    return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+// Inverso de dataParaISO — preenche um campo a partir de "AAAA-MM-DD".
+function isoParaData(valorISO) {
+    const m = String(valorISO || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 // Placa sem separadores, maiúsculas, no máximo 7 caracteres — cobre os dois
 // padrões (cinza AAA9999 e Mercosul AAA9A99). Mesma normalização usada pra
 // comparar placas e pra "mascarar" o campo de busca.
@@ -380,13 +439,24 @@ async function carregarPapel() {
     meuPapel = data ? data.papel : null;
 }
 
+// 'master' tem tudo que 'validador' tem (Formulários, Cadastro Rápido,
+// Multiplicadores, validar pré-cadastros) + edita Pessoal/Veículos — ver
+// [[project_painel_perfil_master]].
 function possoValidarFormularios() {
-    return meuPapel === 'validador' || meuPapel === 'admin';
+    return meuPapel === 'validador' || meuPapel === 'master' || meuPapel === 'admin';
+}
+
+// Só 'master' (e 'admin', que já tem acesso total pela plataforma
+// principal) vê o botão "Editar" em Pessoal/Veículos. A RLS (policies
+// "master edita pessoal/veiculos") é a trava real — isto só decide o que
+// aparece na tela.
+function podeEditarCadastro() {
+    return meuPapel === 'master' || meuPapel === 'admin';
 }
 
 // Perfil 'leitor' fica restrito a Consulta Rápida e Formulários — as demais
 // telas (Cadastro Rápido, Multiplicadores, Pessoal, Veículos) somem da
-// navegação. 'validador' e 'admin' continuam vendo tudo.
+// navegação. 'validador', 'master' e 'admin' continuam vendo tudo.
 const TELAS_PERMITIDAS_LEITOR = ['consulta-rapida', 'formularios'];
 
 function ehLeitor() {
@@ -1410,7 +1480,10 @@ async function carregarPessoal() {
                 ${caminhoComprovanteResidencia ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-pessoal','${caminhoComprovanteResidencia}','Comprovante de Residência — ${escaparHtml(p.nome)}')" title="Ver comprovante de residência">🏠</button>` : ''}
                 ${!caminhoContrato && !caminhoComprovanteCpf && !caminhoComprovanteResidencia ? '<span style="color:#cbd5e1;">—</span>' : ''}
             </td>
-            <td><button class="btn-icon" onclick="gerarContratoPessoal(cachePessoal.find(x => x.id === ${p.id}))" title="${caminhoContrato ? 'Ver contrato assinado' : 'Gerar Contrato de Prestação de Serviços'}">📄</button></td>
+            <td>
+                <button class="btn-icon" onclick="gerarContratoPessoal(cachePessoal.find(x => x.id === ${p.id}))" title="${caminhoContrato ? 'Ver contrato assinado' : 'Gerar Contrato de Prestação de Serviços'}">📄</button>
+                ${podeEditarCadastro() ? `<button class="btn-icon" onclick="abrirModalEditarPessoal(${p.id})" title="Editar cadastro">✏️</button>` : ''}
+            </td>
         </tr>`;
     }).join('');
 
@@ -1444,11 +1517,192 @@ async function carregarVeiculos() {
             <td>${escaparHtml(v.localidade_atendimento)}</td>
             <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
             <td>${botoesDoc || '<span style="color:#cbd5e1;">—</span>'}</td>
-            <td><button class="btn-icon" onclick="gerarTermoCessaoVeiculo(cacheVeiculos.find(x => x.id === ${v.id}))" title="Gerar Termo de Cessão (modelo em branco)">📄</button></td>
+            <td>
+                <button class="btn-icon" onclick="gerarTermoCessaoVeiculo(cacheVeiculos.find(x => x.id === ${v.id}))" title="Gerar Termo de Cessão (modelo em branco)">📄</button>
+                ${podeEditarCadastro() ? `<button class="btn-icon" onclick="abrirModalEditarVeiculo(${v.id})" title="Editar cadastro">✏️</button>` : ''}
+            </td>
         </tr>`;
     }).join('');
 
     aplicarFiltrosColuna('tabela-veiculos');
+}
+
+// ─── EDIÇÃO DE CADASTRO (perfil master) ────────────────────────────────
+// Master edita qualquer campo já existente de Pessoal e Veículos direto
+// pelas telas de Cadastro do painel — a RLS ("master edita
+// pessoal/veiculos", ver supabase/migracao-painel-perfil-master.sql) é a
+// trava real; podeEditarCadastro() só decide o que aparece na tela. Não
+// inclui upload/substituição de documentos (contrato, CRLV, termo de
+// cessão) nem as datas personalizadas de pagamento — isso continua só
+// pela plataforma principal.
+
+// Localidades já vistas em Pessoal/Veículos — datalist de apoio (texto
+// livre, não select: o painel não carrega a lista oficial de 33 RAs).
+function localidadesConhecidas() {
+    const vistas = new Set();
+    (cachePessoal || []).forEach(p => { if (p.local_prestacao) vistas.add(p.local_prestacao); });
+    (cacheVeiculos || []).forEach(v => { if (v.localidade_atendimento) vistas.add(v.localidade_atendimento); });
+    return [...vistas].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function preencherDatalistLocalidades(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = localidadesConhecidas().map(l => `<option value="${escaparHtml(l)}"></option>`).join('');
+}
+
+// pessoaIdExcluir: não lista a própria pessoa como líder dela mesma.
+function preencherSelectLideres(id, liderIdAtual, pessoaIdExcluir) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const lideres = (cachePessoal || [])
+        .filter(p => p.funcao === 'lider' && p.id !== pessoaIdExcluir)
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    select.innerHTML = '<option value="">— Nenhum —</option>' +
+        lideres.map(l => `<option value="${l.id}">${escaparHtml(l.nome)}</option>`).join('');
+    select.value = liderIdAtual != null ? String(liderIdAtual) : '';
+}
+
+// ── Editar Pessoal ───────────────────────────────────────────────────────
+function atualizarVisibilidadeCamposEdicaoPessoal() {
+    document.getElementById('ep-lider-grupo').style.display = document.getElementById('ep-funcao').value === 'multiplicador' ? 'block' : 'none';
+    document.getElementById('ep-chave-pix-grupo').style.display = document.getElementById('ep-forma-pagamento').value === 'pix' ? 'block' : 'none';
+    document.getElementById('ep-personalizado-aviso').style.display = document.getElementById('ep-periodicidade').value === 'personalizado' ? 'inline' : 'none';
+}
+
+function abrirModalEditarPessoal(id) {
+    const p = cachePessoal.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('ep-id').value = p.id;
+    document.getElementById('ep-nome').value = p.nome || '';
+    document.getElementById('ep-cpf').value = mascararCPF(p.cpf);
+    document.getElementById('ep-telefone').value = p.telefone ? mascararTelefone(p.telefone) : '';
+    document.getElementById('ep-endereco').value = p.endereco || '';
+    document.getElementById('ep-cep').value = p.cep ? mascararCEP(p.cep) : '';
+    document.getElementById('ep-funcao').value = ['lider', 'multiplicador', 'fiscalizacao'].includes(p.funcao) ? p.funcao : 'lider';
+    document.getElementById('ep-coordenador').value = p.coordenador || '';
+    document.getElementById('ep-atividades').value = p.descricao_atividades || '';
+    preencherDatalistLocalidades('ep-local-lista');
+    document.getElementById('ep-local').value = p.local_prestacao || '';
+    document.getElementById('ep-jornada').value = p.jornada_trabalho || '';
+    document.getElementById('ep-data-inicio').value = p.data_inicio ? isoParaData(p.data_inicio) : '';
+    document.getElementById('ep-data-fim').value = p.data_fim ? isoParaData(p.data_fim) : '';
+    document.getElementById('ep-valor').value = p.valor_contrato != null ? formatarMoeda(p.valor_contrato) : '';
+    document.getElementById('ep-justificativa').value = p.justificativa_valor || '';
+    document.getElementById('ep-forma-pagamento').value = p.forma_pagamento || 'transferencia';
+    document.getElementById('ep-chave-pix').value = p.chave_pix || '';
+    document.getElementById('ep-periodicidade').value = p.periodicidade_pagamento || '';
+    document.getElementById('ep-contabilizar').checked = !!p.contabilizar_campanha;
+    preencherSelectLideres('ep-lider', p.lider_id, p.id);
+    atualizarVisibilidadeCamposEdicaoPessoal();
+    document.getElementById('modal-editar-pessoal').classList.add('show');
+}
+
+function fecharModalEditarPessoal() {
+    document.getElementById('modal-editar-pessoal').classList.remove('show');
+}
+
+async function salvarEdicaoPessoal(botao) {
+    const id = Number(document.getElementById('ep-id').value);
+    const nome = document.getElementById('ep-nome').value.trim();
+    const cpf = document.getElementById('ep-cpf').value.trim();
+    const dataInicioISO = dataParaISO(document.getElementById('ep-data-inicio').value);
+    const dataFimISO = dataParaISO(document.getElementById('ep-data-fim').value);
+    const descricaoAtividades = document.getElementById('ep-atividades').value.trim();
+    if (!nome || !cpf) { alert('Preencha Nome e CPF.'); return; }
+    if (!descricaoAtividades) { alert('Preencha a Descrição das Atividades.'); return; }
+    if (!dataInicioISO || !dataFimISO) { alert('Informe Data Início e Data Fim válidas (DD/MM/AAAA).'); return; }
+
+    const cpfNorm = apenasDigitos(cpf);
+    const duplicado = cachePessoal.find(p => p.id !== id && apenasDigitos(p.cpf) === cpfNorm);
+    if (duplicado) { alert(`Já existe outra pessoa com este CPF: ${duplicado.nome}.`); return; }
+
+    const funcao = document.getElementById('ep-funcao').value;
+    const formaPagamento = document.getElementById('ep-forma-pagamento').value;
+    const payload = {
+        nome, cpf,
+        telefone: document.getElementById('ep-telefone').value.trim() || null,
+        endereco: document.getElementById('ep-endereco').value.trim() || null,
+        cep: document.getElementById('ep-cep').value.trim() || null,
+        funcao,
+        lider_id: funcao === 'multiplicador' ? (Number(document.getElementById('ep-lider').value) || null) : null,
+        coordenador: document.getElementById('ep-coordenador').value.trim() || null,
+        descricao_atividades: descricaoAtividades,
+        local_prestacao: document.getElementById('ep-local').value.trim() || null,
+        jornada_trabalho: document.getElementById('ep-jornada').value.trim() || null,
+        data_inicio: dataInicioISO,
+        data_fim: dataFimISO,
+        valor_contrato: valorMoedaParaNumero(document.getElementById('ep-valor').value),
+        justificativa_valor: document.getElementById('ep-justificativa').value.trim() || null,
+        forma_pagamento: formaPagamento,
+        chave_pix: formaPagamento === 'pix' ? (document.getElementById('ep-chave-pix').value.trim() || null) : null,
+        periodicidade_pagamento: document.getElementById('ep-periodicidade').value || null,
+        contabilizar_campanha: document.getElementById('ep-contabilizar').checked ? 1 : 0
+    };
+
+    botao.disabled = true;
+    const { error } = await supabaseClient.from('pessoal_contratado').update(payload).eq('id', id);
+    botao.disabled = false;
+    if (error) { alert('Não foi possível salvar: ' + error.message); return; }
+    fecharModalEditarPessoal();
+    await carregarPessoal();
+}
+
+// ── Editar Veículo ───────────────────────────────────────────────────────
+function abrirModalEditarVeiculo(id) {
+    const v = cacheVeiculos.find(x => x.id === id);
+    if (!v) return;
+    document.getElementById('ev-id').value = v.id;
+    document.getElementById('ev-placa').value = v.placa || '';
+    document.getElementById('ev-marca').value = v.marca || '';
+    document.getElementById('ev-modelo').value = v.modelo || '';
+    document.getElementById('ev-ano').value = v.ano_fabricacao || '';
+    document.getElementById('ev-proprietario').value = v.nome_proprietario || '';
+    document.getElementById('ev-cpf-proprietario').value = v.cpf_proprietario ? mascararCPF(v.cpf_proprietario) : '';
+    document.getElementById('ev-cnpj').value = v.cnpj_associado ? mascararCNPJ(v.cnpj_associado) : '';
+    document.getElementById('ev-valor').value = v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '';
+    preencherDatalistLocalidades('ev-local-lista');
+    document.getElementById('ev-local').value = v.localidade_atendimento || '';
+    document.getElementById('ev-data-cessao').value = v.data_inicio_cessao ? isoParaData(v.data_inicio_cessao) : '';
+    preencherSelectLideres('ev-lider', v.lider_id, null);
+    document.getElementById('modal-editar-veiculo').classList.add('show');
+}
+
+function fecharModalEditarVeiculo() {
+    document.getElementById('modal-editar-veiculo').classList.remove('show');
+}
+
+async function salvarEdicaoVeiculo(botao) {
+    const id = Number(document.getElementById('ev-id').value);
+    const placa = normalizarPlaca(document.getElementById('ev-placa').value);
+    const cnpj = document.getElementById('ev-cnpj').value.trim();
+    if (!placa) { alert('Preencha a Placa.'); return; }
+    if (!cnpj) { alert('Preencha o CNPJ Associado.'); return; }
+
+    const duplicado = cacheVeiculos.find(v => v.id !== id && normalizarPlaca(v.placa) === placa);
+    if (duplicado) { alert(`Já existe outro veículo com esta placa: ${duplicado.placa}.`); return; }
+
+    const dataCessaoISO = dataParaISO(document.getElementById('ev-data-cessao').value);
+    const payload = {
+        placa,
+        marca: document.getElementById('ev-marca').value.trim() || null,
+        modelo: document.getElementById('ev-modelo').value.trim() || null,
+        ano_fabricacao: document.getElementById('ev-ano').value.trim() || null,
+        nome_proprietario: document.getElementById('ev-proprietario').value.trim() || null,
+        cpf_proprietario: document.getElementById('ev-cpf-proprietario').value.trim() || null,
+        cnpj_associado: cnpj,
+        valor_contratado: valorMoedaParaNumero(document.getElementById('ev-valor').value),
+        localidade_atendimento: document.getElementById('ev-local').value.trim() || null,
+        lider_id: Number(document.getElementById('ev-lider').value) || null,
+        data_inicio_cessao: dataCessaoISO || null
+    };
+
+    botao.disabled = true;
+    const { error } = await supabaseClient.from('veiculos').update(payload).eq('id', id);
+    botao.disabled = false;
+    if (error) { alert('Não foi possível salvar: ' + error.message); return; }
+    fecharModalEditarVeiculo();
+    await carregarVeiculos();
 }
 
 // ─── RELATÓRIOS ─────────────────────────────────────────────────────────

@@ -307,6 +307,179 @@
         </div>
     </div>
 
+    <!-- MODAL EDITAR PESSOAL — perfil master edita qualquer campo já existente
+         (sem documentos — isso continua só pela plataforma principal) -->
+    <div id="modal-editar-pessoal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>✏️ Editar Pessoal</h3>
+                <span class="close-modal" onclick="fecharModalEditarPessoal()">&times;</span>
+            </div>
+            <input type="hidden" id="ep-id">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0 1rem;">
+                <div class="form-group">
+                    <label for="ep-nome">Nome Completo</label>
+                    <input type="text" id="ep-nome" style="text-transform:uppercase;" oninput="this.value = this.value.toUpperCase()" required>
+                </div>
+                <div class="form-group">
+                    <label for="ep-cpf">CPF</label>
+                    <input type="text" id="ep-cpf" oninput="this.value = mascararCPF(this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label for="ep-telefone">Telefone</label>
+                    <input type="text" id="ep-telefone" oninput="this.value = mascararTelefone(this.value)">
+                </div>
+                <div class="form-group">
+                    <label for="ep-endereco">Endereço</label>
+                    <input type="text" id="ep-endereco">
+                </div>
+                <div class="form-group">
+                    <label for="ep-cep">CEP</label>
+                    <input type="text" id="ep-cep" oninput="this.value = mascararCEP(this.value)">
+                </div>
+                <div class="form-group">
+                    <label for="ep-funcao">Função</label>
+                    <select id="ep-funcao" onchange="atualizarVisibilidadeCamposEdicaoPessoal()">
+                        <option value="lider">Líder</option>
+                        <option value="multiplicador">Multiplicador</option>
+                        <option value="fiscalizacao">Fiscalização</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ep-lider-grupo" style="display:none;">
+                    <label for="ep-lider">Líder Responsável</label>
+                    <select id="ep-lider"></select>
+                </div>
+                <div class="form-group">
+                    <label for="ep-coordenador">Coordenador</label>
+                    <input type="text" id="ep-coordenador" placeholder="Opcional">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="ep-atividades">Descrição das Atividades</label>
+                    <textarea id="ep-atividades" rows="2" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="ep-local">Local da Prestação</label>
+                    <input type="text" id="ep-local" list="ep-local-lista">
+                    <datalist id="ep-local-lista"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="ep-jornada">Jornada de Trabalho</label>
+                    <input type="text" id="ep-jornada" placeholder="Ex: 8h às 17h, segunda a sexta">
+                </div>
+                <div class="form-group">
+                    <label for="ep-data-inicio">Data Início</label>
+                    <input type="text" id="ep-data-inicio" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" oninput="this.value = mascararData(this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label for="ep-data-fim">Data Fim</label>
+                    <input type="text" id="ep-data-fim" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" oninput="this.value = mascararData(this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label for="ep-valor">Valor do Contrato</label>
+                    <input type="text" id="ep-valor" inputmode="numeric" placeholder="R$ 0,00" oninput="this.value = mascararMoeda(this.value)">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="ep-justificativa">Justificativa do Valor</label>
+                    <textarea id="ep-justificativa" rows="2" placeholder="Opcional"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="ep-forma-pagamento">Forma de Pagamento</label>
+                    <select id="ep-forma-pagamento" onchange="atualizarVisibilidadeCamposEdicaoPessoal()">
+                        <option value="pix">PIX</option>
+                        <option value="transferencia">Transferência</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ep-chave-pix-grupo" style="display:none;">
+                    <label for="ep-chave-pix">Chave PIX</label>
+                    <input type="text" id="ep-chave-pix">
+                </div>
+                <div class="form-group">
+                    <label for="ep-periodicidade">Periodicidade de Pagamento</label>
+                    <select id="ep-periodicidade" onchange="atualizarVisibilidadeCamposEdicaoPessoal()">
+                        <option value="">—</option>
+                        <option value="semanal">Semanal</option>
+                        <option value="quinzenal">Quinzenal</option>
+                        <option value="fixo">Datas Fixas</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                    <small class="text-muted" id="ep-personalizado-aviso" style="display:none;">As datas personalizadas em si só são editáveis pela plataforma principal.</small>
+                </div>
+                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+                    <input type="checkbox" id="ep-contabilizar" style="width:18px; height:18px;">
+                    <label for="ep-contabilizar" style="margin:0;">Contabilizar na Campanha</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalEditarPessoal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="salvarEdicaoPessoal(this)">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR VEÍCULO — perfil master edita qualquer campo já existente
+         (sem documentos — isso continua só pela plataforma principal) -->
+    <div id="modal-editar-veiculo" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>✏️ Editar Veículo</h3>
+                <span class="close-modal" onclick="fecharModalEditarVeiculo()">&times;</span>
+            </div>
+            <input type="hidden" id="ev-id">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0 1rem;">
+                <div class="form-group">
+                    <label for="ev-placa">Placa</label>
+                    <input type="text" id="ev-placa" style="text-transform:uppercase;" oninput="this.value = normalizarPlaca(this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label for="ev-marca">Marca</label>
+                    <input type="text" id="ev-marca">
+                </div>
+                <div class="form-group">
+                    <label for="ev-modelo">Modelo</label>
+                    <input type="text" id="ev-modelo">
+                </div>
+                <div class="form-group">
+                    <label for="ev-ano">Ano de Fabricação</label>
+                    <input type="text" id="ev-ano" maxlength="4" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label for="ev-proprietario">Nome do Proprietário</label>
+                    <input type="text" id="ev-proprietario">
+                </div>
+                <div class="form-group">
+                    <label for="ev-cpf-proprietario">CPF do Proprietário</label>
+                    <input type="text" id="ev-cpf-proprietario" oninput="this.value = mascararCPF(this.value)">
+                </div>
+                <div class="form-group">
+                    <label for="ev-cnpj">CNPJ Associado</label>
+                    <input type="text" id="ev-cnpj" oninput="this.value = mascararCNPJ(this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label for="ev-valor">Valor Contratado</label>
+                    <input type="text" id="ev-valor" inputmode="numeric" placeholder="R$ 0,00" oninput="this.value = mascararMoeda(this.value)">
+                </div>
+                <div class="form-group">
+                    <label for="ev-local">Localidade de Atendimento</label>
+                    <input type="text" id="ev-local" list="ev-local-lista">
+                    <datalist id="ev-local-lista"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="ev-lider">Líder (proprietário do cargo)</label>
+                    <select id="ev-lider"></select>
+                </div>
+                <div class="form-group">
+                    <label for="ev-data-cessao">Data Início da Cessão</label>
+                    <input type="text" id="ev-data-cessao" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" oninput="this.value = mascararData(this.value)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalEditarVeiculo()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="salvarEdicaoVeiculo(this)">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
