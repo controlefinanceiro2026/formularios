@@ -1596,6 +1596,40 @@ function abrirModalEditarPessoal(id) {
     document.getElementById('ep-contabilizar').checked = !!p.contabilizar_campanha;
     preencherSelectLideres('ep-lider', p.lider_id, p.id);
     atualizarVisibilidadeCamposEdicaoPessoal();
+    document.getElementById('modal-editar-pessoal-title').textContent = '✏️ Editar Pessoal';
+    document.getElementById('modal-editar-pessoal').classList.add('show');
+}
+
+// Abre o mesmo modal de edição, mas em branco e com Função/Líder travados
+// no líder da célula clicada na Gestão de Líderes — ao salvar,
+// salvarEdicaoPessoal() detecta ep-id vazio e faz um INSERT em vez de
+// UPDATE, já associando o multiplicador ao líder (lider_id).
+function abrirModalNovoMultiplicador(liderId) {
+    const lider = cachePessoal.find(p => p.id === liderId);
+    if (!lider) return;
+    document.getElementById('ep-id').value = '';
+    document.getElementById('ep-nome').value = '';
+    document.getElementById('ep-cpf').value = '';
+    document.getElementById('ep-telefone').value = '';
+    document.getElementById('ep-endereco').value = '';
+    document.getElementById('ep-cep').value = '';
+    document.getElementById('ep-funcao').value = 'multiplicador';
+    document.getElementById('ep-coordenador').value = lider.coordenador || '';
+    document.getElementById('ep-atividades').value = ATRIBUICAO_ATIVIDADES_PESSOAL.multiplicador;
+    preencherDatalistLocalidades('ep-local-lista');
+    document.getElementById('ep-local').value = lider.local_prestacao || '';
+    document.getElementById('ep-jornada').value = '';
+    document.getElementById('ep-data-inicio').value = lider.data_inicio ? isoParaData(lider.data_inicio) : '';
+    document.getElementById('ep-data-fim').value = lider.data_fim ? isoParaData(lider.data_fim) : '';
+    document.getElementById('ep-valor').value = formatarMoeda(VALOR_CONTRATO_PADRAO_PESSOAL.multiplicador);
+    document.getElementById('ep-justificativa').value = '';
+    document.getElementById('ep-forma-pagamento').value = 'transferencia';
+    document.getElementById('ep-chave-pix').value = '';
+    document.getElementById('ep-periodicidade').value = lider.periodicidade_pagamento || 'fixo';
+    document.getElementById('ep-contabilizar').checked = false;
+    preencherSelectLideres('ep-lider', liderId, null);
+    atualizarVisibilidadeCamposEdicaoPessoal();
+    document.getElementById('modal-editar-pessoal-title').textContent = `➕ Adicionar Multiplicador — Célula de ${lider.nome}`;
     document.getElementById('modal-editar-pessoal').classList.add('show');
 }
 
@@ -1604,7 +1638,8 @@ function fecharModalEditarPessoal() {
 }
 
 async function salvarEdicaoPessoal(botao) {
-    const id = Number(document.getElementById('ep-id').value);
+    const idTexto = document.getElementById('ep-id').value;
+    const id = idTexto ? Number(idTexto) : null;
     const nome = document.getElementById('ep-nome').value.trim();
     const cpf = document.getElementById('ep-cpf').value.trim();
     const dataInicioISO = dataParaISO(document.getElementById('ep-data-inicio').value);
@@ -1642,11 +1677,14 @@ async function salvarEdicaoPessoal(botao) {
     };
 
     botao.disabled = true;
-    const { error } = await supabaseClient.from('pessoal_contratado').update(payload).eq('id', id);
+    const { error } = id
+        ? await supabaseClient.from('pessoal_contratado').update(payload).eq('id', id)
+        : await supabaseClient.from('pessoal_contratado').insert(payload);
     botao.disabled = false;
     if (error) { alert('Não foi possível salvar: ' + error.message); return; }
     fecharModalEditarPessoal();
     await carregarPessoal();
+    if (typeof renderizarGestaoLideres === 'function') renderizarGestaoLideres();
 }
 
 // ── Editar Veículo ───────────────────────────────────────────────────────
@@ -1822,7 +1860,10 @@ function renderizarGestaoLideres() {
                 </div>
             </div>
 
-            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin:1rem 0 0.5rem;">
+                <h4 style="margin:0; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
+                <button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
+            </div>
             ${multiplicadores.length ? `
             <table class="table-data">
                 <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
