@@ -164,6 +164,16 @@
         </div>
     </div>
 
+    <!-- Confirmação de envio (link do administrador — cadastro após cadastro) -->
+    <div id="modal-sucesso-envio" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-sucesso-titulo">
+        <div class="modal-content" style="max-width:420px; text-align:center;">
+            <div style="font-size:2.5rem;">✅</div>
+            <h3 id="modal-sucesso-titulo" style="margin:0.5rem 0;">Cadastro gravado com sucesso!</h3>
+            <p id="modal-sucesso-texto" style="color:#64748b;"></p>
+            <button type="button" class="btn-primary" id="modal-sucesso-ok" style="width:100%; margin-top:1rem; padding:0.75rem;">OK, cadastrar o próximo</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="cadastro.js"></script>

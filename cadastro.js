@@ -252,9 +252,35 @@ function prepararProximoCadastroAdmin() {
     const botao = document.getElementById('cr-btn-enviar');
     botao.disabled = false;
     botao.textContent = 'Enviar Cadastro';
-    mostrarMensagem('cr-mensagem', '✅ Cadastro gravado. Pode preencher o próximo.', 'sucesso');
+    mostrarMensagem('cr-mensagem', '', '');
     document.getElementById('cr-nome').focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Modal de confirmação depois de um envio no link do administrador — o
+// botão só volta a ficar disponível quando esta promessa resolve (o
+// admin clica "OK"). Sem isso, um segundo clique/toque logo após o
+// primeiro sucesso reenviava os MESMOS dados como um cadastro novo (caso
+// real: DAIANA FERNANDES SOUZA, 11/09/2026, dois registros em 7s).
+function mostrarModalSucesso(texto) {
+    const modal = document.getElementById('modal-sucesso-envio');
+    const corpo = document.getElementById('modal-sucesso-texto');
+    const btnOk = document.getElementById('modal-sucesso-ok');
+    corpo.textContent = texto;
+    modal.classList.add('show');
+    setTimeout(() => btnOk.focus(), 50);
+
+    return new Promise(resolve => {
+        function onOk() { fechar(); resolve(); }
+        function onKey(e) { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); onOk(); } }
+        function fechar() {
+            modal.classList.remove('show');
+            btnOk.removeEventListener('click', onOk);
+            document.removeEventListener('keydown', onKey);
+        }
+        btnOk.addEventListener('click', onOk);
+        document.addEventListener('keydown', onKey);
+    });
 }
 
 async function enviarFormulario(e) {
@@ -284,6 +310,9 @@ async function enviarFormulario(e) {
 
     if (resposta.ok) {
         if (modoAdmin) {
+            // Botão continua travado até o admin confirmar no modal —
+            // só então o formulário limpa e libera um novo envio.
+            await mostrarModalSucesso(`${dados.nome} foi cadastrado(a). Confira o nome antes de preencher o próximo — evite reenviar a mesma pessoa.`);
             prepararProximoCadastroAdmin();
             return;
         }

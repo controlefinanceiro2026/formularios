@@ -95,6 +95,32 @@ function mostrarMensagem(texto, tipo) {
     }
 }
 
+// Modal de confirmação depois de um envio — o botão só volta a ficar
+// disponível quando esta promessa resolve (o admin clica "OK"). Sem
+// isso, um segundo clique/toque logo após o sucesso reenviava os MESMOS
+// dados como um cadastro novo (mesma classe de bug corrigida em
+// cadastro.js — caso real: DAIANA FERNANDES SOUZA, 11/09/2026).
+function mostrarModalSucesso(texto) {
+    const modal = document.getElementById('modal-sucesso-envio');
+    const corpo = document.getElementById('modal-sucesso-texto');
+    const btnOk = document.getElementById('modal-sucesso-ok');
+    corpo.textContent = texto;
+    modal.classList.add('show');
+    setTimeout(() => btnOk.focus(), 50);
+
+    return new Promise(resolve => {
+        function onOk() { fechar(); resolve(); }
+        function onKey(e) { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); onOk(); } }
+        function fechar() {
+            modal.classList.remove('show');
+            btnOk.removeEventListener('click', onOk);
+            document.removeEventListener('keydown', onKey);
+        }
+        btnOk.addEventListener('click', onOk);
+        document.addEventListener('keydown', onKey);
+    });
+}
+
 // ---------- select de localidade ----------
 const VALOR_TODAS = '__todas__';
 const VALOR_NOVO_LIDER = '__novo__';
@@ -296,13 +322,14 @@ async function enviar(e) {
         return;
     }
 
-    botao.disabled = false;
-    botao.textContent = 'Enviar Cadastro';
-
     if (resposta.ok) {
         const partes = [`${resposta.criados} multiplicador(es) enviado(s)`];
         if (resposta.lider_novo) partes.push('mais a pré-inscrição do líder novo');
         if (resposta.veiculo_lider) partes.push('e o veículo do líder');
+        // Botão continua travado até o admin confirmar no modal — só
+        // então o formulário limpa e libera um novo envio.
+        await mostrarModalSucesso(`${partes.join(' ')}. Validação na tela Formulários. Confira antes de preencher o próximo — evite reenviar o mesmo líder/multiplicadores.`);
+
         // Limpa para o próximo envio, mantendo localidade/líder.
         document.querySelectorAll('#ma-blocos .mult-bloco').forEach(b => b.remove());
         contadorBlocos = 0;
@@ -310,9 +337,14 @@ async function enviar(e) {
         document.getElementById('ma-lgpd').checked = false;
         ['ma-ln-nome', 'ma-ln-cpf', 'ma-ln-telefone', 'ma-ln-endereco', 'ma-ln-placa', 'ma-ln-modelo'].forEach(id => { document.getElementById(id).value = ''; });
         document.getElementById('ma-ln-placa-erro').style.display = 'none';
-        mostrarMensagem(`✅ ${partes.join(' ')}. Validação na tela Formulários. Pode enviar outro cadastro.`, 'sucesso');
+        mostrarMensagem('', '');
+        botao.disabled = false;
+        botao.textContent = 'Enviar Cadastro';
         return;
     }
+
+    botao.disabled = false;
+    botao.textContent = 'Enviar Cadastro';
 
     const msgs = {
         invalido: 'Link inválido — gere um novo na tela Multiplicadores.',

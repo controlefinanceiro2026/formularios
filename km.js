@@ -186,7 +186,7 @@ function renderTabelas() {
                         <tr>
                             <th>Placa</th><th>Proprietário</th><th>Km Atual</th>
                             <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th>Observações</th>
-                            <th>⛽ Pagamento</th><th></th>
+                            <th>Status do Pagamento *</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -204,11 +204,11 @@ function renderTabelas() {
                                     <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
                                 <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
-                                <td class="km-td-bloco" data-label="⛽ Pagamento">
-                                    <label class="km-chk-pagamento-label">
-                                        <input type="checkbox" class="km-chk-pagamento" data-idx="${idx}">
-                                        Pagamento não realizado
-                                    </label>
+                                <td class="km-td-bloco" data-label="Status do Pagamento *">
+                                    <div class="km-pagamento-toggle" role="group" aria-label="Status do pagamento do combustível">
+                                        <button type="button" class="km-pagamento-btn km-pagamento-btn-realizado ativo" data-idx="${idx}" data-status="realizado">✅ Realizado</button>
+                                        <button type="button" class="km-pagamento-btn km-pagamento-btn-nao-realizado" data-idx="${idx}" data-status="nao_realizado">⛽ Não realizado</button>
+                                    </div>
                                     <div class="km-pagamento-motivo" data-idx="${idx}" style="display:none;"></div>
                                 </td>
                                 <td class="km-td-bloco km-td-acao"><button type="button" class="btn-primary km-btn-linha" data-idx="${idx}">Enviar dados do veículo</button></td>
@@ -229,7 +229,7 @@ function renderTabelas() {
         btn.closest('tr').querySelector('.km-foto').click();
     }));
     container.querySelectorAll('.km-btn-linha').forEach(btn => btn.addEventListener('click', () => enviarLinha(Number(btn.dataset.idx))));
-    container.querySelectorAll('.km-chk-pagamento').forEach(chk => chk.addEventListener('change', onChkPagamentoChange));
+    container.querySelectorAll('.km-pagamento-btn').forEach(btn => btn.addEventListener('click', onClickBotaoPagamento));
     Object.keys(pagamentoNaoRealizado).forEach(idx => atualizarUiPagamento(Number(idx)));
 
     aplicarFiltros();
@@ -593,16 +593,18 @@ function abrirModalMotivoPagamento(idx) {
     });
 }
 
-// Reflete o estado do flag na linha: Km no Dia e Fotos deixam de ser
-// obrigatórios (campos desabilitados e limpos) enquanto marcado, e o
-// motivo aparece embaixo do checkbox com um link para editar.
+// Reflete o status de pagamento na linha: "Não realizado" desabilita e
+// limpa Km no Dia/Fotos (deixam de ser obrigatórios) e mostra o motivo
+// embaixo do toggle, com um link para editar.
 function atualizarUiPagamento(idx) {
     const tr = document.getElementById(linhaId(idx));
     if (!tr) return;
     const ativo = !!pagamentoNaoRealizado[idx];
 
-    const chk = tr.querySelector('.km-chk-pagamento');
-    if (chk) chk.checked = ativo;
+    const btnRealizado = tr.querySelector('.km-pagamento-btn-realizado');
+    const btnNaoRealizado = tr.querySelector('.km-pagamento-btn-nao-realizado');
+    if (btnRealizado) btnRealizado.classList.toggle('ativo', !ativo);
+    if (btnNaoRealizado) btnNaoRealizado.classList.toggle('ativo', ativo);
 
     const campoKm = tr.querySelector('.km-no-dia');
     const btnFoto = tr.querySelector('.km-add-foto');
@@ -627,11 +629,15 @@ function atualizarUiPagamento(idx) {
     }
 }
 
-async function onChkPagamentoChange(e) {
+// Clique em "✅ Realizado" ou "⛽ Não realizado". Escolher "Não realizado"
+// (mesmo se já ativo, pra permitir editar o motivo) abre o modal do
+// motivo; cancelar mantém o status anterior da linha.
+async function onClickBotaoPagamento(e) {
     const idx = Number(e.target.dataset.idx);
-    if (e.target.checked) {
+    const status = e.target.dataset.status;
+    if (status === 'nao_realizado') {
         const confirmou = await abrirModalMotivoPagamento(idx);
-        if (!confirmou) { e.target.checked = false; return; }
+        if (!confirmou) return;
         pagamentoNaoRealizado[idx] = true;
     } else {
         pagamentoNaoRealizado[idx] = false;

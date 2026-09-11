@@ -72,8 +72,11 @@
         .km-filtro-linha { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .km-filtro-linha .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
 
-        .km-chk-pagamento-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: #92400e; white-space: nowrap; cursor: pointer; }
-        .km-chk-pagamento-label input { width: 16px; height: 16px; cursor: pointer; }
+        .km-pagamento-toggle { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 999px; overflow: hidden; }
+        .km-pagamento-btn { border: none; background: #f8fafc; color: #64748b; font: inherit; font-size: 0.76rem; font-weight: 700; padding: 0.4rem 0.65rem; cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s; }
+        .km-pagamento-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .km-pagamento-btn-realizado.ativo { background: #16a34a; color: #fff; }
+        .km-pagamento-btn-nao-realizado.ativo { background: #b45309; color: #fff; }
         .km-pagamento-motivo { margin-top: 0.4rem; font-size: 0.8rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.4rem 0.55rem; max-width: 220px; }
         .km-pagamento-motivo-texto { white-space: pre-wrap; word-break: break-word; }
         .km-pagamento-editar { margin-left: 0.3rem; border: none; background: none; color: #b45309; font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0; }
@@ -258,6 +261,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="km.js?v=13"></script>
+    <script src="km.js?v=14"></script>
 </body>
 </html>
