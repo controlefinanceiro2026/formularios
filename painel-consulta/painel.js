@@ -1937,7 +1937,7 @@ function prepararTelaRelatorios() {
 
     const selectVeiculo = document.getElementById('rel-km-veiculo');
     const veiculosOrdenados = [...(cacheVeiculos || [])].sort((a, b) => (a.placa || '').localeCompare(b.placa || '', 'pt-BR'));
-    selectVeiculo.innerHTML = '<option value="">Todos os veículos (usar localidades)</option>' + veiculosOrdenados.map(v => {
+    selectVeiculo.innerHTML = veiculosOrdenados.map(v => {
         const rotulo = `${v.placa || '—'} — ${(`${v.marca || ''} ${v.modelo || ''}`.trim()) || '—'} (${v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO})`;
         return `<option value="${v.id}">${escaparHtml(rotulo)}</option>`;
     }).join('');
@@ -2109,19 +2109,20 @@ function localidadesSelecionadasKm() {
     return Array.from(document.getElementById('rel-km-localidades').selectedOptions).map(o => o.value);
 }
 
-function veiculoSelecionadoKm() {
-    return document.getElementById('rel-km-veiculo').value;
+function veiculosSelecionadosKm() {
+    return Array.from(document.getElementById('rel-km-veiculo').selectedOptions).map(o => o.value);
 }
 
 // Espelha app.js#leiturasKmComRodado / #ultimaLeituraKmDoVeiculo: percorre
 // as leituras em ordem cronológica por veículo pra calcular o km rodado
 // (delta desde a leitura anterior) e guarda a mais recente de cada um.
-// Quando veiculoIdFiltro é informado, ignora o filtro de localidades e
-// gera o relatório só para aquele veículo específico.
-function dadosControleKm(localidadesFiltro, veiculoIdFiltro) {
+// Quando veiculosIdsFiltro é informado (não vazio), ignora o filtro de
+// localidades e gera o relatório só para aqueles veículos específicos.
+function dadosControleKm(localidadesFiltro, veiculosIdsFiltro) {
     const filtroSet = localidadesFiltro.length ? new Set(localidadesFiltro) : null;
-    const veiculos = veiculoIdFiltro
-        ? (cacheVeiculos || []).filter(v => String(v.id) === String(veiculoIdFiltro))
+    const veiculosIdsSet = (veiculosIdsFiltro && veiculosIdsFiltro.length) ? new Set(veiculosIdsFiltro.map(String)) : null;
+    const veiculos = veiculosIdsSet
+        ? (cacheVeiculos || []).filter(v => veiculosIdsSet.has(String(v.id)))
         : (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento));
 
     const ordenadas = [...cacheLeiturasKm].sort((a, b) => (a.data !== b.data ? (a.data < b.data ? -1 : 1) : (a.id || 0) - (b.id || 0)));
@@ -2147,7 +2148,7 @@ function dadosControleKm(localidadesFiltro, veiculoIdFiltro) {
 
 async function gerarRelatorioKmPdf() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculoSelecionadoKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm());
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const doc = iniciarPdfRelatorio('Controle de Km');
     doc.autoTable({
@@ -2165,7 +2166,7 @@ async function gerarRelatorioKmPdf() {
 
 async function gerarRelatorioKmExcel() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculoSelecionadoKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm());
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const livro = XLSX.utils.book_new();
     const planilha = XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]);
