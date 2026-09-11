@@ -93,6 +93,18 @@
                             <label>Endereço</label>
                             <input type="text" id="ma-ln-endereco" placeholder="Rua, número, complemento, bairro, cidade">
                         </div>
+
+                        <div class="fp-secao-titulo">Veículo cedido pelo líder <span class="text-muted" style="font-weight:400; font-size:0.8rem;">(opcional)</span></div>
+                        <small class="text-muted" style="display:block; margin-bottom:0.8rem;">Se o líder cede um veículo, informe a placa e o modelo. O restante (marca, ano, CNPJ, valor, CRLV) é preenchido na tela Formulários, na validação.</small>
+                        <div class="form-group">
+                            <label>Placa</label>
+                            <input type="text" id="ma-ln-placa" placeholder="ABC1D23" inputmode="text" maxlength="8" style="text-transform:uppercase;">
+                            <div class="fp-campo-erro" id="ma-ln-placa-erro">Placa incompleta ou inválida.</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <input type="text" id="ma-ln-modelo" placeholder="Ex.: Fiat Uno, Honda Civic">
+                        </div>
                     </div>
 
                     <div class="fp-secao-titulo">Multiplicadores <span class="fp-badge-funcao multiplicador">FUNÇÃO: MULTIPLICADOR</span></div>
@@ -119,8 +131,6 @@
 
                     <button type="submit" class="btn-primary" style="width:100%; margin-top:1.5rem; padding:0.85rem;" id="ma-btn-enviar">Enviar Cadastro</button>
                 </form>
-
-                <div id="ma-sucesso" class="fp-msg sucesso" style="margin-top:1.25rem;"></div>
             </div>
 
         </div>

@@ -65,17 +65,24 @@ function mascararTelefone(v) {
 // ---------- telas ----------
 const TELAS = ['tela-carregando', 'tela-iniciar', 'tela-formulario', 'tela-sucesso', 'tela-invalido', 'tela-expirado', 'tela-enviado'];
 
+const TELAS_ESTADO = ['tela-sucesso', 'tela-invalido', 'tela-expirado', 'tela-enviado'];
+
 function mostrarTela(id) {
     TELAS.forEach(t => {
         const el = document.getElementById(t);
         if (el) el.style.display = t === id ? 'block' : 'none';
     });
+    // Trocar para uma tela de desfecho (sucesso, expirado, link já usado,
+    // inválido) volta ao topo — senão quem envia no fim de um formulário
+    // longo fica olhando para o espaço em branco e não vê a confirmação.
+    if (TELAS_ESTADO.includes(id)) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function mostrarMensagem(elId, texto, tipo) {
     const el = document.getElementById(elId);
     el.textContent = texto;
     el.className = `fp-msg ${tipo || ''}`;
+    if (texto) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ---------- monta os 4 blocos de liderado ----------
@@ -223,7 +230,7 @@ async function enviarFormulario(e) {
     if (expiraEm && Date.now() >= expiraEm.getTime()) { expirarNaTela(); return; }
 
     const { erro, liderados } = validarFormulario();
-    if (erro) { mostrarMensagem('mult-mensagem', erro, 'erro'); return; }
+    if (erro) { mostrarMensagem('mult-mensagem', `❌ ${erro}`, 'erro'); return; }
 
     const botao = document.getElementById('mult-btn-enviar');
     botao.disabled = true;
@@ -237,7 +244,7 @@ async function enviarFormulario(e) {
     } catch (err) {
         botao.disabled = false;
         botao.textContent = 'Enviar Cadastro';
-        mostrarMensagem('mult-mensagem', 'Não foi possível enviar. Verifique sua conexão e tente novamente.', 'erro');
+        mostrarMensagem('mult-mensagem', '❌ Não foi possível enviar. Verifique sua conexão e tente novamente.', 'erro');
         return;
     }
 
@@ -256,7 +263,7 @@ async function enviarFormulario(e) {
     } else if (resposta.erro === 'campo_obrigatorio' || resposta.erro === 'quantidade_invalida') {
         botao.disabled = false;
         botao.textContent = 'Enviar Cadastro';
-        mostrarMensagem('mult-mensagem', 'Preencha todos os campos obrigatórios dos 4 liderados.', 'erro');
+        mostrarMensagem('mult-mensagem', '❌ Preencha todos os campos obrigatórios dos 4 liderados.', 'erro');
     } else {
         mostrarTela('tela-invalido');
     }

@@ -537,7 +537,7 @@ async function enviarLinha(idx) {
     if (!(await garantirResponsavel())) return;
 
     const erro = validarLinha(idx);
-    if (erro) { mostrarErroLinha(idx, erro); return; }
+    if (erro) { mostrarErroLinha(idx, '❌ ' + erro); return; }
 
     const tr = document.getElementById(linhaId(idx));
     const btn = tr.querySelector('.km-btn-linha');
@@ -548,11 +548,11 @@ async function enviarLinha(idx) {
         await persistirLinha(idx);
         enviados[idx] = true;
         travarLinha(idx, true);
-        mostrarSucessoLinha(idx, `Veículo ${veiculos[idx].placa}: dados enviados com sucesso.`);
+        mostrarSucessoLinha(idx, `✅ Veículo ${veiculos[idx].placa}: dados enviados com sucesso.`);
         conferirSeTerminou();
     } catch (e) {
         destravarLinha(idx);
-        mostrarErroLinha(idx, e.message || 'Não foi possível enviar. Verifique sua conexão e tente novamente.');
+        mostrarErroLinha(idx, '❌ ' + (e.message || 'Não foi possível enviar. Verifique sua conexão e tente novamente.'));
     }
 }
 
@@ -579,7 +579,7 @@ async function enviarTodos() {
     if (comErro.length) {
         // Marca cada veículo pendente na sua própria linha e leva a vista
         // ao primeiro deles (sem pular pro rodapé).
-        comErro.slice().reverse().forEach(x => mostrarErroLinha(x.idx, x.erro));
+        comErro.slice().reverse().forEach(x => mostrarErroLinha(x.idx, '❌ ' + x.erro));
         return;
     }
 
@@ -602,7 +602,7 @@ async function enviarTodos() {
         }
         conferirSeTerminou();
         if (!document.getElementById('fp-tela-sucesso').style.display.includes('block')) {
-            mostrarMensagem('Dados enviados com sucesso.', 'sucesso');
+            mostrarMensagem('✅ Dados enviados com sucesso.', 'sucesso');
         }
         btnTodos.textContent = 'Enviar informação de todos os veículos';
     } catch (e) {
@@ -612,9 +612,9 @@ async function enviarTodos() {
         btnTodos.disabled = false;
         btnTodos.textContent = 'Enviar informação de todos os veículos';
         if (idxAtual !== null) {
-            mostrarErroLinha(idxAtual, (e.message || 'Não foi possível concluir o envio.') + ' Este e os próximos continuam liberados para reenvio.');
+            mostrarErroLinha(idxAtual, '❌ ' + (e.message || 'Não foi possível concluir o envio.') + ' Este e os próximos continuam liberados para reenvio.');
         } else {
-            mostrarMensagem(e.message || 'Não foi possível concluir o envio.', 'erro');
+            mostrarMensagem('❌ ' + (e.message || 'Não foi possível concluir o envio.'), 'erro');
         }
     }
 }

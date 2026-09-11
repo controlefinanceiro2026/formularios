@@ -58,6 +58,26 @@ function normalizarLocalidade(v) {
     return String(v || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+// Máscara/validação de placa — espelham lib/cadastroRapido.js / cadastro.js
+// (padrão antigo AAA9999 e Mercosul AAA9A99). Manter em sincronia.
+function mascararPlaca(v) {
+    const bruto = String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
+    let saida = '';
+    for (let i = 0; i < bruto.length; i++) {
+        const c = bruto[i];
+        const ehLetra = c >= 'A' && c <= 'Z';
+        const ehDigito = c >= '0' && c <= '9';
+        const posicaoOk = i < 3 ? ehLetra : (i === 4 ? (ehLetra || ehDigito) : ehDigito);
+        if (!posicaoOk) break;
+        saida += c;
+    }
+    return saida;
+}
+function placaValida(v) {
+    const p = String(v == null ? '' : v).toUpperCase();
+    return /^[A-Z]{3}\d{4}$/.test(p) || /^[A-Z]{3}\d[A-Z]\d{2}$/.test(p);
+}
+
 // ---------- telas ----------
 function mostrarTela(id) {
     ['tela-carregando', 'tela-invalido', 'tela-formulario'].forEach(t => {
@@ -69,6 +89,10 @@ function mostrarMensagem(texto, tipo) {
     const el = document.getElementById('ma-mensagem');
     el.textContent = texto || '';
     el.className = `fp-msg ${tipo || ''}`;
+    el.style.display = texto ? 'block' : 'none';
+    if (texto) {
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ambiente sem suporte a scrollIntoView */ }
+    }
 }
 
 // ---------- select de localidade ----------
@@ -206,11 +230,26 @@ function coletarLiderNovo() {
     return { liderNovo: { nome, cpf: soDigitos(cpf), telefone, endereco } };
 }
 
+// Veículo do líder novo — opcional. Só é considerado quando o líder é novo.
+// Placa vazia = sem veículo. Placa preenchida exige placa válida + modelo.
+function coletarVeiculoLider() {
+    document.getElementById('ma-ln-placa-erro').style.display = 'none';
+    const placa = mascararPlaca(document.getElementById('ma-ln-placa').value);
+    const modelo = document.getElementById('ma-ln-modelo').value.trim();
+
+    if (!placa && !modelo) return { veiculo: null };
+    if (!placaValida(placa)) {
+        document.getElementById('ma-ln-placa-erro').style.display = 'block';
+        return { erro: 'Placa do veículo do líder incompleta ou inválida.' };
+    }
+    if (!modelo) return { erro: 'Informe o modelo do veículo do líder (a placa foi preenchida).' };
+    return { veiculo: { placa, modelo } };
+}
+
 // ---------- enviar ----------
 async function enviar(e) {
     e.preventDefault();
     mostrarMensagem('', '');
-    document.getElementById('ma-sucesso').style.display = 'none';
 
     const localidadeSel = document.getElementById('ma-localidade').value;
     const localidade = localidadeSel === VALOR_TODAS ? null : localidadeSel;
@@ -218,11 +257,15 @@ async function enviar(e) {
 
     let lider_id = null;
     let lider_novo = null;
+    let veiculo_lider = null;
     if (liderSel === VALOR_NOVO_LIDER) {
         if (!localidade) { mostrarMensagem('Escolha uma localidade específica para cadastrar um líder novo.', 'erro'); return; }
         const r = coletarLiderNovo();
         if (r.erro) { mostrarMensagem(r.erro, 'erro'); return; }
         lider_novo = r.liderNovo;
+        const rv = coletarVeiculoLider();
+        if (rv.erro) { mostrarMensagem(rv.erro, 'erro'); return; }
+        veiculo_lider = rv.veiculo;
     } else if (liderSel) {
         lider_id = Number(liderSel);
     } else {
@@ -242,14 +285,14 @@ async function enviar(e) {
     try {
         const { data, error } = await supabaseClient.rpc('multiplicador_admin_enviar', {
             p_token: token,
-            p_dados: { localidade, lider_id, lider_novo, liderados: rl.liderados }
+            p_dados: { localidade, lider_id, lider_novo, veiculo_lider, liderados: rl.liderados }
         });
         if (error) throw error;
         resposta = data || {};
     } catch (err) {
         botao.disabled = false;
         botao.textContent = 'Enviar Cadastro';
-        mostrarMensagem('Não foi possível enviar. Verifique a conexão e tente novamente.', 'erro');
+        mostrarMensagem('❌ Não foi possível enviar. Verifique a conexão e tente novamente.', 'erro');
         return;
     }
 
@@ -259,16 +302,15 @@ async function enviar(e) {
     if (resposta.ok) {
         const partes = [`${resposta.criados} multiplicador(es) enviado(s)`];
         if (resposta.lider_novo) partes.push('mais a pré-inscrição do líder novo');
-        const box = document.getElementById('ma-sucesso');
-        box.textContent = `✅ ${partes.join(' ')}. Validação na tela Formulários. Pode enviar outro cadastro.`;
-        box.style.display = 'block';
+        if (resposta.veiculo_lider) partes.push('e o veículo do líder');
         // Limpa para o próximo envio, mantendo localidade/líder.
         document.querySelectorAll('#ma-blocos .mult-bloco').forEach(b => b.remove());
         contadorBlocos = 0;
         for (let k = 0; k < 4; k++) adicionarBloco();
         document.getElementById('ma-lgpd').checked = false;
-        ['ma-ln-nome', 'ma-ln-cpf', 'ma-ln-telefone', 'ma-ln-endereco'].forEach(id => { document.getElementById(id).value = ''; });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        ['ma-ln-nome', 'ma-ln-cpf', 'ma-ln-telefone', 'ma-ln-endereco', 'ma-ln-placa', 'ma-ln-modelo'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('ma-ln-placa-erro').style.display = 'none';
+        mostrarMensagem(`✅ ${partes.join(' ')}. Validação na tela Formulários. Pode enviar outro cadastro.`, 'sucesso');
         return;
     }
 
@@ -278,9 +320,10 @@ async function enviar(e) {
         sem_lider: 'Escolha um líder.',
         lider_incompleto: 'Preencha todos os dados do líder novo.',
         localidade_obrigatoria_lider_novo: 'Escolha uma localidade específica para o líder novo.',
+        veiculo_incompleto: 'Informe o modelo do veículo do líder (a placa foi preenchida).',
         campo_obrigatorio: 'Preencha todos os campos dos multiplicadores.'
     };
-    mostrarMensagem(msgs[resposta.erro] || 'Não foi possível enviar o cadastro.', 'erro');
+    mostrarMensagem(`❌ ${msgs[resposta.erro] || 'Não foi possível enviar o cadastro.'}`, 'erro');
 }
 
 // ---------- init ----------
@@ -316,6 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('ma-ln-telefone').addEventListener('input', function () { this.value = mascararTelefone(this.value); });
     document.getElementById('ma-ln-nome').addEventListener('input', function () { this.value = caixaAlta(this.value); });
     document.getElementById('ma-ln-endereco').addEventListener('input', function () { this.value = caixaAlta(this.value); });
+    document.getElementById('ma-ln-placa').addEventListener('input', function () { this.value = mascararPlaca(this.value); });
     document.getElementById('form-mult-admin').addEventListener('submit', enviar);
 
     mostrarTela('tela-formulario');
