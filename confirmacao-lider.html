@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmação de Dados do Líder</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #f1f5f9; }
+        .fp-hero {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: white; padding: 2.5rem 1.5rem; text-align: center;
+        }
+        .fp-hero h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
+        .fp-hero p { margin: 0; opacity: 0.9; max-width: 620px; margin: 0 auto; }
+        .fp-container { max-width: 680px; margin: -2rem auto 3rem; padding: 0 1rem; }
+        .fp-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
+        .fp-secao-titulo { font-size: 1rem; font-weight: 700; color: var(--color-dark); margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .fp-secao-titulo:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        .fp-secao-ajuda { font-size: 0.85rem; color: #64748b; margin: -0.5rem 0 1rem; }
+        .fp-msg { padding: 0.9rem 1rem; border-radius: 8px; margin-top: 1rem; font-size: 0.9rem; display: none; }
+        .fp-msg.erro { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .fp-msg.sucesso { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .fp-tela-estado { text-align: center; padding: 2rem 0; }
+        .fp-tela-estado .icone { font-size: 3rem; margin-bottom: 1rem; }
+        .fp-tela-estado h2 { margin: 0 0 0.5rem; }
+        .fp-tela-estado p { color: #64748b; margin: 0.4rem auto 0; max-width: 460px; }
+        .fp-contador {
+            position: sticky; top: 0; z-index: 5;
+            background: #ecfeff; border: 1px solid #a5f3fc; color: #0e7490;
+            border-radius: 8px; padding: 0.6rem 1rem; margin-bottom: 1.25rem;
+            font-size: 0.9rem; font-weight: 600; text-align: center;
+        }
+        .fp-contador.alerta { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .fp-contador strong { font-variant-numeric: tabular-nums; }
+        .cl-bloco { border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; background: #f8fafc; }
+        .cl-bloco-titulo { font-weight: 700; color: var(--color-dark); margin-bottom: 0.9rem; }
+        .cl-campo-fixo { font-size: 0.85rem; color: #64748b; margin-bottom: 0.9rem; }
+        .cl-campo-fixo strong { color: var(--color-dark); }
+    </style>
+</head>
+<body>
+    <div class="fp-hero">
+        <h1>📋 Confirmação de Dados</h1>
+        <p id="hero-subtitulo">Confira os dados cadastrados da sua célula. O link é pessoal, de uso único, e vale por 30 minutos depois que você começar.</p>
+    </div>
+
+    <div class="fp-container">
+        <div class="fp-card">
+
+            <!-- Verificando o link -->
+            <div id="tela-carregando" class="fp-tela-estado">
+                <div class="icone">⏳</div>
+                <p>Carregando…</p>
+            </div>
+
+            <!-- Antes de armar o cronômetro -->
+            <div id="tela-iniciar" class="fp-tela-estado" style="display:none;">
+                <div class="icone">📋</div>
+                <h2>Tudo pronto para começar</h2>
+                <p>
+                    Assim que você tocar em <strong>Começar</strong>, o link fica válido por
+                    <strong>30 minutos</strong> para você revisar e confirmar (ou corrigir) os dados.
+                    Ele só pode ser usado <strong>uma vez</strong> — não feche nem atualize a página no meio da revisão.
+                </p>
+                <button type="button" class="btn-primary" id="btn-comecar" style="margin-top:1.5rem; padding:0.85rem 2rem;">Começar</button>
+                <div id="iniciar-msg" class="fp-msg"></div>
+            </div>
+
+            <!-- Formulário de revisão -->
+            <div id="tela-formulario" style="display:none;">
+                <div class="fp-contador" id="contador">Tempo restante: <strong id="contador-valor">30:00</strong></div>
+
+                <form id="form-confirmacao" novalidate>
+                    <div class="fp-secao-titulo">Seus dados</div>
+                    <div class="cl-campo-fixo">Local de atuação: <strong id="cl-localidade">—</strong> (não pode ser alterado aqui)</div>
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="cl-lider-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="cl-lider-telefone" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="16" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" id="cl-lider-endereco" required>
+                    </div>
+
+                    <div class="fp-secao-titulo">Multiplicadores da sua célula</div>
+                    <p class="fp-secao-ajuda">O CPF não pode ser alterado aqui. Se estiver errado, avise a administração diretamente.</p>
+                    <div id="cl-multiplicadores"></div>
+
+                    <div class="fp-secao-titulo">Veículo(s) vinculado(s)</div>
+                    <p class="fp-secao-ajuda">A placa não pode ser alterada aqui.</p>
+                    <div id="cl-veiculos"></div>
+
+                    <div id="cl-mensagem" class="fp-msg"></div>
+
+                    <button type="submit" class="btn-primary" style="width:100%; margin-top:1.5rem; padding:0.85rem;" id="cl-btn-enviar">Confirmar meus dados</button>
+                    <p class="fp-secao-ajuda" style="text-align:center; margin-top:0.6rem;">Se você não alterar nada, isso já confirma que os dados estão certos. Se corrigir algo, a correção é enviada para a administração aprovar.</p>
+                </form>
+            </div>
+
+            <!-- Sucesso -->
+            <div id="tela-sucesso" class="fp-tela-estado" style="display:none;">
+                <div class="icone">✅</div>
+                <h2 id="sucesso-titulo">Tudo certo!</h2>
+                <p id="sucesso-texto">Seus dados foram confirmados. Este link não pode mais ser usado.</p>
+            </div>
+
+            <!-- Link inválido -->
+            <div id="tela-invalido" class="fp-tela-estado" style="display:none;">
+                <div class="icone">🔗</div>
+                <h2>Link inválido</h2>
+                <p id="invalido-texto">Este link não é válido. Confirme o endereço com a administração da campanha.</p>
+            </div>
+
+            <!-- Link expirado -->
+            <div id="tela-expirado" class="fp-tela-estado" style="display:none;">
+                <div class="icone">⏰</div>
+                <h2>Link expirado</h2>
+                <p>O prazo de 30 minutos para revisar os dados terminou. Peça um link novo à administração da campanha.</p>
+            </div>
+
+            <!-- Link já usado -->
+            <div id="tela-enviado" class="fp-tela-estado" style="display:none;">
+                <div class="icone">✔️</div>
+                <h2>Este link já foi utilizado</h2>
+                <p>A resposta deste link já foi enviada. Se precisar corrigir alguma informação, peça um link novo à administração da campanha.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="confirmacao-lider.js"></script>
+</body>
+</html>
