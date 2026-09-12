@@ -1704,6 +1704,31 @@ function abrirModalEditarVeiculo(id) {
     document.getElementById('ev-local').value = v.localidade_atendimento || '';
     document.getElementById('ev-data-cessao').value = v.data_inicio_cessao ? isoParaData(v.data_inicio_cessao) : '';
     preencherSelectLideres('ev-lider', v.lider_id, null);
+    document.getElementById('modal-editar-veiculo-title').textContent = '✏️ Editar Veículo';
+    document.getElementById('modal-editar-veiculo').classList.add('show');
+}
+
+// Mesmo modal, em branco — ao salvar, salvarEdicaoVeiculo() detecta ev-id
+// vazio e faz um INSERT em vez de UPDATE (mesmo padrão de
+// abrirModalNovoMultiplicador/salvarEdicaoPessoal). Só master/admin veem o
+// botão (podeEditarCadastro()); a trava real é a RLS — master já tem
+// INSERT em veiculos pela política "validador insere veiculos" (eh_validador()
+// inclui master) e admin pela política de acesso total.
+function abrirModalNovoVeiculo() {
+    document.getElementById('ev-id').value = '';
+    document.getElementById('ev-placa').value = '';
+    document.getElementById('ev-marca').value = '';
+    document.getElementById('ev-modelo').value = '';
+    document.getElementById('ev-ano').value = '';
+    document.getElementById('ev-proprietario').value = '';
+    document.getElementById('ev-cpf-proprietario').value = '';
+    document.getElementById('ev-cnpj').value = '';
+    document.getElementById('ev-valor').value = '';
+    preencherDatalistLocalidades('ev-local-lista');
+    document.getElementById('ev-local').value = '';
+    document.getElementById('ev-data-cessao').value = '';
+    preencherSelectLideres('ev-lider', null, null);
+    document.getElementById('modal-editar-veiculo-title').textContent = '➕ Adicionar Veículo';
     document.getElementById('modal-editar-veiculo').classList.add('show');
 }
 
@@ -1712,7 +1737,8 @@ function fecharModalEditarVeiculo() {
 }
 
 async function salvarEdicaoVeiculo(botao) {
-    const id = Number(document.getElementById('ev-id').value);
+    const idTexto = document.getElementById('ev-id').value;
+    const id = idTexto ? Number(idTexto) : null;
     const placa = normalizarPlaca(document.getElementById('ev-placa').value);
     const cnpj = document.getElementById('ev-cnpj').value.trim();
     if (!placa) { alert('Preencha a Placa.'); return; }
@@ -1737,7 +1763,9 @@ async function salvarEdicaoVeiculo(botao) {
     };
 
     botao.disabled = true;
-    const { error } = await supabaseClient.from('veiculos').update(payload).eq('id', id);
+    const { error } = id
+        ? await supabaseClient.from('veiculos').update(payload).eq('id', id)
+        : await supabaseClient.from('veiculos').insert(payload);
     botao.disabled = false;
     if (error) { alert('Não foi possível salvar: ' + error.message); return; }
     fecharModalEditarVeiculo();
@@ -2364,6 +2392,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Gestão de Líderes é para master e admin (validador/leitor comuns não
     // veem) — mesma regra de podeEditarCadastro().
     document.getElementById('nav-gestao-lideres').style.display = podeEditarCadastro() ? '' : 'none';
+    // "Adicionar Veículo" (tela Veículos) — mesma regra: só master/admin.
+    document.getElementById('btn-novo-veiculo').style.display = podeEditarCadastro() ? '' : 'none';
     // Pessoal carrega antes de Formulários/Multiplicadores: validar um
     // veículo/multiplicador precisa da lista de líderes já em cachePessoal
     // pra casar o proprietário/líder. Pessoal + Veículos também alimentam a

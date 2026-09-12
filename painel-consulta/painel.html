@@ -161,6 +161,9 @@
                 </section>
 
                 <section id="veiculos" class="page">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
+                        <button type="button" id="btn-novo-veiculo" class="btn-primary" style="display:none;" onclick="abrirModalNovoVeiculo()">➕ Adicionar Veículo</button>
+                    </div>
                     <div class="table-container">
                         <table class="table-data" id="tabela-veiculos">
                             <thead><tr>
@@ -456,7 +459,7 @@
     <div id="modal-editar-veiculo" class="modal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3>✏️ Editar Veículo</h3>
+                <h3 id="modal-editar-veiculo-title">✏️ Editar Veículo</h3>
                 <span class="close-modal" onclick="fecharModalEditarVeiculo()">&times;</span>
             </div>
             <input type="hidden" id="ev-id">
