@@ -455,10 +455,19 @@ function podeEditarCadastro() {
     return meuPapel === 'master' || meuPapel === 'admin';
 }
 
-// Perfil 'leitor' fica restrito a Consulta Rápida e Formulários — as demais
-// telas (Cadastro Rápido, Multiplicadores, Pessoal, Veículos) somem da
-// navegação. 'validador', 'master' e 'admin' continuam vendo tudo.
-const TELAS_PERMITIDAS_LEITOR = ['consulta-rapida', 'formularios'];
+// 'leitor' também gera e envia (WhatsApp) os links individuais de
+// Multiplicador de cada líder — só isso na aba Multiplicadores: a seção
+// "Liderados recebidos" (validar submissões) continua só para
+// validador/master/admin. Ver supabase/migracao-leitor-links-multiplicador.sql.
+function podeGerarLinksMultiplicador() {
+    return ehLeitor() || possoValidarFormularios();
+}
+
+// Perfil 'leitor' fica restrito a Consulta Rápida, Formulários e
+// Multiplicadores (só gerar/enviar link) — as demais telas (Cadastro
+// Rápido, Pessoal, Veículos) somem da navegação. 'validador', 'master' e
+// 'admin' continuam vendo tudo.
+const TELAS_PERMITIDAS_LEITOR = ['consulta-rapida', 'formularios', 'multiplicadores'];
 
 function ehLeitor() {
     return meuPapel === 'leitor';
@@ -1137,16 +1146,25 @@ let cacheEnviosMultiplicador = [];
 async function carregarMultiplicadores() {
     const tbodyLideres = document.getElementById('mult-lideres-body');
     const tbodyEnvios = document.getElementById('mult-envios-body');
-    if (!tbodyLideres || !tbodyEnvios) return;
+    if (!tbodyLideres) return;
     tbodyLideres.innerHTML = linhaVazia(6, 'Carregando…');
-    tbodyEnvios.innerHTML = linhaVazia(8, 'Carregando…');
 
-    const [{ data: links, error: eL }, { data: envios, error: eE }] = await Promise.all([
+    // 'leitor' só gera/envia link — a seção "Liderados recebidos" fica
+    // oculta (o RLS de envios_multiplicador também não deixa esse papel
+    // ler essa tabela). Ver supabase/migracao-leitor-links-multiplicador.sql.
+    const mostrarEnvios = !ehLeitor();
+    const secaoEnvios = document.getElementById('mult-envios-secao');
+    if (secaoEnvios) secaoEnvios.style.display = mostrarEnvios ? '' : 'none';
+    if (mostrarEnvios && tbodyEnvios) tbodyEnvios.innerHTML = linhaVazia(8, 'Carregando…');
+
+    const [{ data: links, error: eL }, resultadoEnvios] = await Promise.all([
         lerTodasAsPaginas((de, ate) => supabaseClient.from('links_multiplicador').select('*').order('gerado_em', { ascending: false }).order('id', { ascending: false }).range(de, ate)),
-        lerTodasAsPaginas((de, ate) => supabaseClient.from('envios_multiplicador').select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).range(de, ate))
+        mostrarEnvios
+            ? lerTodasAsPaginas((de, ate) => supabaseClient.from('envios_multiplicador').select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).range(de, ate))
+            : Promise.resolve({ data: [], error: null })
     ]);
     if (eL) { tbodyLideres.innerHTML = linhaVazia(6, 'Erro ao carregar os links: ' + eL.message); }
-    if (eE) { tbodyEnvios.innerHTML = linhaVazia(8, 'Erro ao carregar os envios: ' + eE.message); }
+    if (mostrarEnvios && resultadoEnvios.error) { tbodyEnvios.innerHTML = linhaVazia(8, 'Erro ao carregar os envios: ' + resultadoEnvios.error.message); }
 
     const maisRecentePorLider = new Map();
     (links || []).forEach(l => {
@@ -1154,10 +1172,10 @@ async function carregarMultiplicadores() {
         if (!atual || new Date(l.gerado_em) > new Date(atual.gerado_em)) maisRecentePorLider.set(l.lider_id, l);
     });
     linksMultiplicadorCache = maisRecentePorLider;
-    cacheEnviosMultiplicador = envios || [];
+    cacheEnviosMultiplicador = resultadoEnvios.data || [];
 
     if (!eL) renderLideresMultiplicador();
-    if (!eE) renderEnviosMultiplicador();
+    if (mostrarEnvios && !resultadoEnvios.error) renderEnviosMultiplicador();
 }
 
 function renderLideresMultiplicador() {
@@ -2387,9 +2405,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarPapel();
     // 'leitor' só enxerga Consulta Rápida e Formulários.
     aplicarRestricoesDeNavegacao();
-    // Aba "Multiplicadores" só aparece pra quem pode validar (validador ou
-    // admin) — mesma regra do botão "Validar" nas outras telas.
-    const podeVerMultiplicadores = possoValidarFormularios();
+    // Aba "Multiplicadores" aparece pra leitor (só gerar/enviar link) e pra
+    // quem pode validar (validador/master/admin, que também vê "Liderados
+    // recebidos") — ver podeGerarLinksMultiplicador().
+    const podeVerMultiplicadores = podeGerarLinksMultiplicador();
     document.getElementById('nav-multiplicadores').style.display = podeVerMultiplicadores ? '' : 'none';
     // Gestão de Líderes é para master e admin (validador/leitor comuns não
     // veem) — mesma regra de podeEditarCadastro().
