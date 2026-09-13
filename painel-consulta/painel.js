@@ -1174,18 +1174,35 @@ async function carregarMultiplicadores() {
     linksMultiplicadorCache = maisRecentePorLider;
     cacheEnviosMultiplicador = resultadoEnvios.data || [];
 
+    prepararFiltroLocalidadeMultiplicador();
     if (!eL) renderLideresMultiplicador();
     if (mostrarEnvios && !resultadoEnvios.error) renderEnviosMultiplicador();
+}
+
+// Popula o <select> de localidade com as localidades dos líderes em
+// cache — mesmo padrão de prepararFiltrosGestaoLideres(). Chamado sempre
+// que cachePessoal pode ter mudado (carregarMultiplicadores()); preserva a
+// seleção atual se a localidade continuar na lista.
+function prepararFiltroLocalidadeMultiplicador() {
+    const select = document.getElementById('mult-lider-localidade');
+    if (!select) return;
+    const localidades = [...new Set(cachePessoal.filter(p => p.funcao === 'lider').map(p => p.local_prestacao).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const valorAtual = select.value;
+    select.innerHTML = '<option value="">Todas as localidades</option>' + localidades.map(l => `<option value="${escaparHtml(l)}">${escaparHtml(l)}</option>`).join('');
+    if (localidades.includes(valorAtual)) select.value = valorAtual;
 }
 
 function renderLideresMultiplicador() {
     const tbody = document.getElementById('mult-lideres-body');
     const termo = (document.getElementById('mult-lider-busca')?.value || '').trim().toLowerCase();
+    const localidade = document.getElementById('mult-lider-localidade')?.value || '';
     const lideres = cachePessoal.filter(p => p.funcao === 'lider')
         .filter(p => !termo || String(p.nome).toLowerCase().includes(termo))
+        .filter(p => !localidade || p.local_prestacao === localidade)
         .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
 
-    if (!lideres.length) { tbody.innerHTML = linhaVazia(6, termo ? 'Nenhum líder encontrado para essa busca.' : 'Nenhum líder cadastrado ainda.'); return; }
+    if (!lideres.length) { tbody.innerHTML = linhaVazia(6, (termo || localidade) ? 'Nenhum líder encontrado para esse filtro.' : 'Nenhum líder cadastrado ainda.'); return; }
 
     const agora = new Date();
     const cores = { nao_aberto: '#64748b', em_preenchimento: '#0e7490', expirado: '#b91c1c', enviado: '#15803d' };
