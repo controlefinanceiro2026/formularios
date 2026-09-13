@@ -1494,13 +1494,13 @@ async function carregarPessoal() {
 // ─── CADASTRO DE VEÍCULOS ───────────────────────────────────────────────
 async function carregarVeiculos() {
     const tbody = document.getElementById('veiculos-body');
-    inicializarFiltroColunas('tabela-veiculos', [6, 7]);
+    inicializarFiltroColunas('tabela-veiculos', [7, 8]);
     // Paginado (placa não é única — desempate por id pra o range() não pular linha).
     const { data, error } = await lerTodasAsPaginas((de, ate) =>
         supabaseClient.from('veiculos').select('*').order('placa').order('id', { ascending: true }).range(de, ate));
-    if (error) { tbody.innerHTML = linhaVazia(8, 'Erro ao carregar Veículos.'); return; }
+    if (error) { tbody.innerHTML = linhaVazia(9, 'Erro ao carregar Veículos.'); return; }
     cacheVeiculos = data || [];
-    if (!cacheVeiculos.length) { tbody.innerHTML = linhaVazia(8, 'Nenhum veículo cadastrado.'); aplicarFiltrosColuna('tabela-veiculos'); return; }
+    if (!cacheVeiculos.length) { tbody.innerHTML = linhaVazia(9, 'Nenhum veículo cadastrado.'); aplicarFiltrosColuna('tabela-veiculos'); return; }
 
     tbody.innerHTML = cacheVeiculos.map(v => {
         const caminhoDocumento = caminhoDoBucket(v.documento_url, 'documentos-veiculo');
@@ -1509,6 +1509,7 @@ async function carregarVeiculos() {
             caminhoDocumento ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-veiculo','${caminhoDocumento}','CRLV — ${escaparHtml(v.placa)}')" title="Ver documento do veículo (CRLV)">📎</button>` : '',
             caminhoTermo ? `<button class="btn-icon" onclick="visualizarDocumento('documentos-veiculo','${caminhoTermo}','Termo de Cessão assinado — ${escaparHtml(v.placa)}')" title="Ver Termo de Cessão assinado">📝</button>` : ''
         ].filter(Boolean).join(' ');
+        const lider = (cachePessoal || []).find(p => p.id === v.lider_id);
         return `
         <tr>
             <td>${escaparHtml(v.placa)}</td>
@@ -1516,6 +1517,7 @@ async function carregarVeiculos() {
             <td>${escaparHtml(v.nome_proprietario)}</td>
             <td>${escaparHtml(v.cnpj_associado)}</td>
             <td>${escaparHtml(v.localidade_atendimento)}</td>
+            <td>${lider ? escaparHtml(lider.nome) : '<span style="color:#cbd5e1;">—</span>'}</td>
             <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
             <td>${botoesDoc || '<span style="color:#cbd5e1;">—</span>'}</td>
             <td>
