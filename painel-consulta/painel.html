@@ -201,6 +201,14 @@
                                     <option value="">Todos</option>
                                 </select>
                             </div>
+                            <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+                                <label for="gl-celula">Células (mín. 4 multiplicadores)</label>
+                                <select id="gl-celula" onchange="renderizarGestaoLideres()">
+                                    <option value="">Todas as células</option>
+                                    <option value="completas">Células completas</option>
+                                    <option value="incompletas">Células incompletas</option>
+                                </select>
+                            </div>
                             <button type="button" class="btn-secondary" onclick="limparFiltrosGestaoLideres()">Limpar filtros</button>
                         </div>
                         <p id="gl-contagem" class="text-muted" style="margin:0.75rem 0 0;"></p>

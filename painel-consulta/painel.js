@@ -1847,7 +1847,14 @@ function limparFiltrosGestaoLideres() {
     document.getElementById('gl-busca').value = '';
     document.getElementById('gl-localidade').value = '';
     document.getElementById('gl-coordenador').value = '';
+    document.getElementById('gl-celula').value = '';
     renderizarGestaoLideres();
+}
+
+const MIN_MULTIPLICADORES_CELULA_COMPLETA = 4;
+
+function contarMultiplicadoresDoLider(liderId) {
+    return (cachePessoal || []).filter(p => p.lider_id === liderId).length;
 }
 
 function renderizarGestaoLideres() {
@@ -1858,6 +1865,7 @@ function renderizarGestaoLideres() {
     const buscaDigitos = apenasDigitos(document.getElementById('gl-busca').value);
     const localidade = document.getElementById('gl-localidade').value;
     const coordenador = document.getElementById('gl-coordenador').value;
+    const celula = document.getElementById('gl-celula').value;
 
     let lideres = (cachePessoal || []).filter(p => p.funcao === 'lider');
     if (busca) {
@@ -1867,6 +1875,11 @@ function renderizarGestaoLideres() {
     }
     if (localidade) lideres = lideres.filter(p => p.local_prestacao === localidade);
     if (coordenador) lideres = lideres.filter(p => p.coordenador === coordenador);
+    if (celula === 'completas') {
+        lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA);
+    } else if (celula === 'incompletas') {
+        lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) < MIN_MULTIPLICADORES_CELULA_COMPLETA);
+    }
     lideres = lideres.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
 
     document.getElementById('gl-contagem').textContent =
