@@ -1014,7 +1014,7 @@ textarea { resize: vertical; }
     background: #f8fafc;
     padding: 1rem 1.25rem;
     font-weight: 700;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     border-bottom: 1px solid var(--color-border);
     word-break: break-word;
 }
@@ -1039,6 +1039,7 @@ textarea { resize: vertical; }
 }
 
 .cr-valor {
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-dark);
     word-break: break-word;
@@ -1049,6 +1050,7 @@ textarea { resize: vertical; }
     color: #92400e;
     padding: 1rem 1.25rem;
     border-radius: var(--radius);
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
@@ -1081,7 +1083,7 @@ textarea { resize: vertical; }
 .cr-modo-celular .cr-busca .form-group { width: 100%; min-width: 0; }
 .cr-modo-celular .cr-busca .btn-primary { width: 100%; padding: 0.9rem; font-size: 1rem; }
 .cr-modo-celular .cr-linha { grid-template-columns: 1fr; gap: 0.2rem; padding: 0.8rem 1rem; }
-.cr-modo-celular .cr-valor { font-size: 1.05rem; }
+.cr-modo-celular .cr-valor { font-size: 0.95rem; }
 
 @media (max-width: 560px) {
     .cr-controles { flex-direction: column; align-items: stretch; }
