@@ -11,14 +11,14 @@
 
 /* ==========================================
    VARIÁVEIS GLOBAIS E RESET
-   Paleta: identidade visual MDB-DF (mdbdf.org.br)
+   Paleta: identidade visual Zé Humberto (zehumbertodf.com.br)
    ========================================== */
 :root {
-    --color-primary: #000000;
-    --color-primary-dark: #1a1a1a;
-    --color-accent-gold: #f5b700;
-    --color-sidebar: #000000;
-    --color-sidebar-hover: #1a1a1a;
+    --color-primary: #0e3e8a;
+    --color-primary-dark: #0a3578;
+    --color-accent-gold: #6ab1dd;
+    --color-sidebar: #041c48;
+    --color-sidebar-hover: #0a3578;
     --color-success: #10b981;
     --color-danger: #ef4444;
     --color-warning: #f59e0b;
