@@ -1875,6 +1875,19 @@ function renderizarGestaoLideres() {
     }
     if (localidade) lideres = lideres.filter(p => p.local_prestacao === localidade);
     if (coordenador) lideres = lideres.filter(p => p.coordenador === coordenador);
+
+    // Conta completas/incompletas ANTES do filtro de célula (se não, com
+    // "Células completas" selecionado o card de incompletas sempre daria
+    // zero) — reflete a composição do que busca/localidade/coordenador
+    // deixaram, independente do filtro de célula escolhido.
+    const totalCelulas = lideres.length;
+    const celulasCompletas = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA).length;
+    const celulasIncompletas = totalCelulas - celulasCompletas;
+    document.getElementById('gl-resumo-celulas').innerHTML = `
+        <span class="badge badge-info" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${totalCelulas} célula(s) no filtro</span>
+        <span class="badge badge-receita" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasCompletas} completa(s)</span>
+        <span class="badge badge-despesa" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasIncompletas} incompleta(s)</span>`;
+
     if (celula === 'completas') {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA);
     } else if (celula === 'incompletas') {
@@ -2213,6 +2226,52 @@ function gerarRelatorioGerencialVeiculosExcel() {
     const aoa = [CABECALHO_GERENCIAL_VEICULOS, ...linhas.map(linhaGerencialVeiculos), ['Total geral', totais.total, totais.comCrlv, totais.comTermo]];
     XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aoa), 'Gerencial Veículos');
     XLSX.writeFile(livro, nomeArquivoRelatorio('gerencial-veiculos-localidade', 'xlsx'));
+}
+
+// ── 4b) Gestão de Líderes — Células por Localidade ───────────────────────
+const CABECALHO_GESTAO_LIDERES_CELULAS = ['Localidade', 'Líderes (células)', 'Completas', 'Incompletas'];
+const linhaGestaoLideresCelulas = g => [g.localidade, g.total, g.completas, g.incompletas];
+
+function dadosGestaoLideresCelulas() {
+    const grupos = {};
+    (cachePessoal || []).filter(p => p.funcao === 'lider').forEach(p => {
+        const loc = p.local_prestacao || SEM_LOCALIDADE_RELATORIO;
+        const g = grupos[loc] || (grupos[loc] = { localidade: loc, total: 0, completas: 0, incompletas: 0 });
+        g.total++;
+        if (contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA) g.completas++;
+        else g.incompletas++;
+    });
+    const linhas = Object.values(grupos).sort((a, b) => a.localidade.localeCompare(b.localidade, 'pt-BR'));
+    const totais = linhas.reduce((t, g) => ({
+        total: t.total + g.total, completas: t.completas + g.completas, incompletas: t.incompletas + g.incompletas
+    }), { total: 0, completas: 0, incompletas: 0 });
+    return { linhas, totais };
+}
+
+function gerarRelatorioGestaoLideresPdf() {
+    const { linhas, totais } = dadosGestaoLideresCelulas();
+    const doc = iniciarPdfRelatorio('Gestão de Líderes — Células por Localidade');
+    doc.autoTable({
+        startY: 28, head: [CABECALHO_GESTAO_LIDERES_CELULAS],
+        body: [...linhas.map(linhaGestaoLideresCelulas), ['Total geral', totais.total, totais.completas, totais.incompletas]],
+        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] }
+    });
+    doc.save(nomeArquivoRelatorio('gestao-lideres-celulas-localidade', 'pdf'));
+}
+
+function gerarRelatorioGestaoLideresExcel() {
+    const { linhas, totais } = dadosGestaoLideresCelulas();
+    const livro = XLSX.utils.book_new();
+    const aoa = [CABECALHO_GESTAO_LIDERES_CELULAS, ...linhas.map(linhaGestaoLideresCelulas), ['Total geral', totais.total, totais.completas, totais.incompletas]];
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aoa), 'Células por Localidade');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('gestao-lideres-celulas-localidade', 'xlsx'));
+}
+
+// Pedido explícito: gerar o PDF desse relatório sempre gera o Excel junto
+// (diferente dos outros relatórios da tela, que têm botões separados).
+function gerarRelatorioGestaoLideresPdfEExcel() {
+    gerarRelatorioGestaoLideresPdf();
+    gerarRelatorioGestaoLideresExcel();
 }
 
 // ── 5) Controle de Km ────────────────────────────────────────────────────

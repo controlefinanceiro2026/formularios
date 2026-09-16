@@ -212,6 +212,7 @@
                             <button type="button" class="btn-secondary" onclick="limparFiltrosGestaoLideres()">Limpar filtros</button>
                         </div>
                         <p id="gl-contagem" class="text-muted" style="margin:0.75rem 0 0;"></p>
+                        <div id="gl-resumo-celulas" style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem;"></div>
                     </div>
 
                     <div id="gestao-lideres-lista"></div>
@@ -251,6 +252,14 @@
                         <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
                             <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialVeiculosPdf()">📄 PDF</button>
                             <button type="button" class="btn-secondary" onclick="gerarRelatorioGerencialVeiculosExcel()">📊 Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">🧑‍✈️ Gestão de Líderes — Células por Localidade</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Quantidade de líderes (células), células completas (mín. 4 multiplicadores) e incompletas, agrupado por localidade. Gerar o PDF também gera o Excel.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioGestaoLideresPdfEExcel()">📄📊 Gerar PDF + Excel</button>
                         </div>
                     </div>
 
