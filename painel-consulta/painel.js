@@ -1892,6 +1892,8 @@ function renderizarGestaoLideres() {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA);
     } else if (celula === 'incompletas') {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) < MIN_MULTIPLICADORES_CELULA_COMPLETA);
+    } else if (celula === 'excedentes') {
+        lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) > MIN_MULTIPLICADORES_CELULA_COMPLETA);
     }
     lideres = lideres.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
 
