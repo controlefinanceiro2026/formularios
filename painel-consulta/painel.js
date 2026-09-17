@@ -2296,6 +2296,25 @@ function gerarRelatorioGestaoLideresPdfEExcel() {
 }
 
 // ── 5) Controle de Km ────────────────────────────────────────────────────
+// Regiões de Fiscalização da campanha — cópia de lib/regioesDF.js / app.js
+// (mantenha as três em sincronia), só o necessário pra agrupar o PDF de
+// Controle de Km na mesma ordem/visual do PDF por Localidade da
+// plataforma principal (app.js#gerarPdfKmPorLocalidade).
+const REGIOES_FISCALIZACAO_KM = {
+    'Comitê': ['Comitê'],
+    'Região Sul': ['Santa Maria', 'Gama', 'Riacho Fundo I', 'Riacho Fundo II', 'Recanto das Emas', 'Samambaia'],
+    'Região Leste': ['Taguatinga', 'Arniqueira', 'Águas Claras', 'Sol Nascente / Pôr do Sol', 'Ceilândia', 'Brazlândia'],
+    'Região Norte': ['Planaltina', 'Sobradinho', 'Paranoá', 'Itapoã', 'São Sebastião', 'Jardim Botânico'],
+    'Região Centrinho': ['Plano Piloto', 'SIA', 'Guará', 'Núcleo Bandeirante', 'Candangolândia', 'Estrutural', 'Vicente Pires', 'Cruzeiro', 'Lago Sul', 'Lago Norte', 'Sudoeste/Octogonal', 'Park Way', 'Varjão']
+};
+const NOMES_REGIOES_FISCALIZACAO_KM = Object.keys(REGIOES_FISCALIZACAO_KM);
+const LOCAIS_PRESTACAO_SERVICO_KM = NOMES_REGIOES_FISCALIZACAO_KM
+    .reduce((acc, r) => acc.concat(REGIOES_FISCALIZACAO_KM[r]), []);
+
+function regiaoDaLocalidadeKm(localidade) {
+    return NOMES_REGIOES_FISCALIZACAO_KM.find(r => REGIOES_FISCALIZACAO_KM[r].includes(localidade)) || null;
+}
+
 const CABECALHO_CONTROLE_KM = ['Nº', 'Localidade', 'Coordenador', 'Placa', 'Veículo', 'Proprietário', 'Contato', 'Última leitura', 'Km aferido', 'Assinatura (recebimento do voucher)'];
 const linhaControleKm = l => [
     l.numero, l.localidade, l.coordenador, l.placa, l.veiculo, l.proprietario, l.contato,
@@ -2360,36 +2379,101 @@ function dadosControleKm(localidadesFiltro, veiculosIdsFiltro) {
     return linhas;
 }
 
+// PDF agrupado por localidade (barra de cabeçalho "Região · Localidade" por
+// grupo, tema "grid" com bordas) — mesmo layout do PDF por Localidade da
+// plataforma principal (app.js#gerarPdfKmPorLocalidade), pra as duas
+// plataformas terem a mesma cara no Controle de Km.
 async function gerarRelatorioKmPdf() {
     await garantirLeiturasKm();
     const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm());
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
-    const doc = iniciarPdfRelatorio('Controle de Km');
-    doc.autoTable({
-        startY: 28, head: [CABECALHO_CONTROLE_KM], body: linhas.map(linhaControleKm),
-        styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] },
-        // Larguras fixas pras colunas curtas/numéricas — sem isso o
-        // autoTable divide o espaço proporcionalmente entre as 10 colunas
-        // e trunca (elipsis) até o telefone em "Contato", que precisa de
-        // ~24mm pra caber "(61) 99999-9999" inteiro.
-        columnStyles: {
-            0: { cellWidth: 8, halign: 'center' },
-            1: { cellWidth: 24 },
-            2: { cellWidth: 24 },
-            3: { cellWidth: 18, halign: 'center' },
-            4: { cellWidth: 24 },
-            5: { cellWidth: 30 },
-            6: { cellWidth: 26, halign: 'center' },
-            7: { cellWidth: 20, halign: 'center' },
-            8: { cellWidth: 18, halign: 'right' },
-            9: { minCellHeight: 12 }
-        },
-        didParseCell: (dados) => {
-            if (dados.section === 'body' && linhas[dados.row.index] && linhas[dados.row.index].semLeitura) {
-                dados.cell.styles.textColor = [180, 0, 0];
+
+    const grupos = {};
+    linhas.forEach(l => { (grupos[l.localidade] = grupos[l.localidade] || []).push(l); });
+    const ordemLocalidades = [
+        ...LOCAIS_PRESTACAO_SERVICO_KM.filter(l => grupos[l]),
+        ...Object.keys(grupos).filter(l => l !== SEM_LOCALIDADE_RELATORIO && !LOCAIS_PRESTACAO_SERVICO_KM.includes(l)).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        ...(grupos[SEM_LOCALIDADE_RELATORIO] ? [SEM_LOCALIDADE_RELATORIO] : [])
+    ];
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const larguraPagina = doc.internal.pageSize.getWidth();
+    const alturaPagina = doc.internal.pageSize.getHeight();
+    const margem = 14;
+    const dataGeracao = new Date().toLocaleDateString('pt-BR');
+
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, larguraPagina, 22, 'F');
+    doc.setTextColor(245, 183, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Painel de Consulta', larguraPagina / 2, 11, { align: 'center' });
+    doc.setDrawColor(245, 183, 0);
+    doc.setLineWidth(0.6);
+    doc.line(margem, 15, larguraPagina - margem, 15);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Controle de Km — gerado em ${dataGeracao}`, margem, 19.5);
+
+    let y = 30;
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Listagem de Veículos por Localidade', margem, y);
+    y += 8;
+
+    ordemLocalidades.forEach(localidade => {
+        const veiculosLoc = grupos[localidade];
+        if (y > alturaPagina - 18) { doc.addPage(); y = 20; }
+        const regiao = regiaoDaLocalidadeKm(localidade);
+        const cabecalhoGrupo = (regiao && regiao !== localidade) ? `${regiao}  ·  ${localidade}` : localidade;
+        doc.autoTable({
+            startY: y,
+            margin: { left: margem, right: margem, top: 14 },
+            theme: 'grid',
+            head: [
+                [{ content: cabecalhoGrupo, colSpan: 9, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+                ['Nº', 'Coordenador', 'Placa', 'Veículo', 'Proprietário', 'Contato', 'Última leitura', 'Km aferido', 'Assinatura']
+            ],
+            body: veiculosLoc.map(l => [
+                l.numero, l.coordenador, l.placa, l.veiculo, l.proprietario, l.contato,
+                l.data ? formatarData(l.data) : '—', l.kmAferido != null ? l.kmAferido : '—', ''
+            ]),
+            // 'linebreak' (não 'ellipsize'): nenhuma coluna de dado pode vir
+            // cortada — se o conteúdo não cabe na largura definida, quebra
+            // linha em vez de truncar com "...".
+            styles: { fontSize: 7.5, cellPadding: 1.4, overflow: 'linebreak', lineWidth: 0.15, lineColor: [0, 0, 0] },
+            headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0], overflow: 'linebreak', lineWidth: 0.15, lineColor: [0, 0, 0] },
+            bodyStyles: { minCellHeight: 7.5 },
+            columnStyles: {
+                0: { cellWidth: 8, halign: 'center' },
+                1: { cellWidth: 26 },
+                2: { cellWidth: 18, halign: 'center' },
+                3: { cellWidth: 24 },
+                5: { cellWidth: 26, halign: 'center' },
+                6: { cellWidth: 20, halign: 'center' },
+                7: { cellWidth: 18, halign: 'right' },
+                8: { cellWidth: 40 }
+            },
+            didParseCell: (dados) => {
+                if (dados.section === 'body') {
+                    const linha = veiculosLoc[dados.row.index];
+                    if (linha && linha.semLeitura) dados.cell.styles.textColor = [180, 0, 0];
+                }
+            },
+            didDrawPage: () => {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                doc.text(`Controle de Km — ${dataGeracao}`, margem, 9);
+                doc.text(`Página ${doc.internal.getNumberOfPages()}`, larguraPagina - margem, 9, { align: 'right' });
             }
-        }
+        });
+        y = doc.lastAutoTable.finalY + 4;
     });
+
     doc.save(nomeArquivoRelatorio('controle-km', 'pdf'));
 }
 
