@@ -210,6 +210,10 @@
                                     <option value="excedentes">Células com mais de 4 multiplicadores</option>
                                 </select>
                             </div>
+                            <label style="display:flex; align-items:center; gap:0.4rem; font-weight:600; white-space:nowrap; margin-bottom:0;">
+                                <input type="checkbox" id="gl-excluir-comite" onchange="renderizarGestaoLideres()">
+                                Excluir Comitê
+                            </label>
                             <button type="button" class="btn-secondary" onclick="limparFiltrosGestaoLideres()">Limpar filtros</button>
                         </div>
                         <p id="gl-contagem" class="text-muted" style="margin:0.75rem 0 0;"></p>

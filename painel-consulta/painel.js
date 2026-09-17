@@ -1719,8 +1719,24 @@ async function salvarEdicaoPessoal(botao) {
         : await supabaseClient.from('pessoal_contratado').insert(payload);
     botao.disabled = false;
     if (error) { alert('Não foi possível salvar: ' + error.message); return; }
+
+    // A localidade do veículo que o líder cede sempre acompanha a do líder
+    // (mesma regra do app.js#_salvarPessoalInterno) — sem isso, editar a
+    // localidade do líder por aqui deixava o(s) veículo(s) associado(s)
+    // com a localidade antiga.
+    const idPessoaSalva = id || null;
+    if (idPessoaSalva && payload.local_prestacao) {
+        const veiculosLocalidadeDivergente = (cacheVeiculos || [])
+            .filter(v => v.lider_id === idPessoaSalva && v.localidade_atendimento !== payload.local_prestacao);
+        for (const v of veiculosLocalidadeDivergente) {
+            const { error: erroVeiculo } = await supabaseClient.from('veiculos').update({ localidade_atendimento: payload.local_prestacao }).eq('id', v.id);
+            if (!erroVeiculo) v.localidade_atendimento = payload.local_prestacao;
+        }
+    }
+
     fecharModalEditarPessoal();
     await carregarPessoal();
+    await carregarVeiculos();
     if (typeof renderizarGestaoLideres === 'function') renderizarGestaoLideres();
 }
 
@@ -1848,6 +1864,7 @@ function limparFiltrosGestaoLideres() {
     document.getElementById('gl-localidade').value = '';
     document.getElementById('gl-coordenador').value = '';
     document.getElementById('gl-celula').value = '';
+    document.getElementById('gl-excluir-comite').checked = false;
     renderizarGestaoLideres();
 }
 
@@ -1866,8 +1883,10 @@ function renderizarGestaoLideres() {
     const localidade = document.getElementById('gl-localidade').value;
     const coordenador = document.getElementById('gl-coordenador').value;
     const celula = document.getElementById('gl-celula').value;
+    const excluirComite = document.getElementById('gl-excluir-comite').checked;
 
     let lideres = (cachePessoal || []).filter(p => p.funcao === 'lider');
+    if (excluirComite) lideres = lideres.filter(p => p.local_prestacao !== 'Comitê');
     if (busca) {
         lideres = lideres.filter(p =>
             normalizarBuscaTexto(p.nome).includes(busca) ||
@@ -2277,9 +2296,9 @@ function gerarRelatorioGestaoLideresPdfEExcel() {
 }
 
 // ── 5) Controle de Km ────────────────────────────────────────────────────
-const CABECALHO_CONTROLE_KM = ['Localidade', 'Placa', 'Veículo', 'Proprietário', 'Última leitura', 'Km aferido', 'Assinatura (recebimento do voucher)'];
+const CABECALHO_CONTROLE_KM = ['Nº', 'Localidade', 'Coordenador', 'Placa', 'Veículo', 'Proprietário', 'Contato', 'Última leitura', 'Km aferido', 'Assinatura (recebimento do voucher)'];
 const linhaControleKm = l => [
-    l.localidade, l.placa, l.veiculo, l.proprietario,
+    l.numero, l.localidade, l.coordenador, l.placa, l.veiculo, l.proprietario, l.contato,
     l.data ? formatarData(l.data) : '—', l.kmAferido != null ? l.kmAferido : '—', ''
 ];
 
@@ -2313,15 +2332,32 @@ function dadosControleKm(localidadesFiltro, veiculosIdsFiltro) {
         if (!ultimaPorVeiculo[l.veiculo_id] || l.data >= ultimaPorVeiculo[l.veiculo_id].data) ultimaPorVeiculo[l.veiculo_id] = l;
     });
 
-    return veiculos.map(v => {
+    const linhas = veiculos.map(v => {
         const ultima = ultimaPorVeiculo[v.id];
+        const lider = v.lider_id ? (cachePessoal || []).find(p => p.id === v.lider_id) : null;
         return {
             placa: v.placa, veiculo: `${v.marca || ''} ${v.modelo || ''}`.trim() || '—',
             proprietario: v.nome_proprietario || '—', localidade: v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO,
+            coordenador: (lider && lider.coordenador) || '—',
+            contato: (lider && lider.telefone) ? mascararTelefone(lider.telefone) : '—',
             data: ultima ? ultima.data : null, kmAferido: ultima ? Number(ultima.km_aferido) : null,
             kmRodado: ultima ? ultima._kmRodado : null, semLeitura: !ultima
         };
-    }).sort((a, b) => a.localidade.localeCompare(b.localidade, 'pt-BR') || a.placa.localeCompare(b.placa, 'pt-BR'));
+    }).sort((a, b) =>
+        a.localidade.localeCompare(b.localidade, 'pt-BR') ||
+        a.coordenador.localeCompare(b.coordenador, 'pt-BR') ||
+        a.proprietario.localeCompare(b.proprietario, 'pt-BR')
+    );
+
+    // Enumera os veículos por localidade (reinicia a contagem a cada troca
+    // de localidade, já que as linhas estão agrupadas por ela na ordenação).
+    let localidadeAtual = null, contador = 0;
+    linhas.forEach(l => {
+        if (l.localidade !== localidadeAtual) { localidadeAtual = l.localidade; contador = 0; }
+        l.numero = ++contador;
+    });
+
+    return linhas;
 }
 
 async function gerarRelatorioKmPdf() {
@@ -2332,7 +2368,7 @@ async function gerarRelatorioKmPdf() {
     doc.autoTable({
         startY: 28, head: [CABECALHO_CONTROLE_KM], body: linhas.map(linhaControleKm),
         styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] },
-        columnStyles: { 6: { minCellHeight: 12 } },
+        columnStyles: { 9: { minCellHeight: 12 } },
         didParseCell: (dados) => {
             if (dados.section === 'body' && linhas[dados.row.index] && linhas[dados.row.index].semLeitura) {
                 dados.cell.styles.textColor = [180, 0, 0];
@@ -2348,7 +2384,7 @@ async function gerarRelatorioKmExcel() {
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const livro = XLSX.utils.book_new();
     const planilha = XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]);
-    planilha['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 36 }];
+    planilha['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 36 }];
     XLSX.utils.book_append_sheet(livro, planilha, 'Controle de Km');
     XLSX.writeFile(livro, nomeArquivoRelatorio('controle-km', 'xlsx'));
 }
