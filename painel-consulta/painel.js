@@ -2368,7 +2368,22 @@ async function gerarRelatorioKmPdf() {
     doc.autoTable({
         startY: 28, head: [CABECALHO_CONTROLE_KM], body: linhas.map(linhaControleKm),
         styles: { fontSize: 8, overflow: 'ellipsize' }, headStyles: { fillColor: [0, 0, 0] },
-        columnStyles: { 9: { minCellHeight: 12 } },
+        // Larguras fixas pras colunas curtas/numéricas — sem isso o
+        // autoTable divide o espaço proporcionalmente entre as 10 colunas
+        // e trunca (elipsis) até o telefone em "Contato", que precisa de
+        // ~24mm pra caber "(61) 99999-9999" inteiro.
+        columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 24 },
+            2: { cellWidth: 24 },
+            3: { cellWidth: 18, halign: 'center' },
+            4: { cellWidth: 24 },
+            5: { cellWidth: 30 },
+            6: { cellWidth: 26, halign: 'center' },
+            7: { cellWidth: 20, halign: 'center' },
+            8: { cellWidth: 18, halign: 'right' },
+            9: { minCellHeight: 12 }
+        },
         didParseCell: (dados) => {
             if (dados.section === 'body' && linhas[dados.row.index] && linhas[dados.row.index].semLeitura) {
                 dados.cell.styles.textColor = [180, 0, 0];
