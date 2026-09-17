@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Cadastro de Multiplicador</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #f1f5f9; }
+        .fp-hero {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: white; padding: 2.5rem 1.5rem; text-align: center;
+        }
+        .fp-hero h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
+        .fp-hero p { margin: 0; opacity: 0.9; max-width: 620px; margin: 0 auto; }
+        .fp-container { max-width: 680px; margin: -2rem auto 3rem; padding: 0 1rem; }
+        .fp-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
+        .fp-secao-titulo { font-size: 1rem; font-weight: 700; color: var(--color-dark); margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .fp-secao-titulo:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+        .fp-lgpd-box { max-height: 180px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; color: #475569; margin-bottom: 1rem; }
+        .fp-checkbox-linha { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.9rem; cursor: pointer; }
+        .fp-checkbox-linha input { margin-top: 0.2rem; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+        .fp-msg { padding: 0.9rem 1rem; border-radius: 8px; margin-top: 1rem; font-size: 0.9rem; display: none; }
+        .fp-msg.erro { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .fp-msg.sucesso { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .fp-campo-erro { color: #dc2626; font-size: 0.8rem; margin-top: 0.3rem; display: none; }
+        .fp-tela-estado { text-align: center; padding: 2rem 0; }
+        .fp-tela-estado .icone { font-size: 3rem; margin-bottom: 1rem; }
+        .fp-tela-estado h2 { margin: 0 0 0.5rem; }
+        .fp-tela-estado p { color: #64748b; margin: 0.4rem auto 0; max-width: 460px; }
+    </style>
+</head>
+<body>
+    <div class="fp-hero">
+        <h1>🧑‍🤝‍🧑 Cadastro de Multiplicador</h1>
+        <p>Preencha seus dados abaixo para se cadastrar como multiplicador.</p>
+    </div>
+
+    <div class="fp-container">
+        <div class="fp-card">
+
+            <!-- Verificando o link -->
+            <div id="tela-carregando" class="fp-tela-estado">
+                <div class="icone">⏳</div>
+                <p>Carregando…</p>
+            </div>
+
+            <!-- Formulário -->
+            <div id="tela-formulario" style="display:none;">
+                <form id="form-multiplicador-direto" novalidate>
+                    <div class="fp-secao-titulo">Dados do Multiplicador</div>
+
+                    <div class="form-group">
+                        <label>Localidade</label>
+                        <select id="md-localidade" required>
+                            <option value="">Selecione...</option>
+                            <option value="PLANALTINA_SAULO">PLANALTINA_SAULO</option>
+                            <option value="GAMA_RICARDO">GAMA_RICARDO</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="md-nome" placeholder="Nome completo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CPF</label>
+                        <input type="text" id="md-cpf" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" required>
+                        <div class="fp-campo-erro" id="md-cpf-erro">CPF inválido — confira os números.</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="md-telefone" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="16" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" id="md-endereco" placeholder="Rua, número, complemento, bairro, cidade" required>
+                    </div>
+
+                    <div class="fp-secao-titulo">Termo de Consentimento — LGPD</div>
+                    <div class="fp-lgpd-box">
+                        Em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 —
+                        LGPD), os dados fornecidos neste formulário (nome, CPF, telefone e endereço) serão
+                        coletados, armazenados e tratados exclusivamente para fins de análise e formalização
+                        de eventual contratação junto à campanha eleitoral responsável por este formulário.
+                        Os dados não serão compartilhados com terceiros fora dessa finalidade, serão mantidos
+                        sob sigilo e ficarão acessíveis apenas a pessoas autorizadas da equipe de
+                        administração financeira da campanha. Você pode, a qualquer momento, solicitar
+                        informações sobre o tratamento dos seus dados, correção ou exclusão, nos termos do
+                        art. 18 da LGPD, entrando em contato diretamente com a campanha.
+                    </div>
+                    <label class="fp-checkbox-linha">
+                        <input type="checkbox" id="md-lgpd" required>
+                        <span>Li e concordo com os termos acima e autorizo o tratamento dos meus dados pessoais nos termos da LGPD.</span>
+                    </label>
+
+                    <div id="md-mensagem" class="fp-msg"></div>
+
+                    <button type="submit" class="btn-primary" style="width:100%; margin-top:1.5rem; padding:0.85rem;" id="md-btn-enviar">Enviar Cadastro</button>
+                </form>
+            </div>
+
+            <!-- Sucesso (link reutilizável: só aparece se a página for aberta sem token válido novamente) -->
+            <div id="tela-invalido" class="fp-tela-estado" style="display:none;">
+                <div class="icone">🔗</div>
+                <h2>Link inválido</h2>
+                <p id="invalido-texto">Este link não é válido. Confirme o endereço com a administração da campanha.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Confirmação de envio — link reutilizável, vários envios em sequência -->
+    <div id="modal-sucesso-envio" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-sucesso-titulo">
+        <div class="modal-content" style="max-width:420px; text-align:center;">
+            <div style="font-size:2.5rem;">✅</div>
+            <h3 id="modal-sucesso-titulo" style="margin:0.5rem 0;">Cadastro enviado com sucesso!</h3>
+            <p id="modal-sucesso-texto" style="color:#64748b;">Seus dados foram recebidos e serão analisados pela administração financeira da campanha.</p>
+            <button type="button" class="btn-primary" id="modal-sucesso-ok" style="width:100%; margin-top:1rem; padding:0.75rem;">OK</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="multiplicador-direto.js"></script>
+</body>
+</html>
