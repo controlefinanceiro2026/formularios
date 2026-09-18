@@ -10,9 +10,11 @@
 // (FOTO_{PLACA}_CONTROLE_{DDMMAAAA}).
 
 const SEM_LOCALIDADE = 'Sem localidade definida';
-const TAMANHO_MAX_FOTO = 10 * 1024 * 1024; // 10 MB por foto
-const MIN_FOTOS = 1;
-const MAX_FOTOS = 3; // o líder de campo anexa de 1 a 3 fotos do veículo
+const TAMANHO_MAX_FOTO = 15 * 1024 * 1024; // 15 MB por foto (era 10 MB — fotos de celular
+// vinham estourando o limite antigo com frequência)
+// Fotos deixaram de ser obrigatórias (achado em 18/09/2026: o mesmo problema de tamanho
+// travava o envio quando o líder não conseguia anexar nenhuma foto que coubesse no limite).
+const MAX_FOTOS = 3; // o líder de campo anexa de 0 a 3 fotos do veículo
 
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
@@ -189,7 +191,7 @@ function renderTabelas() {
                     <thead>
                         <tr>
                             <th>Placa</th><th>Proprietário</th><th>Km Atual</th>
-                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo * (1 a 3)</th><th>Observações</th>
+                            <th>Km no Dia *</th><th>Km Rodado</th><th>Fotos do Veículo (opcional, até 3)</th><th>Observações</th>
                             <th>Status do Pagamento *</th><th></th>
                         </tr>
                     </thead>
@@ -201,10 +203,10 @@ function renderTabelas() {
                                 <td data-label="Km atual">${fmtKm(v.km_atual)}</td>
                                 <td data-label="Km no dia *"><input type="number" class="km-no-dia" min="0" step="1" placeholder="Ex: 45230"></td>
                                 <td class="km-rodado" data-label="Km rodado">—</td>
-                                <td class="km-td-bloco" data-label="Fotos do veículo * (1 a 3)">
+                                <td class="km-td-bloco" data-label="Fotos do veículo (opcional, até 3)">
                                     <input type="file" class="km-foto" accept="image/png,image/jpeg" multiple hidden>
                                     <button type="button" class="btn-secondary km-add-foto" data-idx="${idx}">📷 Adicionar foto</button>
-                                    <span class="km-fotos-ajuda">Até 3 fotos (JPG ou PNG). Toque no ✕ para remover antes de enviar.</span>
+                                    <span class="km-fotos-ajuda">Opcional — até 3 fotos (JPG ou PNG, até 15 MB cada). Toque no ✕ para remover antes de enviar.</span>
                                     <div class="km-fotos-previa" data-idx="${idx}"></div>
                                 </td>
                                 <td class="km-td-bloco" data-label="Observações"><textarea class="km-obs" rows="1" maxlength="500" placeholder="Opcional"></textarea></td>
@@ -392,7 +394,6 @@ function validarLinha(idx) {
     }
 
     const arquivos = fotosPorLinha[idx] || [];
-    if (arquivos.length < MIN_FOTOS) return `Veículo ${veiculos[idx].placa}: anexe pelo menos 1 foto do veículo.`;
     if (arquivos.length > MAX_FOTOS) {
         return `Veículo ${veiculos[idx].placa}: no máximo ${MAX_FOTOS} fotos do veículo. Selecione todas de uma vez.`;
     }
@@ -401,7 +402,7 @@ function validarLinha(idx) {
             return `Veículo ${veiculos[idx].placa}: as fotos do veículo devem ser imagens JPG ou PNG.`;
         }
         if (arquivo.size > TAMANHO_MAX_FOTO) {
-            return `Veículo ${veiculos[idx].placa}: uma das fotos passa de 10 MB. Envie imagens menores.`;
+            return `Veículo ${veiculos[idx].placa}: uma das fotos passa de 15 MB. Envie imagens menores.`;
         }
     }
     return null;
