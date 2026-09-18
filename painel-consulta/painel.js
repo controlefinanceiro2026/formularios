@@ -2329,17 +2329,26 @@ function veiculosSelecionadosKm() {
     return Array.from(document.getElementById('rel-km-veiculo').selectedOptions).map(o => o.value);
 }
 
+// Veículo cujo líder associado tem célula completa (MIN_MULTIPLICADORES_
+// CELULA_COMPLETA ou mais multiplicadores) — mesma regra do app.js
+// (#veiculoTemCelulaCompleta). Veículo sem líder associado nunca conta.
+function veiculoTemCelulaCompleta(v) {
+    if (!v.lider_id) return false;
+    return contarMultiplicadoresDoLider(v.lider_id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA;
+}
+
 // Espelha app.js#leiturasKmComRodado / #ultimaLeituraKmDoVeiculo: percorre
 // as leituras em ordem cronológica por veículo pra calcular o km rodado
 // (delta desde a leitura anterior) e guarda a mais recente de cada um.
 // Quando veiculosIdsFiltro é informado (não vazio), ignora o filtro de
 // localidades e gera o relatório só para aqueles veículos específicos.
-function dadosControleKm(localidadesFiltro, veiculosIdsFiltro) {
+function dadosControleKm(localidadesFiltro, veiculosIdsFiltro, somenteCelulaCompleta) {
     const filtroSet = localidadesFiltro.length ? new Set(localidadesFiltro) : null;
     const veiculosIdsSet = (veiculosIdsFiltro && veiculosIdsFiltro.length) ? new Set(veiculosIdsFiltro.map(String)) : null;
-    const veiculos = veiculosIdsSet
+    const veiculos = (veiculosIdsSet
         ? (cacheVeiculos || []).filter(v => veiculosIdsSet.has(String(v.id)))
-        : (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento));
+        : (cacheVeiculos || []).filter(v => !filtroSet || filtroSet.has(v.localidade_atendimento))
+    ).filter(v => !somenteCelulaCompleta || veiculoTemCelulaCompleta(v));
 
     const ordenadas = [...cacheLeiturasKm].sort((a, b) => (a.data !== b.data ? (a.data < b.data ? -1 : 1) : (a.id || 0) - (b.id || 0)));
     const anteriorPorVeiculo = {};
@@ -2385,7 +2394,7 @@ function dadosControleKm(localidadesFiltro, veiculosIdsFiltro) {
 // plataformas terem a mesma cara no Controle de Km.
 async function gerarRelatorioKmPdf() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm(), document.getElementById('rel-km-somente-celula-completa')?.checked);
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
 
     const grupos = {};
@@ -2479,7 +2488,7 @@ async function gerarRelatorioKmPdf() {
 
 async function gerarRelatorioKmExcel() {
     await garantirLeiturasKm();
-    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm());
+    const linhas = dadosControleKm(localidadesSelecionadasKm(), veiculosSelecionadosKm(), document.getElementById('rel-km-somente-celula-completa')?.checked);
     if (!linhas.length) { alert('Nenhum veículo nas localidades escolhidas.'); return; }
     const livro = XLSX.utils.book_new();
     const planilha = XLSX.utils.aoa_to_sheet([CABECALHO_CONTROLE_KM, ...linhas.map(linhaControleKm)]);
