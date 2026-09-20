@@ -290,6 +290,32 @@
                             <button type="button" class="btn-secondary" onclick="gerarRelatorioKmExcel()">📊 Excel</button>
                         </div>
                     </div>
+
+                    <div class="table-container" style="padding:1.5rem; margin-top:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem;">💰 Relatório de Pagamentos — Controle de Km</h3>
+                        <p class="text-muted" style="margin-bottom:1rem;">Status do pagamento do combustível de cada veículo na data de aferição: realizado (dado preenchido), não realizado (registrado assim no formulário) ou não realizado por falta de preenchimento. Localidades: nenhuma marcada = todas.</p>
+                        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+                            <div class="form-group" style="max-width:220px;">
+                                <label for="rel-pag-km-data">Data de aferição (ou data inicial)</label>
+                                <input type="date" id="rel-pag-km-data">
+                                <label for="rel-pag-km-data-fim" style="margin-top:0.75rem;">Data final do período (opcional)</label>
+                                <input type="date" id="rel-pag-km-data-fim">
+                                <small class="text-muted">Em branco = um dia. Com período: uma linha por veículo com os dias de pagamento, ou "Sem pagamento no período".</small>
+                            </div>
+                            <div class="form-group" style="max-width:320px;">
+                                <label for="rel-pag-km-localidades">Localidades</label>
+                                <select id="rel-pag-km-localidades" multiple size="8" style="width:100%;"></select>
+                            </div>
+                        </div>
+                        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:600; margin-bottom:1rem;">
+                            <input type="checkbox" id="rel-pag-km-somente-celula-completa" style="width:18px; height:18px; cursor:pointer;">
+                            <span>Somente veículos de líderes com célula completa (4 ou mais multiplicadores)</span>
+                        </label>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioPagamentosKmPdf()">📄 PDF</button>
+                            <button type="button" class="btn-secondary" onclick="gerarRelatorioPagamentosKmExcel()">📊 Excel</button>
+                        </div>
+                    </div>
                 </section>
             </div>
         </main>

@@ -2088,6 +2088,11 @@ function prepararTelaRelatorios() {
 
     const selectVeiculo = document.getElementById('rel-km-veiculo');
     const veiculosOrdenados = [...(cacheVeiculos || [])].sort((a, b) => (a.placa || '').localeCompare(b.placa || '', 'pt-BR'));
+    document.getElementById('rel-pag-km-localidades').innerHTML = select.innerHTML;
+    const hoje = new Date();
+    document.getElementById('rel-pag-km-data').value =
+        `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
     selectVeiculo.innerHTML = veiculosOrdenados.map(v => {
         const rotulo = `${v.placa || '—'} — ${(`${v.marca || ''} ${v.modelo || ''}`.trim()) || '—'} (${v.localidade_atendimento || SEM_LOCALIDADE_RELATORIO})`;
         return `<option value="${v.id}">${escaparHtml(rotulo)}</option>`;
@@ -2303,7 +2308,7 @@ function gerarRelatorioGestaoLideresPdfEExcel() {
 const REGIOES_FISCALIZACAO_KM = {
     'Comitê': ['Comitê'],
     'Região Sul': ['Santa Maria', 'Gama', 'Riacho Fundo I', 'Riacho Fundo II', 'Recanto das Emas', 'Samambaia'],
-    'Região Leste': ['Taguatinga', 'Arniqueira', 'Águas Claras', 'Sol Nascente / Pôr do Sol', 'Ceilândia', 'Brazlândia'],
+    'Região Leste': ['Taguatinga', 'Arniqueira / Águas Claras', 'Sol Nascente / Pôr do Sol', 'Ceilândia', 'Brazlândia'],
     'Região Norte': ['Planaltina', 'Sobradinho', 'Paranoá', 'Itapoã', 'São Sebastião', 'Jardim Botânico'],
     'Região Centrinho': ['Plano Piloto', 'SIA', 'Guará', 'Núcleo Bandeirante', 'Candangolândia', 'Estrutural', 'Vicente Pires', 'Cruzeiro', 'Lago Sul', 'Lago Norte', 'Sudoeste/Octogonal', 'Park Way', 'Varjão']
 };
@@ -2495,6 +2500,240 @@ async function gerarRelatorioKmExcel() {
     planilha['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 36 }];
     XLSX.utils.book_append_sheet(livro, planilha, 'Controle de Km');
     XLSX.writeFile(livro, nomeArquivoRelatorio('controle-km', 'xlsx'));
+}
+
+// ── 6) Relatório de Pagamentos do Controle de Km ─────────────────────────
+// Espelha app.js#buscarRegistrosPagamentosKm: cruza os envios reais de
+// formularios_km na data com TODOS os veículos das localidades escolhidas;
+// quem não enviou nada vira linha sintética "Dados não preenchidos" (só no
+// relatório — nada é gravado). Leitura exige a política de SELECT de
+// supabase/migracao-painel-leitura-formularios-km.sql.
+const CABECALHO_RELATORIO_PAGAMENTOS_KM = ['Data', 'Localidade', 'Placa', 'Proprietário', 'Responsável', 'Status do Pagamento', 'Km no Dia', 'Motivo do Não Pagamento'];
+
+function linhaRelatorioPagamentosKm(f) {
+    return [
+        formatarData(f.data_afericao),
+        f.localidade || '—',
+        f.placa,
+        f.nome_proprietario || '—',
+        f.responsavel_informacoes || '—',
+        f.pagamento_nao_realizado ? 'Não realizado' : 'Realizado',
+        f.pagamento_nao_realizado ? '—' : `${Number(f.km_no_dia).toLocaleString('pt-BR')} km`,
+        f.pagamento_nao_realizado ? (f.motivo_pagamento_nao_realizado || '—') : '—'
+    ];
+}
+
+async function buscarRegistrosPagamentosKm() {
+    const dataISO = document.getElementById('rel-pag-km-data').value;
+    if (!dataISO) { alert('Informe a data de aferição.'); return null; }
+    const localidades = Array.from(document.getElementById('rel-pag-km-localidades').selectedOptions).map(o => o.value);
+    const somenteCelulaCompleta = document.getElementById('rel-pag-km-somente-celula-completa').checked;
+    let dataFimISO = document.getElementById('rel-pag-km-data-fim').value;
+    if (dataFimISO && dataFimISO < dataISO) { alert('A data final não pode ser anterior à data inicial.'); return null; }
+    if (dataFimISO === dataISO) dataFimISO = '';
+
+    const { data, error } = await lerTodasAsPaginas((de, ate) => {
+        let q = supabaseClient.from('formularios_km').select('*');
+        q = dataFimISO ? q.gte('data_afericao', dataISO).lte('data_afericao', dataFimISO) : q.eq('data_afericao', dataISO);
+        return q.order('id', { ascending: true }).range(de, ate);
+    });
+    if (error) { alert('Erro ao buscar os registros: ' + error.message); return null; }
+
+    const normPlaca = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const locsPermitidas = localidades.length ? new Set(localidades) : null;
+    const esperados = (cacheVeiculos || [])
+        .filter(v => !locsPermitidas || locsPermitidas.has(v.localidade_atendimento))
+        .filter(v => !somenteCelulaCompleta || veiculoTemCelulaCompleta(v));
+    const placasEsperadas = new Set(esperados.map(v => normPlaca(v.placa)));
+
+    // Modo período: uma linha por veículo com os dias de pagamento realizado.
+    if (dataFimISO) {
+        const porPlaca = new Map();
+        esperados.forEach(v => porPlaca.set(normPlaca(v.placa), {
+            localidade: v.localidade_atendimento || null, placa: v.placa,
+            nome_proprietario: v.nome_proprietario, responsavel_informacoes: null, dias: new Set()
+        }));
+        (data || []).forEach(f => {
+            if (locsPermitidas && !locsPermitidas.has(f.localidade)) return;
+            const chave = normPlaca(f.placa);
+            if (somenteCelulaCompleta && !placasEsperadas.has(chave)) return;
+            if (!porPlaca.has(chave)) porPlaca.set(chave, {
+                localidade: f.localidade || null, placa: f.placa,
+                nome_proprietario: f.nome_proprietario, responsavel_informacoes: null, dias: new Set()
+            });
+            const item = porPlaca.get(chave);
+            if (f.responsavel_informacoes) item.responsavel_informacoes = f.responsavel_informacoes;
+            if (!f.pagamento_nao_realizado) item.dias.add(f.data_afericao);
+        });
+        const registrosPeriodo = [...porPlaca.values()].map(i => ({ ...i, dias: [...i.dias].sort() })).sort((a, b) =>
+            (a.localidade || '').localeCompare(b.localidade || '', 'pt-BR') ||
+            (a.nome_proprietario || '').localeCompare(b.nome_proprietario || '', 'pt-BR'));
+        if (!registrosPeriodo.length) { alert('Nenhum veículo nas localidades escolhidas para esse período.'); return null; }
+        return { dataISO, dataFimISO, periodo: true, registros: registrosPeriodo };
+    }
+
+    const placasComEnvio = new Set((data || []).map(f => normPlaca(f.placa)));
+
+    const naoPreenchidos = esperados
+        .filter(v => !placasComEnvio.has(normPlaca(v.placa)))
+        .map(v => ({
+            data_afericao: dataISO, localidade: v.localidade_atendimento || null, placa: v.placa,
+            nome_proprietario: v.nome_proprietario, responsavel_informacoes: null,
+            pagamento_nao_realizado: true, motivo_pagamento_nao_realizado: 'Dados não preenchidos',
+            km_no_dia: null, _naoPreenchido: true
+        }));
+
+    const enviosReais = (data || []).filter(f =>
+        (!locsPermitidas || locsPermitidas.has(f.localidade)) &&
+        (!somenteCelulaCompleta || placasEsperadas.has(normPlaca(f.placa))));
+
+    const registros = [...enviosReais, ...naoPreenchidos].sort((a, b) =>
+        (a.localidade || '').localeCompare(b.localidade || '', 'pt-BR') ||
+        (a.nome_proprietario || '').localeCompare(b.nome_proprietario || '', 'pt-BR'));
+    if (!registros.length) { alert('Nenhum veículo nas localidades escolhidas para essa data.'); return null; }
+    return { dataISO, registros };
+}
+
+const CABECALHO_RELATORIO_PAGAMENTOS_KM_PERIODO = ['Localidade', 'Placa', 'Proprietário', 'Responsável', 'Dias com Pagamento', 'Qtd. de Dias'];
+
+function linhaRelatorioPagamentosKmPeriodo(r) {
+    return [
+        r.localidade || '—', r.placa, r.nome_proprietario || '—', r.responsavel_informacoes || '—',
+        r.dias.length ? r.dias.map(formatarData).join(', ') : 'Sem pagamento no período',
+        r.dias.length
+    ];
+}
+
+function gerarPdfRelatorioPagamentosKmPeriodo({ dataISO, dataFimISO, registros }) {
+    const semPagamento = registros.filter(r => !r.dias.length).length;
+    const rotuloPeriodo = `${formatarData(dataISO)} a ${formatarData(dataFimISO)}`;
+    const doc = iniciarPdfRelatorio(`Relatório de Pagamentos — Controle de Km — período de ${rotuloPeriodo}`);
+    const largura = doc.internal.pageSize.getWidth();
+    const margem = 14;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Resumo do Período', margem, 28);
+    doc.autoTable({
+        startY: 30,
+        margin: { left: margem, right: margem },
+        head: [['Total de Veículos', 'Com Pagamento no Período', 'Sem Pagamento no Período']],
+        body: [[registros.length, registros.length - semPagamento, semPagamento]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] }
+    });
+
+    const y = doc.lastAutoTable.finalY + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Veículos', margem, y);
+    doc.autoTable({
+        startY: y + 2,
+        margin: { left: margem, right: margem, top: 14 },
+        head: [CABECALHO_RELATORIO_PAGAMENTOS_KM_PERIODO],
+        body: registros.map(linhaRelatorioPagamentosKmPeriodo),
+        styles: { fontSize: 7.5, overflow: 'linebreak' },
+        headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] },
+        columnStyles: { 4: { cellWidth: 90 }, 5: { halign: 'center', cellWidth: 20 } },
+        didParseCell: dados => {
+            if (dados.section === 'body' && dados.column.index === 4 && dados.cell.raw === 'Sem pagamento no período') {
+                dados.cell.styles.textColor = [180, 83, 9];
+                dados.cell.styles.fontStyle = 'bold';
+            }
+        },
+        didDrawPage: () => {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text(`Relatório de Pagamentos — Controle de Km — ${rotuloPeriodo}`, margem, 9);
+            doc.text(`Página ${doc.internal.getNumberOfPages()}`, largura - margem, 9, { align: 'right' });
+        }
+    });
+    doc.save(`relatorio_pagamentos_km_${dataISO}_a_${dataFimISO}.pdf`);
+}
+
+async function gerarRelatorioPagamentosKmPdf() {
+    const resultado = await buscarRegistrosPagamentosKm();
+    if (!resultado) return;
+    if (resultado.periodo) { gerarPdfRelatorioPagamentosKmPeriodo(resultado); return; }
+    const { dataISO, registros } = resultado;
+
+    const totalRealizados = registros.filter(f => !f.pagamento_nao_realizado).length;
+    const totalNaoPreenchidos = registros.filter(f => f._naoPreenchido).length;
+    const totalNaoRealizados = registros.length - totalRealizados;
+    const pct = n => `${((n / registros.length) * 100).toFixed(1)}%`;
+    const rotuloData = formatarData(dataISO);
+
+    const doc = iniciarPdfRelatorio(`Relatório de Pagamentos — Controle de Km — aferição de ${rotuloData}`);
+    const largura = doc.internal.pageSize.getWidth();
+    const margem = 14;
+    const rodapePagina = () => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Relatório de Pagamentos — Controle de Km — ${rotuloData}`, margem, 9);
+        doc.text(`Página ${doc.internal.getNumberOfPages()}`, largura - margem, 9, { align: 'right' });
+    };
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Resumo da Data', margem, 28);
+    doc.autoTable({
+        startY: 30,
+        margin: { left: margem, right: margem },
+        head: [['Total de Veículos', 'Pagamento Realizado', 'Registrado como Não Realizado', 'Dados Não Preenchidos']],
+        body: [[
+            registros.length,
+            `${totalRealizados} (${pct(totalRealizados)})`,
+            `${totalNaoRealizados - totalNaoPreenchidos} (${pct(totalNaoRealizados - totalNaoPreenchidos)})`,
+            `${totalNaoPreenchidos} (${pct(totalNaoPreenchidos)})`
+        ]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] },
+        didDrawPage: rodapePagina
+    });
+
+    const y = doc.lastAutoTable.finalY + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Registros da Data', margem, y);
+    doc.autoTable({
+        startY: y + 2,
+        margin: { left: margem, right: margem },
+        head: [CABECALHO_RELATORIO_PAGAMENTOS_KM],
+        body: registros.map(linhaRelatorioPagamentosKm),
+        styles: { fontSize: 7.5, overflow: 'ellipsize' },
+        headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] },
+        didParseCell: dados => {
+            if (dados.section === 'body' && dados.column.index === 5 && dados.cell.raw === 'Não realizado') {
+                dados.cell.styles.textColor = [180, 83, 9];
+                dados.cell.styles.fontStyle = 'bold';
+            }
+        },
+        didDrawPage: rodapePagina
+    });
+
+    doc.save(`relatorio_pagamentos_km_${dataISO}.pdf`);
+}
+
+async function gerarRelatorioPagamentosKmExcel() {
+    const resultado = await buscarRegistrosPagamentosKm();
+    if (!resultado) return;
+    if (resultado.periodo) {
+        const livroPeriodo = XLSX.utils.book_new();
+        const planilhaPeriodo = XLSX.utils.aoa_to_sheet([CABECALHO_RELATORIO_PAGAMENTOS_KM_PERIODO, ...resultado.registros.map(linhaRelatorioPagamentosKmPeriodo)]);
+        planilhaPeriodo['!cols'] = [{ wch: 22 }, { wch: 10 }, { wch: 28 }, { wch: 24 }, { wch: 60 }, { wch: 14 }];
+        XLSX.utils.book_append_sheet(livroPeriodo, planilhaPeriodo, 'Pagamentos Km');
+        XLSX.writeFile(livroPeriodo, `relatorio_pagamentos_km_${resultado.dataISO}_a_${resultado.dataFimISO}.xlsx`);
+        return;
+    }
+    const livro = XLSX.utils.book_new();
+    const planilha = XLSX.utils.aoa_to_sheet([CABECALHO_RELATORIO_PAGAMENTOS_KM, ...resultado.registros.map(linhaRelatorioPagamentosKm)]);
+    planilha['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 10 }, { wch: 28 }, { wch: 24 }, { wch: 20 }, { wch: 14 }, { wch: 36 }];
+    XLSX.utils.book_append_sheet(livro, planilha, 'Pagamentos Km');
+    XLSX.writeFile(livro, `relatorio_pagamentos_km_${resultado.dataISO}.xlsx`);
 }
 
 // ─── CONSULTA RÁPIDA ────────────────────────────────────────────────────
