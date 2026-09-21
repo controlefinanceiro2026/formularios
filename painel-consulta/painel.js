@@ -413,7 +413,7 @@ function configurarNavegacao() {
             title.textContent = link.textContent.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji_Presentation}/gu, '').trim();
 
             if (pageId === 'relatorios') prepararTelaRelatorios();
-            if (pageId === 'gestao-lideres') { prepararFiltrosGestaoLideres(); renderizarGestaoLideres(); }
+            if (pageId === 'gestao-lideres') { prepararFiltrosGestaoLideres(); renderizarGestaoLideres(); carregarHerdeiros().then(renderizarGestaoLideres); }
         });
     });
 }
@@ -1874,10 +1874,11 @@ function contarMultiplicadoresDoLider(liderId) {
     return (cachePessoal || []).filter(p => p.lider_id === liderId).length;
 }
 
-function renderizarGestaoLideres() {
-    const container = document.getElementById('gestao-lideres-lista');
-    if (!container) return;
-
+// Filtro único da tela — usado pela renderização e pelas exportações
+// (Excel/PDF), que precisam sair com exatamente o que está na tela. `base` =
+// resultado de busca/localidade/coordenador/Comitê ANTES do filtro de célula
+// (os cards de completas/incompletas contam em cima dele).
+function lideresFiltradosGestaoLideres() {
     const busca = normalizarBuscaTexto(document.getElementById('gl-busca').value);
     const buscaDigitos = apenasDigitos(document.getElementById('gl-busca').value);
     const localidade = document.getElementById('gl-localidade').value;
@@ -1894,18 +1895,7 @@ function renderizarGestaoLideres() {
     }
     if (localidade) lideres = lideres.filter(p => p.local_prestacao === localidade);
     if (coordenador) lideres = lideres.filter(p => p.coordenador === coordenador);
-
-    // Conta completas/incompletas ANTES do filtro de célula (se não, com
-    // "Células completas" selecionado o card de incompletas sempre daria
-    // zero) — reflete a composição do que busca/localidade/coordenador
-    // deixaram, independente do filtro de célula escolhido.
-    const totalCelulas = lideres.length;
-    const celulasCompletas = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA).length;
-    const celulasIncompletas = totalCelulas - celulasCompletas;
-    document.getElementById('gl-resumo-celulas').innerHTML = `
-        <span class="badge badge-info" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${totalCelulas} célula(s) no filtro</span>
-        <span class="badge badge-receita" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasCompletas} completa(s)</span>
-        <span class="badge badge-despesa" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasIncompletas} incompleta(s)</span>`;
+    const base = lideres;
 
     if (celula === 'completas') {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA);
@@ -1914,7 +1904,41 @@ function renderizarGestaoLideres() {
     } else if (celula === 'excedentes') {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) > MIN_MULTIPLICADORES_CELULA_COMPLETA);
     }
-    lideres = lideres.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    lideres = [...lideres].sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    return { base, lideres };
+}
+
+function descricaoFiltrosGestaoLideres() {
+    const partes = [];
+    const busca = document.getElementById('gl-busca').value.trim();
+    if (busca) partes.push(`busca "${busca}"`);
+    const loc = document.getElementById('gl-localidade').value;
+    if (loc) partes.push(`localidade ${loc}`);
+    const coord = document.getElementById('gl-coordenador').value;
+    if (coord) partes.push(`coordenador ${coord}`);
+    const cel = document.getElementById('gl-celula');
+    if (cel.value) partes.push(cel.selectedOptions[0].textContent.trim());
+    if (document.getElementById('gl-excluir-comite').checked) partes.push('sem Comitê');
+    return partes.length ? partes.join(' · ') : 'nenhum (todos os líderes)';
+}
+
+function renderizarGestaoLideres() {
+    const container = document.getElementById('gestao-lideres-lista');
+    if (!container) return;
+
+    const { base, lideres } = lideresFiltradosGestaoLideres();
+
+    // Conta completas/incompletas ANTES do filtro de célula (se não, com
+    // "Células completas" selecionado o card de incompletas sempre daria
+    // zero) — reflete a composição do que busca/localidade/coordenador
+    // deixaram, independente do filtro de célula escolhido.
+    const totalCelulas = base.length;
+    const celulasCompletas = base.filter(p => contarMultiplicadoresDoLider(p.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA).length;
+    const celulasIncompletas = totalCelulas - celulasCompletas;
+    document.getElementById('gl-resumo-celulas').innerHTML = `
+        <span class="badge badge-info" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${totalCelulas} célula(s) no filtro</span>
+        <span class="badge badge-receita" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasCompletas} completa(s)</span>
+        <span class="badge badge-despesa" style="font-size:0.85rem; padding:0.4rem 0.75rem;">${celulasIncompletas} incompleta(s)</span>`;
 
     document.getElementById('gl-contagem').textContent =
         `${lideres.length} líder(es) encontrado(s) de ${(cachePessoal || []).filter(p => p.funcao === 'lider').length} no total.`;
@@ -1937,6 +1961,7 @@ function renderizarGestaoLideres() {
                 <td>${escaparHtml(m.nome)}</td>
                 <td>${escaparHtml(mascararCPF(m.cpf))}</td>
                 <td>${escaparHtml(m.telefone || '—')}</td>
+                <td>${celulaHerdeirosHtml(m.id)}</td>
                 <td>
                     <button class="btn-icon" onclick="abrirModalEditarPessoal(${m.id})" title="Editar">✏️</button>
                     <button class="btn-icon" onclick="excluirMultiplicadorGestaoLideres(${m.id})" title="Excluir">🗑️</button>
@@ -1964,6 +1989,7 @@ function renderizarGestaoLideres() {
                         · ${escaparHtml(lider.local_prestacao || 'sem localidade')}
                         ${lider.coordenador ? ` · Coordenador: ${escaparHtml(lider.coordenador)}` : ''}
                         ${lider.telefone ? ` · ${escaparHtml(lider.telefone)}` : ''}
+                        · Herdeiros diretos: ${celulaHerdeirosHtml(lider.id)}
                     </p>
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -1976,7 +2002,7 @@ function renderizarGestaoLideres() {
             <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
             ${multiplicadores.length ? `
             <table class="table-data">
-                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Ações</th></tr></thead>
                 <tbody>${linhasMultiplicador}</tbody>
             </table>` : '<p class="text-muted">Nenhum multiplicador vinculado.</p>'}
 
@@ -2252,6 +2278,164 @@ function gerarRelatorioGerencialVeiculosExcel() {
     const aoa = [CABECALHO_GERENCIAL_VEICULOS, ...linhas.map(linhaGerencialVeiculos), ['Total geral', totais.total, totais.comCrlv, totais.comTermo]];
     XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aoa), 'Gerencial Veículos');
     XLSX.writeFile(livro, nomeArquivoRelatorio('gerencial-veiculos-localidade', 'xlsx'));
+}
+
+// ── Herdeiros (basepolitica.com.br) na Gestão de Líderes ─────────────────
+// O painel NÃO chama a API (site estático público — o token ficaria exposto).
+// Quem consulta é a plataforma principal, que grava o resultado na tabela
+// herdeiros_pessoa (supabase/migracao-herdeiros-pessoa.sql); aqui só se LÊ.
+let cacheHerdeiros = {};      // { [pessoa_id]: linha da tabela }
+let herdeirosDisponivel = null; // null = ainda não carregou; false = tabela ausente/sem acesso
+
+async function carregarHerdeiros() {
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('herdeiros_pessoa').select('*').order('pessoa_id', { ascending: true }).range(de, ate));
+    const aviso = document.getElementById('gl-herdeiros-aviso');
+    if (error) {
+        herdeirosDisponivel = false;
+        cacheHerdeiros = {};
+        if (aviso) aviso.textContent = 'Herdeiros indisponíveis: rode supabase/migracao-herdeiros-pessoa.sql no Supabase e consulte os herdeiros na plataforma principal.';
+        return;
+    }
+    herdeirosDisponivel = true;
+    cacheHerdeiros = Object.fromEntries((data || []).map(h => [h.pessoa_id, h]));
+    if (aviso) {
+        const datas = (data || []).map(h => h.consultado_em).filter(Boolean).sort();
+        aviso.textContent = datas.length
+            ? `Herdeiros diretos vêm da consulta feita na plataforma principal (${datas.length} pessoa(s); última consulta em ${new Date(datas[datas.length - 1]).toLocaleString('pt-BR')}).`
+            : 'Nenhum herdeiro consultado ainda — faça a consulta na plataforma principal (Gestão de Líderes).';
+    }
+}
+
+// Situação de uma pessoa: { diretos, rede, texto }.
+function situacaoHerdeiros(pessoaId) {
+    const h = cacheHerdeiros[pessoaId];
+    if (!h) return { diretos: null, rede: null, texto: 'Não consultado' };
+    if (h.status === 'ok') return { diretos: h.herdeiros_diretos, rede: h.total_rede, texto: 'Consultado' };
+    return { diretos: null, rede: null, texto: h.status === 'nao_encontrado' ? 'Não encontrado' : 'Sem telefone válido' };
+}
+
+function celulaHerdeirosHtml(pessoaId) {
+    const h = cacheHerdeiros[pessoaId];
+    if (!h) return '<span class="text-muted">—</span>';
+    if (h.status === 'ok') return `<strong title="${escaparHtml(h.nome_api || '')} · consultado em ${escaparHtml(String(h.consultado_em || '').slice(0, 10))}">${h.herdeiros_diretos}</strong> <small class="text-muted">(rede ${h.total_rede})</small>`;
+    return `<span class="text-muted">${h.status === 'nao_encontrado' ? 'Não encontrado' : 'Sem telefone válido'}</span>`;
+}
+
+// ── Exportação "como está na tela" (Excel / PDF) ─────────────────────────
+// Espelha app.js#dadosTelaGestaoLideres da plataforma principal.
+function dadosTelaGestaoLideres() {
+    const pessoaLinha = (p, funcao) => ({ id: p.id, funcao, nome: p.nome, cpf: mascararCPF(p.cpf), telefone: p.telefone || '', h: situacaoHerdeiros(p.id) });
+    return lideresFiltradosGestaoLideres().lideres.map(lider => {
+        const multiplicadores = (cachePessoal || []).filter(p => p.lider_id === lider.id)
+            .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+        const veiculos = (cacheVeiculos || []).filter(v => v.lider_id === lider.id)
+            .sort((a, b) => String(a.placa).localeCompare(String(b.placa), 'pt-BR'));
+        const linhas = [pessoaLinha(lider, 'Líder'), ...multiplicadores.map(m => pessoaLinha(m, 'Multiplicador'))];
+        return {
+            lider, multiplicadores: multiplicadores.length, linhas, veiculos,
+            localidade: lider.local_prestacao || 'Sem localidade',
+            coordenador: lider.coordenador || '',
+            herdeirosCelula: linhas.reduce((t, l) => t + (l.h.diretos || 0), 0),
+            consultados: linhas.filter(l => l.h.diretos != null).length
+        };
+    });
+}
+
+function gerarExcelGestaoLideres() {
+    const celulas = dadosTelaGestaoLideres();
+    if (!celulas.length) { alert('Nenhum líder encontrado com os filtros atuais.'); return; }
+    const descricaoFiltros = descricaoFiltrosGestaoLideres();
+
+    const aoaPessoas = [['Localidade', 'Coordenador', 'Líder da célula', 'Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta']];
+    const aoaVeiculos = [['Localidade', 'Coordenador', 'Líder da célula', 'Placa', 'Marca / Modelo', 'Valor contratado']];
+    celulas.forEach(c => {
+        c.linhas.forEach(l => aoaPessoas.push([c.localidade, c.coordenador, c.lider.nome, l.funcao, l.nome, l.cpf, l.telefone, l.h.diretos ?? '', l.h.rede ?? '', l.h.texto]));
+        c.veiculos.forEach(v => aoaVeiculos.push([c.localidade, c.coordenador, c.lider.nome, v.placa || '', [v.marca, v.modelo].filter(Boolean).join(' '), v.valor_contratado != null ? Number(v.valor_contratado) : '']));
+    });
+    const aoaResumo = [
+        ['Gestão de Líderes — exportação da tela'],
+        ['Gerado em', new Date().toLocaleString('pt-BR')],
+        ['Filtros', descricaoFiltros],
+        ['Líderes', celulas.length],
+        ['Multiplicadores', celulas.reduce((t, c) => t + c.multiplicadores, 0)],
+        ['Veículos', aoaVeiculos.length - 1],
+        ['Herdeiros diretos (soma dos consultados)', celulas.reduce((t, c) => t + c.herdeirosCelula, 0)]
+    ];
+
+    const livro = XLSX.utils.book_new();
+    const abaPessoas = XLSX.utils.aoa_to_sheet(aoaPessoas);
+    abaPessoas['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
+    abaPessoas['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoaPessoas.length - 1, c: 9 } }) };
+    const abaVeiculos = XLSX.utils.aoa_to_sheet(aoaVeiculos);
+    abaVeiculos['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 34 }, { wch: 12 }, { wch: 30 }, { wch: 16 }];
+    const abaResumo = XLSX.utils.aoa_to_sheet(aoaResumo);
+    abaResumo['!cols'] = [{ wch: 40 }, { wch: 80 }];
+    XLSX.utils.book_append_sheet(livro, abaPessoas, 'Células');
+    XLSX.utils.book_append_sheet(livro, abaVeiculos, 'Veículos');
+    XLSX.utils.book_append_sheet(livro, abaResumo, 'Resumo e filtros');
+    XLSX.writeFile(livro, nomeArquivoRelatorio('gestao_lideres', 'xlsx'));
+}
+
+function gerarPdfGestaoLideres() {
+    const celulas = dadosTelaGestaoLideres();
+    if (!celulas.length) { alert('Nenhum líder encontrado com os filtros atuais.'); return; }
+    const descricaoFiltros = descricaoFiltrosGestaoLideres();
+    const M = formatarMoeda;
+    const txtHerdeiros = l => l.h.diretos != null ? String(l.h.diretos) : '—';
+    const txtRede = l => l.h.rede != null ? String(l.h.rede) : '—';
+
+    const doc = iniciarPdfRelatorio('Gestão de Líderes — células e herdeiros');
+    const largura = doc.internal.pageSize.getWidth();
+    const altura = doc.internal.pageSize.getHeight();
+    const margem = 12;
+
+    doc.setFontSize(9);
+    const totalMult = celulas.reduce((t, c) => t + c.multiplicadores, 0);
+    const totalHerdeiros = celulas.reduce((t, c) => t + c.herdeirosCelula, 0);
+    const cab = doc.splitTextToSize(`Filtros: ${descricaoFiltros}   |   ${celulas.length} líder(es) · ${totalMult} multiplicador(es) · ${totalHerdeiros} herdeiros diretos (soma dos consultados)`, largura - 2 * margem);
+    doc.text(cab, margem, 29);
+    let y = 29 + cab.length * 4.5 + 3;
+
+    celulas.forEach(c => {
+        if (y > altura - 45) { doc.addPage(); y = 14; }
+        const infoLider = [`CPF ${mascararCPF(c.lider.cpf)}`, c.localidade, c.coordenador ? `Coord.: ${c.coordenador}` : null, c.lider.telefone || null]
+            .filter(Boolean).join('  ·  ');
+        const corpo = c.linhas.map(l => [l.funcao, l.nome, l.cpf, l.telefone || '—', txtHerdeiros(l), txtRede(l), l.h.texto]);
+        if (c.veiculos.length) {
+            corpo.push([{
+                content: 'Veículo(s): ' + c.veiculos.map(v => `${v.placa || 's/ placa'} (${[v.marca, v.modelo].filter(Boolean).join(' ') || '—'}${v.valor_contratado != null ? ', ' + M(v.valor_contratado) : ''})`).join('; '),
+                colSpan: 7, styles: { fontStyle: 'italic', fillColor: [241, 245, 249] }
+            }]);
+        } else {
+            corpo.push([{ content: 'Nenhum veículo vinculado.', colSpan: 7, styles: { fontStyle: 'italic', textColor: [120, 120, 120], fillColor: [241, 245, 249] } }]);
+        }
+        doc.autoTable({
+            startY: y,
+            margin: { left: margem, right: margem, top: 14, bottom: 12 },
+            rowPageBreak: 'avoid',
+            head: [
+                [{ content: `${c.lider.nome} — ${c.multiplicadores} multiplicador(es) · ${c.herdeirosCelula} herdeiros diretos (${c.consultados}/${c.linhas.length} consultados)`, colSpan: 7, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+                [{ content: infoLider, colSpan: 7, styles: { halign: 'left', fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'normal' } }],
+                ['Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta']
+            ],
+            body: corpo,
+            styles: { fontSize: 8.5, cellPadding: 1.6, overflow: 'ellipsize' },
+            headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] },
+            columnStyles: { 0: { cellWidth: 26 }, 4: { halign: 'center', cellWidth: 28 }, 5: { halign: 'center', cellWidth: 26 }, 6: { cellWidth: 34 } }
+        });
+        y = doc.lastAutoTable.finalY + 5;
+    });
+
+    const total = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Página ${i} de ${total}`, largura - margem, altura - 6, { align: 'right' });
+    }
+    doc.save(nomeArquivoRelatorio('gestao_lideres', 'pdf'));
 }
 
 // ── 4b) Gestão de Líderes — Células por Localidade ───────────────────────
