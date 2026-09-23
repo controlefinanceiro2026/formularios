@@ -413,7 +413,12 @@ function configurarNavegacao() {
             title.textContent = link.textContent.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji_Presentation}/gu, '').trim();
 
             if (pageId === 'relatorios') prepararTelaRelatorios();
-            if (pageId === 'gestao-lideres') { prepararFiltrosGestaoLideres(); renderizarGestaoLideres(); carregarHerdeiros().then(renderizarGestaoLideres); }
+            if (pageId === 'gestao-lideres') {
+                prepararFiltrosGestaoLideres();
+                renderizarGestaoLideres();
+                carregarHerdeiros().then(renderizarGestaoLideres);
+                carregarFlagsGestaoLideres().then(renderizarGestaoLideres);
+            }
         });
     });
 }
@@ -1870,8 +1875,89 @@ function limparFiltrosGestaoLideres() {
 
 const MIN_MULTIPLICADORES_CELULA_COMPLETA = 4;
 
+// Meta de células ativas da campanha — mesma flag/contador da tela Gestão
+// de Líderes da plataforma principal (celula_ativa em pessoal_contratado).
+const META_CELULAS_ATIVAS = 481;
+
 function contarMultiplicadoresDoLider(liderId) {
     return (cachePessoal || []).filter(p => p.lider_id === liderId).length;
+}
+
+// leitor_listar_pessoal() (fonte de cachePessoal) omite de propósito
+// celula_ativa e contabilizar_campanha para a role 'leitor' — só master/
+// admin (podeEditarCadastro()) têm SELECT direto liberado por RLS
+// ("master edita pessoal"/"validador consulta pessoal"), então buscamos
+// essas duas colunas à parte, só nesta aba, e mesclamos em cachePessoal por
+// id. cnpj_campanha vem de configuracao_campanha (mesma trava de RLS).
+let cnpjCampanhaCache = undefined;
+
+async function carregarFlagsGestaoLideres() {
+    if (!podeEditarCadastro()) return;
+    if (cnpjCampanhaCache === undefined) {
+        const { data } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha').eq('id', 1).maybeSingle();
+        cnpjCampanhaCache = data?.cnpj_campanha || null;
+    }
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha').range(de, ate));
+    if (error || !data) return;
+    const porId = new Map(data.map(r => [r.id, r]));
+    cachePessoal.forEach(p => {
+        const extra = porId.get(p.id);
+        if (extra) { p.celula_ativa = extra.celula_ativa; p.contabilizar_campanha = extra.contabilizar_campanha; }
+    });
+}
+
+function cnpjEhDaCampanha(cnpj) {
+    return !!cnpjCampanhaCache && apenasDigitos(cnpj) === apenasDigitos(cnpjCampanhaCache);
+}
+
+function campanhaBadgeHtml(dentro) {
+    return `<span style="font-weight:700; color:${dentro ? '#15803d' : '#b91c1c'};">${dentro ? 'Sim' : 'Não'}</span>`;
+}
+
+function liderCelulaAtiva(lider) {
+    return lider.celula_ativa === undefined || lider.celula_ativa === null ? true : !!lider.celula_ativa;
+}
+
+function liderEhCelulaCompleta(lider) {
+    return contarMultiplicadoresDoLider(lider.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA;
+}
+
+// Contador do topo da tela — SEMPRE sobre o total geral (não os filtros da
+// tela), célula completa (líder + 4 multiplicadores), Comitê fora e só as
+// marcadas como ativa.
+function atualizarContagemCelulasAtivas() {
+    const span = document.getElementById('gl-contagem-481');
+    if (!span) return;
+    const ativas = (cachePessoal || []).filter(p =>
+        p.funcao === 'lider' && p.local_prestacao !== 'Comitê' && liderEhCelulaCompleta(p) && liderCelulaAtiva(p)
+    ).length;
+    span.textContent = `${ativas} de ${META_CELULAS_ATIVAS} células ativas`;
+    span.style.color = ativas >= META_CELULAS_ATIVAS ? '#15803d' : '#1e3a8a';
+}
+
+// Alterna se a célula do líder conta para a meta de 481 (checkbox "Célula
+// ativa" no card do líder, só aparece quando a célula está completa).
+async function alternarCelulaAtiva(id, chk) {
+    const novoValor = chk.checked;
+    chk.disabled = true;
+    const { error } = await supabaseClient.from('pessoal_contratado').update({ celula_ativa: novoValor }).eq('id', id);
+    chk.disabled = false;
+
+    if (error) {
+        chk.checked = !chk.checked;
+        alert('Não foi possível atualizar: ' + error.message);
+        return;
+    }
+
+    const lider = cachePessoal.find(p => p.id === id);
+    if (lider) lider.celula_ativa = novoValor;
+
+    const rotulo = chk.closest('label')?.querySelector('.rotulo-celula-ativa');
+    if (rotulo) rotulo.textContent = novoValor ? 'Ativa (conta p/ meta)' : 'Inativa (não conta p/ meta)';
+    if (rotulo) rotulo.style.color = novoValor ? '#15803d' : '#b91c1c';
+
+    atualizarContagemCelulasAtivas();
 }
 
 // Filtro único da tela — usado pela renderização e pelas exportações
@@ -1942,6 +2028,7 @@ function renderizarGestaoLideres() {
 
     document.getElementById('gl-contagem').textContent =
         `${lideres.length} líder(es) encontrado(s) de ${(cachePessoal || []).filter(p => p.funcao === 'lider').length} no total.`;
+    atualizarContagemCelulasAtivas();
 
     if (!lideres.length) {
         container.innerHTML = '<p class="text-muted" style="padding:2rem; text-align:center;">Nenhum líder encontrado com esses filtros.</p>';
@@ -1962,6 +2049,7 @@ function renderizarGestaoLideres() {
                 <td>${escaparHtml(mascararCPF(m.cpf))}</td>
                 <td>${escaparHtml(m.telefone || '—')}</td>
                 <td>${celulaHerdeirosHtml(m.id)}</td>
+                <td class="text-center">${campanhaBadgeHtml(!!m.contabilizar_campanha)}</td>
                 <td>
                     <button class="btn-icon" onclick="abrirModalEditarPessoal(${m.id})" title="Editar">✏️</button>
                     <button class="btn-icon" onclick="excluirMultiplicadorGestaoLideres(${m.id})" title="Excluir">🗑️</button>
@@ -1973,6 +2061,7 @@ function renderizarGestaoLideres() {
                 <td>${escaparHtml(v.placa)}</td>
                 <td>${escaparHtml([v.marca, v.modelo].filter(Boolean).join(' ') || '—')}</td>
                 <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
+                <td class="text-center">${campanhaBadgeHtml(cnpjEhDaCampanha(v.cnpj_associado))}</td>
                 <td>
                     <button class="btn-icon" onclick="abrirModalEditarVeiculo(${v.id})" title="Editar">✏️</button>
                     <button class="btn-icon" onclick="excluirVeiculoGestaoLideres(${v.id})" title="Excluir">🗑️</button>
@@ -1990,7 +2079,16 @@ function renderizarGestaoLideres() {
                         ${lider.coordenador ? ` · Coordenador: ${escaparHtml(lider.coordenador)}` : ''}
                         ${lider.telefone ? ` · ${escaparHtml(lider.telefone)}` : ''}
                         · Herdeiros diretos: ${celulaHerdeirosHtml(lider.id)}
+                        · Campanha: ${campanhaBadgeHtml(!!lider.contabilizar_campanha)}
                     </p>
+                    ${multiplicadores.length >= MIN_MULTIPLICADORES_CELULA_COMPLETA ? `
+                    <label style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.4rem; font-size:0.82rem; font-weight:600; cursor:pointer;">
+                        <input type="checkbox" style="width:16px; height:16px; cursor:pointer;"
+                            ${liderCelulaAtiva(lider) ? 'checked' : ''}
+                            title="Célula completa (líder + 4 multiplicadores) contando para a meta de ${META_CELULAS_ATIVAS} células"
+                            onchange="alternarCelulaAtiva(${lider.id}, this)">
+                        <span class="rotulo-celula-ativa" style="color:${liderCelulaAtiva(lider) ? '#15803d' : '#b91c1c'};">${liderCelulaAtiva(lider) ? 'Ativa (conta p/ meta)' : 'Inativa (não conta p/ meta)'}</span>
+                    </label>` : ''}
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn-secondary" onclick="abrirModalEditarPessoal(${lider.id})">✏️ Editar Líder</button>
@@ -2002,14 +2100,14 @@ function renderizarGestaoLideres() {
             <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
             ${multiplicadores.length ? `
             <table class="table-data">
-                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Campanha</th><th>Ações</th></tr></thead>
                 <tbody>${linhasMultiplicador}</tbody>
             </table>` : '<p class="text-muted">Nenhum multiplicador vinculado.</p>'}
 
             <h4 style="margin:1.25rem 0 0.5rem; font-size:0.95rem;">🚗 Veículo(s) (${veiculosDoLider.length})</h4>
             ${veiculosDoLider.length ? `
             <table class="table-data">
-                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Campanha</th><th>Ações</th></tr></thead>
                 <tbody>${linhasVeiculo}</tbody>
             </table>` : '<p class="text-muted">Nenhum veículo vinculado.</p>'}
         </div>`;
