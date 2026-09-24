@@ -417,7 +417,7 @@ function configurarNavegacao() {
                 prepararFiltrosGestaoLideres();
                 renderizarGestaoLideres();
                 carregarHerdeiros().then(renderizarGestaoLideres);
-                Promise.all([carregarFlagsGestaoLideres(), carregarHistoricoAtividadeCelulas()]).then(renderizarGestaoLideres);
+                Promise.all([carregarFlagsGestaoLideres(), carregarHistoricoAtividadeCelulas(), carregarPagamentosGestaoLideres()]).then(renderizarGestaoLideres);
             }
         });
     });
@@ -1933,20 +1933,57 @@ async function carregarFlagsGestaoLideres() {
         const { data } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha').eq('id', 1).maybeSingle();
         cnpjCampanhaCache = data?.cnpj_campanha || null;
     }
-    // "ativo" vem de migracao-pessoa-ativo.sql (aplicada à mão): se ainda não
-    // existir, cai para a leitura sem ele em vez de perder celula_ativa.
-    let { data, error } = await lerTodasAsPaginas((de, ate) =>
-        supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha, ativo').range(de, ate));
-    if (error) {
+    // "ativo", "nao_gerar_pagamento" e "datas_pagamento_personalizadas" vêm de
+    // migrações aplicadas à mão: se alguma ainda não existir, cai para a
+    // leitura com menos colunas em vez de perder celula_ativa. As duas
+    // últimas alimentam o status de pagamento da célula (cronograma).
+    const conjuntosColunas = [
+        'id, celula_ativa, contabilizar_campanha, ativo, nao_gerar_pagamento, datas_pagamento_personalizadas',
+        'id, celula_ativa, contabilizar_campanha, ativo',
+        'id, celula_ativa, contabilizar_campanha'
+    ];
+    let data = null, error = null;
+    for (const colunas of conjuntosColunas) {
         ({ data, error } = await lerTodasAsPaginas((de, ate) =>
-            supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha').range(de, ate)));
+            supabaseClient.from('pessoal_contratado').select(colunas).order('id', { ascending: true }).range(de, ate)));
+        if (!error) break;
     }
     if (error || !data) return;
     const porId = new Map(data.map(r => [r.id, r]));
     cachePessoal.forEach(p => {
         const extra = porId.get(p.id);
-        if (extra) { p.celula_ativa = extra.celula_ativa; p.contabilizar_campanha = extra.contabilizar_campanha; p.ativo = extra.ativo; }
+        if (extra) {
+            p.celula_ativa = extra.celula_ativa; p.contabilizar_campanha = extra.contabilizar_campanha; p.ativo = extra.ativo;
+            p.nao_gerar_pagamento = extra.nao_gerar_pagamento; p.datas_pagamento_personalizadas = extra.datas_pagamento_personalizadas;
+        }
     });
+}
+
+// Status de pagamento (Parcela 1 e 2) de cada célula. O painel não lê
+// lancamentos; a RPC gestao_lideres_pagamentos_realizados() (migração
+// supabase/migracao-gestao-lideres-pagamentos.sql) devolve só quantos
+// pagamentos cada pessoa/placa já recebeu. undefined = carregando,
+// null = indisponível (migração não aplicada / sem permissão).
+// A conta em si é a de statusPagamentoCelula.js (cópia de lib/).
+let indicePagamentosGestao = undefined;
+
+async function carregarPagamentosGestaoLideres() {
+    if (!podeEditarCadastro()) return;
+    const { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.rpc('gestao_lideres_pagamentos_realizados').range(de, ate));
+    if (error) {
+        console.error('Erro ao carregar pagamentos realizados (rode supabase/migracao-gestao-lideres-pagamentos.sql):', error);
+        indicePagamentosGestao = null;
+        return;
+    }
+    indicePagamentosGestao = StatusPagamentoCelula.indexarPagamentosContados(data);
+}
+
+function statusPagamentoCelulaHtml(lider, multiplicadores, veiculos) {
+    if (indicePagamentosGestao === undefined) return '<div class="text-muted" style="font-size:0.8rem; margin-top:0.5rem;">💳 Pagamento: carregando…</div>';
+    if (indicePagamentosGestao === null) return '<div class="text-muted" style="font-size:0.8rem; margin-top:0.5rem;">💳 Pagamento: indisponível (migração de pagamentos pendente no Supabase)</div>';
+    const resultado = StatusPagamentoCelula.statusParcelasCelula(lider, multiplicadores, veiculos, indicePagamentosGestao);
+    return StatusPagamentoCelula.htmlStatusCelula(resultado, { escapar: escaparHtml, formatarMoeda });
 }
 
 function cnpjEhDaCampanha(cnpj) {
@@ -2244,6 +2281,8 @@ function renderizarGestaoLideres() {
                     <button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
                 </div>
             </div>
+
+            ${statusPagamentoCelulaHtml(lider, multiplicadores, veiculosDoLider)}
 
             <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length}${multiplicadores.some(m => !pessoaAtiva(m)) ? ` · ${contarMultiplicadoresDoLider(lider.id)} ativos` : ''})</h4>
             ${multiplicadores.length ? `
