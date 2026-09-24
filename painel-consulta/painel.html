@@ -186,7 +186,8 @@
                     <div class="table-container" style="padding:0.85rem 1.25rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.6rem;">
                         <strong style="font-size:1.05rem;">🎯</strong>
                         <span id="gl-contagem-celulas-ativas" style="font-size:1.05rem; font-weight:700;">— células ativas</span>
-                        <span class="text-muted" style="font-size:0.8rem;">(células completas — líder + 4 multiplicadores — marcadas como "Ativa", Comitê excluído)</span>
+                        <span id="gl-contagem-celulas-detalhe" style="display:flex; gap:0.4rem; flex-wrap:wrap; font-size:0.85rem;"></span>
+                        <span class="text-muted" style="font-size:0.8rem;">(dentro das ativas, Comitê excluído: completa = líder + 4 multiplicadores ativos; "com carro" = completa com veículo do líder; incompleta = o restante)</span>
                     </div>
 
                     <div class="table-container" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem;">
@@ -218,10 +219,16 @@
                                     <option value="com_inativos">Células com pessoas inativas</option>
                                 </select>
                             </div>
-                            <label style="display:flex; align-items:center; gap:0.4rem; font-weight:600; white-space:nowrap; margin-bottom:0;">
-                                <input type="checkbox" id="gl-excluir-comite" onchange="renderizarGestaoLideres()">
-                                Excluir Comitê
-                            </label>
+                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                <label style="display:flex; align-items:center; gap:0.4rem; font-weight:600; white-space:nowrap; margin-bottom:0;">
+                                    <input type="checkbox" id="gl-excluir-inativas" onchange="renderizarGestaoLideres()">
+                                    Excluir células inativas
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.4rem; font-weight:600; white-space:nowrap; margin-bottom:0;">
+                                    <input type="checkbox" id="gl-excluir-comite" onchange="renderizarGestaoLideres()">
+                                    Excluir Comitê
+                                </label>
+                            </div>
                             <button type="button" class="btn-secondary" onclick="limparFiltrosGestaoLideres()">Limpar filtros</button>
                             <button type="button" class="btn-secondary" onclick="gerarExcelGestaoLideres()">📊 Gerar Excel</button>
                             <button type="button" class="btn-secondary" onclick="gerarPdfGestaoLideres()">📄 Gerar PDF</button>

@@ -448,8 +448,24 @@ async function carregarPapel() {
 // 'master' tem tudo que 'validador' tem (Formulários, Cadastro Rápido,
 // Multiplicadores, validar pré-cadastros) + edita Pessoal/Veículos — ver
 // [[project_painel_perfil_master]].
-function possoValidarFormularios() {
+//
+// A validação de formulários pelo painel foi ENCERRADA: nenhum papel valida
+// mais Formulários, Cadastro Rápido nem Multiplicadores por aqui (só pela
+// plataforma principal). A trava real é a RLS — ver
+// supabase/migracao-painel-encerrar-validacao.sql; esta constante só tira os
+// botões da tela e barra os fluxos em JS.
+const VALIDACAO_ENCERRADA = true;
+
+function temPapelAvancado() {
     return meuPapel === 'validador' || meuPapel === 'master' || meuPapel === 'admin';
+}
+
+function possoValidarFormularios() {
+    return !VALIDACAO_ENCERRADA && temPapelAvancado();
+}
+
+function bloquearSeValidacaoEncerrada() {
+    if (VALIDACAO_ENCERRADA) throw new Error('A validação de formulários pelo painel foi encerrada. Use a plataforma principal.');
 }
 
 // Só 'master' (e 'admin', que já tem acesso total pela plataforma
@@ -465,7 +481,7 @@ function podeEditarCadastro() {
 // "Liderados recebidos" (validar submissões) continua só para
 // validador/master/admin. Ver supabase/migracao-leitor-links-multiplicador.sql.
 function podeGerarLinksMultiplicador() {
-    return ehLeitor() || possoValidarFormularios();
+    return ehLeitor() || temPapelAvancado();
 }
 
 // Perfil 'leitor' fica restrito a Consulta Rápida, Formulários e
@@ -689,6 +705,7 @@ async function confirmarFuncaoFormularioPessoal(botaoModal) {
 // administrador): associa automaticamente ao líder de mesmo nome já
 // cadastrado (cachePessoal precisa estar fresco — o lote recarrega antes).
 async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, localPrestacao, coordenador = null }) {
+    bloquearSeValidacaoEncerrada();
     if (funcao === 'multiplicador' && !liderId && f.lider_nome) {
         const lider = liderPorNome(f.lider_nome);
         if (lider) liderId = lider.id;
@@ -739,6 +756,7 @@ async function executarValidacaoFormularioPessoal(f, { funcao, liderId = null, l
 // Cria o veículo em `veiculos` a partir do pré-cadastro. Lança em caso de
 // erro no INSERT — quem chama decide alertar / recarregar.
 async function executarValidacaoFormularioVeiculo(f) {
+    bloquearSeValidacaoEncerrada();
     const lider = liderPorNome(f.nome_proprietario);
     const hoje = new Date();
     const dataHojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
@@ -1011,6 +1029,7 @@ async function carregarCadastroRapido() {
 // Pessoal primeiro; se o Veículo falhar, marca a linha de Pessoal como
 // 'rejeitado' (o validador não tem DELETE nessas tabelas) e lança.
 async function executarAproveitarCadastroRapido(envio) {
+    bloquearSeValidacaoEncerrada();
     let fpId = null;
     try {
         const { data: fp, error: eP } = await supabaseClient.from('formularios_pessoal').insert({
@@ -1412,6 +1431,7 @@ function fecharModalValidarMultiplicador() {
 // Cria o multiplicador em pessoal_contratado associado a liderId. Lança em
 // caso de erro no INSERT — quem chama decide alertar / recarregar.
 async function executarValidacaoMultiplicador(envio, liderId, coordenador = null) {
+    bloquearSeValidacaoEncerrada();
     const lider = cachePessoal.find(p => p.id === liderId) || null;
     const payload = {
         nome: nomeCaixaAlta(envio.nome),
@@ -1874,6 +1894,7 @@ function limparFiltrosGestaoLideres() {
     document.getElementById('gl-localidade').value = '';
     document.getElementById('gl-coordenador').value = '';
     document.getElementById('gl-celula').value = '';
+    document.getElementById('gl-excluir-inativas').checked = false;
     document.getElementById('gl-excluir-comite').checked = false;
     renderizarGestaoLideres();
 }
@@ -1945,10 +1966,20 @@ function liderCelulaAtiva(lider) {
 function atualizarContagemCelulasAtivas() {
     const span = document.getElementById('gl-contagem-celulas-ativas');
     if (!span) return;
-    const ativas = (cachePessoal || []).filter(p =>
-        p.funcao === 'lider' && p.local_prestacao !== 'Comitê' && liderCelulaAtiva(p)
-    ).length;
+    // Mesma regra de AtividadeCelula.resumoCelulasAtivas (lib/atividadeCelula.js
+    // da plataforma principal) — manter em sincronia: completa = líder ativo +
+    // 4 multiplicadores ativos; "com carro" = ao menos um veículo do líder.
+    const lideresAtivos = (cachePessoal || []).filter(p =>
+        p.funcao === 'lider' && p.local_prestacao !== 'Comitê' && liderCelulaAtiva(p));
+    const liderComVeiculo = new Set((cacheVeiculos || []).filter(v => v.lider_id != null).map(v => v.lider_id));
+    const completas = lideresAtivos.filter(l =>
+        pessoaAtiva(l) && contarMultiplicadoresDoLider(l.id) >= MIN_MULTIPLICADORES_CELULA_COMPLETA);
+    const ativas = lideresAtivos.length;
     span.textContent = `${ativas} ${ativas === 1 ? 'célula ativa' : 'células ativas'}`;
+    const det = document.getElementById('gl-contagem-celulas-detalhe');
+    if (det) det.innerHTML = `<span class="badge badge-receita">${completas.length} completa(s)</span>
+        <span class="badge badge-info">${completas.filter(l => liderComVeiculo.has(l.id)).length} completa(s) com carro</span>
+        <span class="badge badge-despesa">${ativas - completas.length} incompleta(s)</span>`;
 }
 
 // Alterna se a célula do líder está ativa (checkbox "Célula ativa" no card
@@ -2080,8 +2111,10 @@ function lideresFiltradosGestaoLideres() {
     const coordenador = document.getElementById('gl-coordenador').value;
     const celula = document.getElementById('gl-celula').value;
     const excluirComite = document.getElementById('gl-excluir-comite').checked;
+    const excluirInativas = document.getElementById('gl-excluir-inativas').checked;
 
     let lideres = (cachePessoal || []).filter(p => p.funcao === 'lider');
+    if (excluirInativas) lideres = lideres.filter(p => liderCelulaAtiva(p));
     if (excluirComite) lideres = lideres.filter(p => p.local_prestacao !== 'Comitê');
     if (busca) {
         lideres = lideres.filter(p =>
@@ -2117,6 +2150,7 @@ function descricaoFiltrosGestaoLideres() {
     if (coord) partes.push(`coordenador ${coord}`);
     const cel = document.getElementById('gl-celula');
     if (cel.value) partes.push(cel.selectedOptions[0].textContent.trim());
+    if (document.getElementById('gl-excluir-inativas').checked) partes.push('sem células inativas');
     if (document.getElementById('gl-excluir-comite').checked) partes.push('sem Comitê');
     return partes.length ? partes.join(' · ') : 'nenhum (todos os líderes)';
 }

@@ -21,16 +21,10 @@ const ROTULOS_PERIODICIDADE = {
 
 const FIM_CESSAO_TEXTO = '03 de outubro de 2026';
 
-// Vigência padrão impressa em todo contrato — espelha lib/pdfContrato.js.
-const DATA_INICIO_PRESTACAO = '09/09/2026';
+// Vigência impressa em todo contrato — espelha lib/pdfContrato.js (início em
+// branco, preenchido à mão na assinatura).
+const DATA_INICIO_PRESTACAO = '__ /__ /____';
 const DATA_FIM_PRESTACAO = '04/10/2026';
-
-function formatarDataBR(dataString) {
-    if (!dataString) return null;
-    const data = new Date(dataString);
-    data.setMinutes(data.getMinutes() + data.getTimezoneOffset());
-    return data.toLocaleDateString('pt-BR');
-}
 
 function formatarMoedaPdf(valor) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -168,7 +162,7 @@ function gerarPdfContrato(pessoa) {
         { justificar: true }
     );
     w.moveDown(7);
-    w.texto(`Brasília, DF, ${new Date().toLocaleDateString('pt-BR')}`);
+    w.texto('Brasília, DF, __ /__ /____');
     w.moveDown(39);
 
     w.texto('_________________________________________');
@@ -218,9 +212,8 @@ function gerarPdfTermoCessao(veiculo) {
     w.moveDown(10);
 
     w.texto('CLÁUSULA SEGUNDA — DO PRAZO DE CESSÃO', { negrito: true });
-    const inicio = formatarDataBR(veiculo.data_inicio_cessao);
     w.texto(
-        `O veículo será cedido no período de ${inicio || 'sua validação'} até o dia ${FIM_CESSAO_TEXTO}.`,
+        `O veículo será cedido no período de __ /__ /____ até o dia ${FIM_CESSAO_TEXTO}.`,
         { justificar: true }
     );
     w.moveDown(10);
@@ -249,7 +242,7 @@ function gerarPdfTermoCessao(veiculo) {
 
     w.texto('Por ser verdade, assinam o presente termo.', { justificar: true });
     w.moveDown(7);
-    w.texto(`Brasília, DF, ${inicio || new Date().toLocaleDateString('pt-BR')}`);
+    w.texto('Brasília, DF, __ /__ /____');
     w.moveDown(39);
 
     w.texto('_________________________________________');
