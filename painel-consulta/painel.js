@@ -811,7 +811,7 @@ async function carregarFormularios() {
         lerTodasAsPaginas((de, ate) => supabaseClient.from('formularios_veiculo').select('*').eq('status', 'pendente').order('id', { ascending: true }).range(de, ate))
     ]);
     if (eP || eV) { tbody.innerHTML = linhaVazia(11, 'Erro ao carregar formulários.'); return; }
-    cacheFormulariosPessoal = pessoal || [];
+    cacheFormulariosPessoal = (pessoal || []).filter(f => !localidadeOculta(f.local_prestacao));
     cacheFormulariosVeiculo = veiculo || [];
 
     const podeValidar = possoValidarFormularios();
@@ -1485,6 +1485,13 @@ async function validarEnviosMultiplicadorSelecionados(botao) {
     alert(msg);
 }
 
+// Localidades fixas do formulário de multiplicador direto: existem na
+// plataforma principal, mas não aparecem no painel de consulta.
+const LOCALIDADES_OCULTAS = ['PLANALTINA_SAULO', 'GAMA_RICARDO'];
+function localidadeOculta(localidade) {
+    return LOCALIDADES_OCULTAS.includes(String(localidade || '').trim().toUpperCase());
+}
+
 // ─── CADASTRO DE PESSOAL ────────────────────────────────────────────────
 async function carregarPessoal() {
     const tbody = document.getElementById('pessoal-body');
@@ -1496,7 +1503,7 @@ async function carregarPessoal() {
     const { data, error } = await lerTodasAsPaginas((de, ate) =>
         supabaseClient.rpc('leitor_listar_pessoal').order('id', { ascending: true }).range(de, ate));
     if (error) { tbody.innerHTML = linhaVazia(12, 'Erro ao carregar Pessoal.'); return; }
-    cachePessoal = data || [];
+    cachePessoal = (data || []).filter(p => !localidadeOculta(p.local_prestacao));
     if (!cachePessoal.length) { tbody.innerHTML = linhaVazia(12, 'Nenhuma pessoa cadastrada.'); aplicarFiltrosColuna('tabela-pessoal'); return; }
 
     tbody.innerHTML = cachePessoal.map(p => {
@@ -1539,7 +1546,7 @@ async function carregarVeiculos() {
     const { data, error } = await lerTodasAsPaginas((de, ate) =>
         supabaseClient.from('veiculos').select('*').order('placa').order('id', { ascending: true }).range(de, ate));
     if (error) { tbody.innerHTML = linhaVazia(9, 'Erro ao carregar Veículos.'); return; }
-    cacheVeiculos = data || [];
+    cacheVeiculos = (data || []).filter(v => !localidadeOculta(v.localidade_atendimento));
     if (!cacheVeiculos.length) { tbody.innerHTML = linhaVazia(9, 'Nenhum veículo cadastrado.'); aplicarFiltrosColuna('tabela-veiculos'); return; }
 
     tbody.innerHTML = cacheVeiculos.map(v => {
@@ -1879,9 +1886,23 @@ const MIN_MULTIPLICADORES_CELULA_COMPLETA = 4;
 // de Líderes da plataforma principal (celula_ativa em pessoal_contratado).
 const META_CELULAS_ATIVAS = 481;
 
-function contarMultiplicadoresDoLider(liderId) {
-    return (cachePessoal || []).filter(p => p.lider_id === liderId).length;
+// Só multiplicadores ATIVOS contam para a célula estar completa (espelho de
+// lib/atividadeCelula.js da plataforma principal — deploy isolado, este
+// arquivo não carrega o lib/; mantenha as regras em sincronia).
+function pessoaAtiva(p) {
+    return !!p && (p.ativo === undefined || p.ativo === null ? true : !!p.ativo);
 }
+
+function contarMultiplicadoresDoLider(liderId) {
+    return (cachePessoal || []).filter(p => p.lider_id === liderId && pessoaAtiva(p)).length;
+}
+
+function celulaTemPessoaInativa(lider) {
+    return (cachePessoal || []).some(p => p.lider_id === lider.id && !pessoaAtiva(p));
+}
+
+const ROTULO_CELULA_ATIVA = 'Ativa (conta p/ meta e agenda)';
+const ROTULO_CELULA_INATIVA = 'Inativa (fora da meta e da agenda)';
 
 // leitor_listar_pessoal() (fonte de cachePessoal) omite de propósito
 // celula_ativa e contabilizar_campanha para a role 'leitor' — só master/
@@ -1897,13 +1918,19 @@ async function carregarFlagsGestaoLideres() {
         const { data } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha').eq('id', 1).maybeSingle();
         cnpjCampanhaCache = data?.cnpj_campanha || null;
     }
-    const { data, error } = await lerTodasAsPaginas((de, ate) =>
-        supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha').range(de, ate));
+    // "ativo" vem de migracao-pessoa-ativo.sql (aplicada à mão): se ainda não
+    // existir, cai para a leitura sem ele em vez de perder celula_ativa.
+    let { data, error } = await lerTodasAsPaginas((de, ate) =>
+        supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha, ativo').range(de, ate));
+    if (error) {
+        ({ data, error } = await lerTodasAsPaginas((de, ate) =>
+            supabaseClient.from('pessoal_contratado').select('id, celula_ativa, contabilizar_campanha').range(de, ate)));
+    }
     if (error || !data) return;
     const porId = new Map(data.map(r => [r.id, r]));
     cachePessoal.forEach(p => {
         const extra = porId.get(p.id);
-        if (extra) { p.celula_ativa = extra.celula_ativa; p.contabilizar_campanha = extra.contabilizar_campanha; }
+        if (extra) { p.celula_ativa = extra.celula_ativa; p.contabilizar_campanha = extra.contabilizar_campanha; p.ativo = extra.ativo; }
     });
 }
 
@@ -1954,10 +1981,29 @@ async function alternarCelulaAtiva(id, chk) {
     if (lider) lider.celula_ativa = novoValor;
 
     const rotulo = chk.closest('label')?.querySelector('.rotulo-celula-ativa');
-    if (rotulo) rotulo.textContent = novoValor ? 'Ativa (conta p/ meta)' : 'Inativa (não conta p/ meta)';
-    if (rotulo) rotulo.style.color = novoValor ? '#15803d' : '#b91c1c';
+    if (rotulo) {
+        rotulo.textContent = novoValor ? ROTULO_CELULA_ATIVA : ROTULO_CELULA_INATIVA;
+        rotulo.style.color = novoValor ? '#15803d' : '#b91c1c';
+    }
 
     atualizarContagemCelulasAtivas();
+    renderizarGestaoLideres();
+}
+
+// Inativa/reativa um multiplicador dentro da célula. Inativo sai da Agenda
+// de Pagamento (plataforma principal) e deixa de contar para a célula estar
+// completa.
+async function alternarPessoaAtiva(id) {
+    const pessoa = cachePessoal.find(p => p.id === id);
+    if (!pessoa) return;
+    const novoValor = !pessoaAtiva(pessoa);
+    if (!novoValor && !confirm(`Inativar ${pessoa.nome}?\n\nSai da Agenda de Pagamento e deixa de contar para a célula estar completa. Dá para reativar depois.`)) return;
+
+    const { error } = await supabaseClient.from('pessoal_contratado').update({ ativo: novoValor }).eq('id', id);
+    if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
+
+    pessoa.ativo = novoValor;
+    renderizarGestaoLideres();
 }
 
 // Filtro único da tela — usado pela renderização e pelas exportações
@@ -1989,6 +2035,10 @@ function lideresFiltradosGestaoLideres() {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) < MIN_MULTIPLICADORES_CELULA_COMPLETA);
     } else if (celula === 'excedentes') {
         lideres = lideres.filter(p => contarMultiplicadoresDoLider(p.id) > MIN_MULTIPLICADORES_CELULA_COMPLETA);
+    } else if (celula === 'inativas') {
+        lideres = lideres.filter(p => !liderCelulaAtiva(p));
+    } else if (celula === 'com_inativos') {
+        lideres = lideres.filter(p => celulaTemPessoaInativa(p));
     }
     lideres = [...lideres].sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
     return { base, lideres };
@@ -2043,18 +2093,22 @@ function renderizarGestaoLideres() {
             .filter(v => v.lider_id === lider.id)
             .sort((a, b) => String(a.placa).localeCompare(String(b.placa), 'pt-BR'));
 
-        const linhasMultiplicador = multiplicadores.map(m => `
-            <tr>
-                <td>${escaparHtml(m.nome)}</td>
+        const linhasMultiplicador = multiplicadores.map(m => {
+            const mAtivo = pessoaAtiva(m);
+            return `
+            <tr${mAtivo ? '' : ' style="opacity:0.6;"'}>
+                <td>${escaparHtml(m.nome)}${mAtivo ? '' : ' <span class="badge badge-despesa">Inativo</span>'}</td>
                 <td>${escaparHtml(mascararCPF(m.cpf))}</td>
                 <td>${escaparHtml(m.telefone || '—')}</td>
                 <td>${celulaHerdeirosHtml(m.id)}</td>
                 <td class="text-center">${campanhaBadgeHtml(!!m.contabilizar_campanha)}</td>
                 <td>
+                    <button class="btn-icon" onclick="alternarPessoaAtiva(${m.id})" title="${mAtivo ? 'Inativar (sai da Agenda de Pagamento)' : 'Reativar'}">${mAtivo ? '⏸️' : '▶️'}</button>
                     <button class="btn-icon" onclick="abrirModalEditarPessoal(${m.id})" title="Editar">✏️</button>
                     <button class="btn-icon" onclick="excluirMultiplicadorGestaoLideres(${m.id})" title="Excluir">🗑️</button>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
 
         const linhasVeiculo = veiculosDoLider.map(v => `
             <tr>
@@ -2069,7 +2123,7 @@ function renderizarGestaoLideres() {
             </tr>`).join('');
 
         return `
-        <div class="table-container" style="padding:1.5rem; margin-bottom:1.25rem;">
+        <div class="table-container" style="padding:1.5rem; margin-bottom:1.25rem;${liderCelulaAtiva(lider) ? '' : ' border-left:4px solid #b91c1c;'}">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
                 <div>
                     <h3 style="margin:0;">${escaparHtml(lider.nome)}</h3>
@@ -2081,14 +2135,13 @@ function renderizarGestaoLideres() {
                         · Herdeiros diretos: ${celulaHerdeirosHtml(lider.id)}
                         · Campanha: ${campanhaBadgeHtml(!!lider.contabilizar_campanha)}
                     </p>
-                    ${multiplicadores.length >= MIN_MULTIPLICADORES_CELULA_COMPLETA ? `
                     <label style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.4rem; font-size:0.82rem; font-weight:600; cursor:pointer;">
                         <input type="checkbox" style="width:16px; height:16px; cursor:pointer;"
                             ${liderCelulaAtiva(lider) ? 'checked' : ''}
-                            title="Célula completa (líder + 4 multiplicadores) contando para a meta de ${META_CELULAS_ATIVAS} células"
+                            title="Célula inativa: líder, multiplicadores e veículo saem da Agenda de Pagamento e a célula não conta para a meta de ${META_CELULAS_ATIVAS}"
                             onchange="alternarCelulaAtiva(${lider.id}, this)">
-                        <span class="rotulo-celula-ativa" style="color:${liderCelulaAtiva(lider) ? '#15803d' : '#b91c1c'};">${liderCelulaAtiva(lider) ? 'Ativa (conta p/ meta)' : 'Inativa (não conta p/ meta)'}</span>
-                    </label>` : ''}
+                        <span class="rotulo-celula-ativa" style="color:${liderCelulaAtiva(lider) ? '#15803d' : '#b91c1c'};">${liderCelulaAtiva(lider) ? ROTULO_CELULA_ATIVA : ROTULO_CELULA_INATIVA}</span>
+                    </label>
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn-secondary" onclick="abrirModalEditarPessoal(${lider.id})">✏️ Editar Líder</button>
@@ -2097,7 +2150,7 @@ function renderizarGestaoLideres() {
                 </div>
             </div>
 
-            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length})</h4>
+            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length}${multiplicadores.some(m => !pessoaAtiva(m)) ? ` · ${contarMultiplicadoresDoLider(lider.id)} ativos` : ''})</h4>
             ${multiplicadores.length ? `
             <table class="table-data">
                 <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Campanha</th><th>Ações</th></tr></thead>
