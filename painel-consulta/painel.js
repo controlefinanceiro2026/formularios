@@ -1894,6 +1894,7 @@ function limparFiltrosGestaoLideres() {
     document.getElementById('gl-localidade').value = '';
     document.getElementById('gl-coordenador').value = '';
     document.getElementById('gl-celula').value = '';
+    document.getElementById('gl-aptidao').value = '';
     document.getElementById('gl-excluir-inativas').checked = false;
     document.getElementById('gl-excluir-comite').checked = false;
     renderizarGestaoLideres();
@@ -1927,11 +1928,22 @@ const ROTULO_CELULA_INATIVA = 'Inativa (fora da contagem e da agenda)';
 // id. cnpj_campanha vem de configuracao_campanha (mesma trava de RLS).
 let cnpjCampanhaCache = undefined;
 
+// Mínimo de herdeiros diretos para a célula ser apta — definido em Parâmetros
+// da Campanha na plataforma principal (configuracao_campanha.
+// herdeiros_minimo_celula_apta, supabase/migracao-herdeiros-minimo-celula.sql).
+// Sem a coluna (migração não aplicada) ou sem acesso: padrão 75.
+const HERDEIROS_MINIMO_CELULA_APTA_PADRAO = 75;
+let herdeirosMinimoCelulaApta = HERDEIROS_MINIMO_CELULA_APTA_PADRAO;
+
 async function carregarFlagsGestaoLideres() {
     if (!podeEditarCadastro()) return;
     if (cnpjCampanhaCache === undefined) {
-        const { data } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha').eq('id', 1).maybeSingle();
+        let { data, error } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha, herdeiros_minimo_celula_apta').eq('id', 1).maybeSingle();
+        if (error) ({ data } = await supabaseClient.from('configuracao_campanha').select('cnpj_campanha').eq('id', 1).maybeSingle());
         cnpjCampanhaCache = data?.cnpj_campanha || null;
+        const minimo = Number(data?.herdeiros_minimo_celula_apta);
+        herdeirosMinimoCelulaApta = data?.herdeiros_minimo_celula_apta != null && Number.isFinite(minimo) && minimo >= 0
+            ? minimo : HERDEIROS_MINIMO_CELULA_APTA_PADRAO;
     }
     // "ativo", "nao_gerar_pagamento" e "datas_pagamento_personalizadas" vêm de
     // migrações aplicadas à mão: se alguma ainda não existir, cai para a
@@ -2173,6 +2185,14 @@ function lideresFiltradosGestaoLideres() {
     } else if (celula === 'com_inativos') {
         lideres = lideres.filter(p => celulaTemPessoaInativa(p));
     }
+    // Aptidão pela soma dos herdeiros diretos da célula (>= mínimo = apta).
+    const aptidao = document.getElementById('gl-aptidao').value;
+    if (aptidao) {
+        lideres = lideres.filter(lider => {
+            const multiplicadores = (cachePessoal || []).filter(p => p.lider_id === lider.id);
+            return situacaoHerdeirosCelula(lider, multiplicadores).apta === (aptidao === 'apta');
+        });
+    }
     lideres = [...lideres].sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
     return { base, lideres };
 }
@@ -2187,6 +2207,8 @@ function descricaoFiltrosGestaoLideres() {
     if (coord) partes.push(`coordenador ${coord}`);
     const cel = document.getElementById('gl-celula');
     if (cel.value) partes.push(cel.selectedOptions[0].textContent.trim());
+    const apt = document.getElementById('gl-aptidao');
+    if (apt.value) partes.push(apt.selectedOptions[0].textContent.trim());
     if (document.getElementById('gl-excluir-inativas').checked) partes.push('sem células inativas');
     if (document.getElementById('gl-excluir-comite').checked) partes.push('sem Comitê');
     return partes.length ? partes.join(' · ') : 'nenhum (todos os líderes)';
@@ -2197,6 +2219,8 @@ function renderizarGestaoLideres() {
     if (!container) return;
 
     const { base, lideres } = lideresFiltradosGestaoLideres();
+    const rotuloMinimoApta = document.getElementById('gl-aptidao-minimo');
+    if (rotuloMinimoApta) rotuloMinimoApta.textContent = herdeirosMinimoCelulaApta;
 
     // Conta completas/incompletas ANTES do filtro de célula (se não, com
     // "Células completas" selecionado o card de incompletas sempre daria
@@ -2267,6 +2291,7 @@ function renderizarGestaoLideres() {
                         · Herdeiros diretos: ${celulaHerdeirosHtml(lider.id)}
                         · Campanha: ${campanhaBadgeHtml(!!lider.contabilizar_campanha)}
                     </p>
+                    ${herdeirosCelulaHtml(situacaoHerdeirosCelula(lider, multiplicadores))}
                     <label style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.4rem; font-size:0.82rem; font-weight:600; cursor:pointer;">
                         <input type="checkbox" style="width:16px; height:16px; cursor:pointer;"
                             ${liderCelulaAtiva(lider) ? 'checked' : ''}
@@ -2607,6 +2632,78 @@ function celulaHerdeirosHtml(pessoaId) {
     return `<span class="text-muted">${h.status === 'nao_encontrado' ? 'Não encontrado' : 'Sem telefone válido'}</span>`;
 }
 
+// Aptidão da célula pelos herdeiros diretos: soma dos herdeiros diretos do
+// líder + multiplicadores ATIVOS (mesma regra de app.js#situacaoHerdeirosCelula
+// da plataforma principal — manter em sincronia). Soma >= mínimo → apta.
+// Quem não foi consultado conta 0; `consultados`/`membros` mostram quantos
+// entraram na soma.
+function situacaoHerdeirosCelula(lider, multiplicadores) {
+    const membros = [lider, ...multiplicadores].filter(p => pessoaAtiva(p));
+    const consultados = membros.filter(p => cacheHerdeiros[p.id]?.status === 'ok');
+    const total = consultados.reduce((t, p) => t + (Number(cacheHerdeiros[p.id].herdeiros_diretos) || 0), 0);
+    return { total, consultados: consultados.length, membros: membros.length, apta: total >= herdeirosMinimoCelulaApta };
+}
+
+function herdeirosCelulaHtml(sit) {
+    const cor = sit.apta ? '#15803d' : '#b91c1c';
+    const dica = `Soma dos herdeiros diretos de ${sit.membros} integrante(s) ativo(s) (${sit.consultados} consultado(s)). Apta a partir de ${herdeirosMinimoCelulaApta}.`;
+    return `<div style="margin-top:0.4rem; font-size:0.85rem;" title="${escaparHtml(dica)}">
+        👥 Herdeiros diretos da célula: <strong>${sit.total}</strong> <small class="text-muted">(${sit.consultados}/${sit.membros} consultados)</small>
+        <span class="badge ${sit.apta ? 'badge-receita' : 'badge-despesa'}" style="color:${cor}; font-weight:700;">${sit.apta ? 'Célula apta' : 'Célula inapta'}</span>
+    </div>`;
+}
+
+// Situação de pagamento (parcelas do cronograma já quitadas) para o PDF —
+// espelha app.js#situacaoPagamento*Gestao. Usa o índice de pagamentos da RPC
+// (indicePagamentosGestao); quem está fora da Agenda (inativo, célula inativa,
+// Comitê, "não gerar pagamento") sai como "Fora da agenda" e não entra na
+// conta da célula.
+function situacaoPagamentoTexto(pagas, total) {
+    if (!total) return { texto: 'Sem cronograma', pagas: 0, total: 0, fora: false };
+    const situacao = pagas >= total ? 'Paga' : pagas === 0 ? 'Não paga' : 'Parcial';
+    return { texto: `${situacao} (${pagas}/${total})`, pagas, total, fora: false };
+}
+
+const PAGAMENTO_INDISPONIVEL = { texto: 'Indisponível', pagas: 0, total: 0, fora: true };
+
+function situacaoPagamentoPessoaGestao(p, lider) {
+    if (!indicePagamentosGestao) return PAGAMENTO_INDISPONIVEL;
+    if (!pessoaAtiva(p) || !liderCelulaAtiva(lider) || p.nao_gerar_pagamento || p.local_prestacao === 'Comitê' || lider.local_prestacao === 'Comitê') {
+        return { texto: 'Fora da agenda', pagas: 0, total: 0, fora: true };
+    }
+    const cronograma = ParcelasPessoal.calcularCronogramaParcelasPessoal(p);
+    return situacaoPagamentoTexto(Math.min(indicePagamentosGestao.pessoas.get(String(p.id)) || 0, cronograma.length), cronograma.length);
+}
+
+function situacaoPagamentoVeiculoGestao(v, lider) {
+    if (!indicePagamentosGestao) return PAGAMENTO_INDISPONIVEL;
+    if (v.nao_gerar_pagamento || !pessoaAtiva(lider) || !liderCelulaAtiva(lider) || lider.local_prestacao === 'Comitê' || v.localidade_atendimento === 'Comitê') {
+        return { texto: 'Fora da agenda', pagas: 0, total: 0, fora: true };
+    }
+    if (v.valor_contratado == null) return { texto: 'Sem valor contratado', pagas: 0, total: 0, fora: false };
+    const cronograma = ParcelasPessoal.calcularCronogramaParcelasVeiculo(v, lider);
+    return situacaoPagamentoTexto(Math.min(indicePagamentosGestao.veiculos.get(v.placa) || 0, cronograma.length), cronograma.length);
+}
+
+function situacaoPagamentoCelulaGestao(itens) {
+    if (!indicePagamentosGestao) return { texto: 'Indisponível (migração de pagamentos pendente)', classe: 'fora' };
+    const validos = itens.filter(i => !i.fora && i.total > 0);
+    if (!validos.length) return { texto: 'Fora da agenda / sem cronograma', classe: 'fora' };
+    const pagas = validos.reduce((t, i) => t + i.pagas, 0);
+    const total = validos.reduce((t, i) => t + i.total, 0);
+    if (pagas >= total) return { texto: `PAGA (${pagas}/${total} parcelas)`, classe: 'paga' };
+    if (pagas === 0) return { texto: `NÃO PAGA (0/${total} parcelas)`, classe: 'nao' };
+    const minPagas = Math.min(...validos.map(i => i.pagas));
+    return { texto: `PARCIALMENTE PAGA (${pagas}/${total} parcelas)${minPagas >= 1 ? ` — ${minPagas}ª parcela paga para todos` : ''}`, classe: 'parcial' };
+}
+
+function corPagamentoGestao(texto) {
+    if (/^(Paga|PAGA)/.test(texto)) return [21, 128, 61];
+    if (/^(Não paga|NÃO PAGA)/.test(texto)) return [185, 28, 28];
+    if (/^(Parcial|PARCIALMENTE)/.test(texto)) return [180, 83, 9];
+    return [100, 116, 139];
+}
+
 // ── Exportação "como está na tela" (Excel / PDF) ─────────────────────────
 // Espelha app.js#dadosTelaGestaoLideres da plataforma principal.
 function dadosTelaGestaoLideres() {
@@ -2617,11 +2714,17 @@ function dadosTelaGestaoLideres() {
         const veiculos = (cacheVeiculos || []).filter(v => v.lider_id === lider.id)
             .sort((a, b) => String(a.placa).localeCompare(String(b.placa), 'pt-BR'));
         const linhas = [pessoaLinha(lider, 'Líder'), ...multiplicadores.map(m => pessoaLinha(m, 'Multiplicador'))];
+        const pessoaPorId = new Map([lider, ...multiplicadores].map(p => [p.id, p]));
+        linhas.forEach(l => { l.pag = situacaoPagamentoPessoaGestao(pessoaPorId.get(l.id), lider); });
+        veiculos.forEach(v => { v.pag = situacaoPagamentoVeiculoGestao(v, lider); });
+        const pagCelula = situacaoPagamentoCelulaGestao([...linhas.map(l => l.pag), ...veiculos.map(v => v.pag)]);
         return {
+            pagCelula,
             lider, multiplicadores: multiplicadores.length, linhas, veiculos,
             localidade: lider.local_prestacao || 'Sem localidade',
             coordenador: lider.coordenador || '',
             herdeirosCelula: linhas.reduce((t, l) => t + (l.h.diretos || 0), 0),
+            sitHerdeiros: situacaoHerdeirosCelula(lider, multiplicadores),
             consultados: linhas.filter(l => l.h.diretos != null).length
         };
     });
@@ -2632,10 +2735,10 @@ function gerarExcelGestaoLideres() {
     if (!celulas.length) { alert('Nenhum líder encontrado com os filtros atuais.'); return; }
     const descricaoFiltros = descricaoFiltrosGestaoLideres();
 
-    const aoaPessoas = [['Localidade', 'Coordenador', 'Líder da célula', 'Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta']];
+    const aoaPessoas = [['Localidade', 'Coordenador', 'Líder da célula', 'Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta', 'Herdeiros da célula (soma)', 'Situação da célula']];
     const aoaVeiculos = [['Localidade', 'Coordenador', 'Líder da célula', 'Placa', 'Marca / Modelo', 'Valor contratado']];
     celulas.forEach(c => {
-        c.linhas.forEach(l => aoaPessoas.push([c.localidade, c.coordenador, c.lider.nome, l.funcao, l.nome, l.cpf, l.telefone, l.h.diretos ?? '', l.h.rede ?? '', l.h.texto]));
+        c.linhas.forEach(l => aoaPessoas.push([c.localidade, c.coordenador, c.lider.nome, l.funcao, l.nome, l.cpf, l.telefone, l.h.diretos ?? '', l.h.rede ?? '', l.h.texto, c.sitHerdeiros.total, c.sitHerdeiros.apta ? 'Apta' : 'Inapta']));
         c.veiculos.forEach(v => aoaVeiculos.push([c.localidade, c.coordenador, c.lider.nome, v.placa || '', [v.marca, v.modelo].filter(Boolean).join(' '), v.valor_contratado != null ? Number(v.valor_contratado) : '']));
     });
     const aoaResumo = [
@@ -2650,8 +2753,8 @@ function gerarExcelGestaoLideres() {
 
     const livro = XLSX.utils.book_new();
     const abaPessoas = XLSX.utils.aoa_to_sheet(aoaPessoas);
-    abaPessoas['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
-    abaPessoas['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoaPessoas.length - 1, c: 9 } }) };
+    abaPessoas['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 18 }];
+    abaPessoas['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoaPessoas.length - 1, c: 11 } }) };
     const abaVeiculos = XLSX.utils.aoa_to_sheet(aoaVeiculos);
     abaVeiculos['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 34 }, { wch: 12 }, { wch: 30 }, { wch: 16 }];
     const abaResumo = XLSX.utils.aoa_to_sheet(aoaResumo);
@@ -2665,20 +2768,26 @@ function gerarExcelGestaoLideres() {
 function gerarPdfGestaoLideres() {
     const celulas = dadosTelaGestaoLideres();
     if (!celulas.length) { alert('Nenhum líder encontrado com os filtros atuais.'); return; }
+    // Classificação: quem tem mais herdeiros diretos na célula (soma do líder +
+    // multiplicadores ativos, a mesma do selo apta/inapta) vem primeiro; empate
+    // por nome do líder.
+    celulas.sort((a, b) => (b.sitHerdeiros.total - a.sitHerdeiros.total)
+        || String(a.lider.nome).localeCompare(String(b.lider.nome), 'pt-BR'));
     const descricaoFiltros = descricaoFiltrosGestaoLideres();
     const M = formatarMoeda;
     const txtHerdeiros = l => l.h.diretos != null ? String(l.h.diretos) : '—';
     const txtRede = l => l.h.rede != null ? String(l.h.rede) : '—';
 
-    const doc = iniciarPdfRelatorio('Gestão de Líderes — células e herdeiros');
+    const doc = iniciarPdfRelatorio('Gestão de Líderes — células, herdeiros e pagamento');
     const largura = doc.internal.pageSize.getWidth();
     const altura = doc.internal.pageSize.getHeight();
     const margem = 12;
 
+    const contarPag = classe => celulas.filter(c => c.pagCelula.classe === classe).length;
     doc.setFontSize(9);
     const totalMult = celulas.reduce((t, c) => t + c.multiplicadores, 0);
     const totalHerdeiros = celulas.reduce((t, c) => t + c.herdeirosCelula, 0);
-    const cab = doc.splitTextToSize(`Filtros: ${descricaoFiltros}   |   ${celulas.length} líder(es) · ${totalMult} multiplicador(es) · ${totalHerdeiros} herdeiros diretos (soma dos consultados)`, largura - 2 * margem);
+    const cab = doc.splitTextToSize(`Filtros: ${descricaoFiltros}   |   Ordem: maior soma de herdeiros diretos da célula primeiro   |   ${celulas.length} líder(es) · ${totalMult} multiplicador(es) · ${totalHerdeiros} herdeiros diretos (soma dos consultados)   |   Pagamento: ${contarPag('paga')} célula(s) paga(s) · ${contarPag('parcial')} parcialmente paga(s) · ${contarPag('nao')} não paga(s) · ${contarPag('fora')} fora da agenda / indisponível`, largura - 2 * margem);
     doc.text(cab, margem, 29);
     let y = 29 + cab.length * 4.5 + 3;
 
@@ -2686,28 +2795,32 @@ function gerarPdfGestaoLideres() {
         if (y > altura - 45) { doc.addPage(); y = 14; }
         const infoLider = [`CPF ${mascararCPF(c.lider.cpf)}`, c.localidade, c.coordenador ? `Coord.: ${c.coordenador}` : null, c.lider.telefone || null]
             .filter(Boolean).join('  ·  ');
-        const corpo = c.linhas.map(l => [l.funcao, l.nome, l.cpf, l.telefone || '—', txtHerdeiros(l), txtRede(l), l.h.texto]);
+        const corpo = c.linhas.map(l => [l.funcao, l.nome, l.cpf, l.telefone || '—', txtHerdeiros(l), txtRede(l), l.h.texto, l.pag.texto]);
         if (c.veiculos.length) {
             corpo.push([{
-                content: 'Veículo(s): ' + c.veiculos.map(v => `${v.placa || 's/ placa'} (${[v.marca, v.modelo].filter(Boolean).join(' ') || '—'}${v.valor_contratado != null ? ', ' + M(v.valor_contratado) : ''})`).join('; '),
-                colSpan: 7, styles: { fontStyle: 'italic', fillColor: [241, 245, 249] }
+                content: 'Veículo(s): ' + c.veiculos.map(v => `${v.placa || 's/ placa'} (${[v.marca, v.modelo].filter(Boolean).join(' ') || '—'}${v.valor_contratado != null ? ', ' + M(v.valor_contratado) : ''}) — ${v.pag.texto}`).join('; '),
+                colSpan: 8, styles: { fontStyle: 'italic', fillColor: [241, 245, 249] }
             }]);
         } else {
-            corpo.push([{ content: 'Nenhum veículo vinculado.', colSpan: 7, styles: { fontStyle: 'italic', textColor: [120, 120, 120], fillColor: [241, 245, 249] } }]);
+            corpo.push([{ content: 'Nenhum veículo vinculado.', colSpan: 8, styles: { fontStyle: 'italic', textColor: [120, 120, 120], fillColor: [241, 245, 249] } }]);
         }
         doc.autoTable({
             startY: y,
             margin: { left: margem, right: margem, top: 14, bottom: 12 },
             rowPageBreak: 'avoid',
             head: [
-                [{ content: `${c.lider.nome} — ${c.multiplicadores} multiplicador(es) · ${c.herdeirosCelula} herdeiros diretos (${c.consultados}/${c.linhas.length} consultados)`, colSpan: 7, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }],
-                [{ content: infoLider, colSpan: 7, styles: { halign: 'left', fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'normal' } }],
-                ['Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta']
+                [{ content: `${c.lider.nome} — ${c.multiplicadores} multiplicador(es) · ${c.herdeirosCelula} herdeiros diretos (${c.consultados}/${c.linhas.length} consultados) · Célula ${c.sitHerdeiros.apta ? 'APTA' : 'INAPTA'} (soma ${c.sitHerdeiros.total}; apta a partir de ${herdeirosMinimoCelulaApta})`, colSpan: 8, styles: { halign: 'left', fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+                [{ content: infoLider, colSpan: 5, styles: { halign: 'left', fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'normal' } },
+                    { content: `Pagamento da célula: ${c.pagCelula.texto}`, colSpan: 3, styles: { halign: 'left', fillColor: [226, 232, 240], textColor: corPagamentoGestao(c.pagCelula.texto), fontStyle: 'bold' } }],
+                ['Função', 'Nome', 'CPF', 'Telefone', 'Herdeiros diretos', 'Total da rede', 'Consulta', 'Pagamento']
             ],
             body: corpo,
             styles: { fontSize: 8.5, cellPadding: 1.6, overflow: 'ellipsize' },
             headStyles: { fillColor: [0, 0, 0], textColor: [245, 183, 0] },
-            columnStyles: { 0: { cellWidth: 26 }, 4: { halign: 'center', cellWidth: 28 }, 5: { halign: 'center', cellWidth: 26 }, 6: { cellWidth: 34 } }
+            columnStyles: { 0: { cellWidth: 24 }, 4: { halign: 'center', cellWidth: 24 }, 5: { halign: 'center', cellWidth: 22 }, 6: { cellWidth: 28 }, 7: { cellWidth: 34, fontStyle: 'bold' } },
+            didParseCell: d => {
+                if (d.section === 'body' && d.column.index === 7 && d.cell.colSpan === 1) d.cell.styles.textColor = corPagamentoGestao(String(d.cell.raw));
+            }
         });
         y = doc.lastAutoTable.finalY + 5;
     });

@@ -219,6 +219,14 @@
                                     <option value="com_inativos">Células com pessoas inativas</option>
                                 </select>
                             </div>
+                            <div class="form-group" style="flex:1; min-width:160px; margin-bottom:0;">
+                                <label for="gl-aptidao">Aptidão (herdeiros ≥ <span id="gl-aptidao-minimo">75</span>)</label>
+                                <select id="gl-aptidao" onchange="renderizarGestaoLideres()">
+                                    <option value="">Todas</option>
+                                    <option value="apta">Células aptas</option>
+                                    <option value="inapta">Células inaptas</option>
+                                </select>
+                            </div>
                             <div style="display:flex; flex-direction:column; gap:0.35rem;">
                                 <label style="display:flex; align-items:center; gap:0.4rem; font-weight:600; white-space:nowrap; margin-bottom:0;">
                                     <input type="checkbox" id="gl-excluir-inativas" onchange="renderizarGestaoLideres()">
@@ -602,6 +610,6 @@
     <script src="pdfDocumentos.js"></script>
     <script src="parcelasPessoal.js?v=1"></script>
     <script src="statusPagamentoCelula.js?v=1"></script>
-    <script src="painel.js?v=4"></script>
+    <script src="painel.js?v=6"></script>
 </body>
 </html>
