@@ -183,9 +183,10 @@
                 </section>
 
                 <section id="gestao-lideres" class="page">
-                    <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; align-items:center;">
                         <button type="button" class="btn-primary" id="gl-aba-btn-celulas" onclick="mudarAbaGestaoLideres('celulas')">🧑‍✈️ Células</button>
                         <button type="button" class="btn-secondary" id="gl-aba-btn-inativos" onclick="mudarAbaGestaoLideres('inativos')">⏸️ Inativos <span id="gl-aba-inativos-contagem" class="badge badge-despesa" style="margin-left:0.25rem;">0</span></button>
+                        <button type="button" class="btn-primary" id="btn-nova-celula" style="display:none; margin-left:auto;" onclick="abrirModalNovaCelula()">➕ Nova Célula</button>
                     </div>
 
                     <div id="gl-aba-celulas">

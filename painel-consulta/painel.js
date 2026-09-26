@@ -462,7 +462,7 @@ function validacaoEncerradaParaMim() {
 }
 
 function temPapelAvancado() {
-    return meuPapel === 'validador' || meuPapel === 'master' || meuPapel === 'admin';
+    return meuPapel === 'validador' || meuPapel === 'master' || meuPapel === 'master_inclusao' || meuPapel === 'admin';
 }
 
 function possoValidarFormularios() {
@@ -478,7 +478,16 @@ function bloquearSeValidacaoEncerrada() {
 // "master edita pessoal/veiculos") é a trava real — isto só decide o que
 // aparece na tela.
 function podeEditarCadastro() {
-    return meuPapel === 'master' || meuPapel === 'admin';
+    return meuPapel === 'master' || meuPapel === 'master_inclusao' || meuPapel === 'admin';
+}
+
+// 'master_inclusao' (Master com inclusão e edição) = tudo do 'master' + INCLUI
+// cadastros novos: nova célula (líder), multiplicador e veículo pela Gestão de
+// Líderes. O 'master' comum só edita/exclui — a RLS não deixa ele inserir (ver
+// supabase/migracao-painel-master-inclusao.sql); o admin insere pela política
+// de acesso total. Só decide o que aparece na tela — a trava real é a RLS.
+function podeIncluirCadastro() {
+    return meuPapel === 'master_inclusao' || meuPapel === 'admin';
 }
 
 // 'leitor' também gera e envia (WhatsApp) os links individuais de
@@ -491,8 +500,8 @@ function podeGerarLinksMultiplicador() {
 
 // Perfil 'leitor' fica restrito a Consulta Rápida, Formulários e
 // Multiplicadores (só gerar/enviar link) — as demais telas (Cadastro
-// Rápido, Pessoal, Veículos) somem da navegação. 'validador', 'master' e
-// 'admin' continuam vendo tudo.
+// Rápido, Pessoal, Veículos) somem da navegação. 'validador', 'master',
+// 'master_inclusao' e 'admin' continuam vendo tudo.
 const TELAS_PERMITIDAS_LEITOR = ['consulta-rapida', 'formularios', 'multiplicadores'];
 
 function ehLeitor() {
@@ -1705,6 +1714,27 @@ function abrirModalNovoMultiplicador(liderId) {
     document.getElementById('modal-editar-pessoal').classList.add('show');
 }
 
+// Nova célula (Gestão de Líderes, perfil master_inclusao/admin): mesmo modal
+// em branco, já como Líder com atividades e valor padrão — ao salvar, ep-id
+// vazio vira INSERT. Multiplicadores e veículo entram depois, pelos botões
+// do card da célula recém-criada.
+function abrirModalNovaCelula() {
+    if (!podeIncluirCadastro()) return;
+    ['ep-id', 'ep-nome', 'ep-cpf', 'ep-telefone', 'ep-endereco', 'ep-cep', 'ep-coordenador', 'ep-local',
+        'ep-jornada', 'ep-data-inicio', 'ep-data-fim', 'ep-justificativa', 'ep-chave-pix'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('ep-funcao').value = 'lider';
+    document.getElementById('ep-atividades').value = ATRIBUICAO_ATIVIDADES_PESSOAL.lider;
+    preencherDatalistLocalidades('ep-local-lista');
+    document.getElementById('ep-valor').value = formatarMoeda(VALOR_CONTRATO_PADRAO_PESSOAL.lider);
+    document.getElementById('ep-forma-pagamento').value = 'transferencia';
+    document.getElementById('ep-periodicidade').value = 'fixo';
+    document.getElementById('ep-contabilizar').checked = false;
+    preencherSelectLideres('ep-lider', null, null);
+    atualizarVisibilidadeCamposEdicaoPessoal();
+    document.getElementById('modal-editar-pessoal-title').textContent = '➕ Nova Célula — cadastrar Líder';
+    document.getElementById('modal-editar-pessoal').classList.add('show');
+}
+
 function fecharModalEditarPessoal() {
     document.getElementById('modal-editar-pessoal').classList.remove('show');
 }
@@ -1799,10 +1829,10 @@ function abrirModalEditarVeiculo(id) {
 // Mesmo modal, em branco — ao salvar, salvarEdicaoVeiculo() detecta ev-id
 // vazio e faz um INSERT em vez de UPDATE (mesmo padrão de
 // abrirModalNovoMultiplicador/salvarEdicaoPessoal). Só master/admin veem o
-// botão (podeEditarCadastro()); a trava real é a RLS — master já tem
-// INSERT em veiculos pela política "validador insere veiculos" (eh_validador()
-// inclui master) e admin pela política de acesso total.
-function abrirModalNovoVeiculo() {
+// botão (podeIncluirCadastro()); a trava real é a RLS — só master_inclusao
+// ("master inclusao insere veiculos") e admin (acesso total) inserem.
+// liderId (opcional): já associa o veículo à célula clicada na Gestão de Líderes.
+function abrirModalNovoVeiculo(liderId) {
     document.getElementById('ev-id').value = '';
     document.getElementById('ev-placa').value = '';
     document.getElementById('ev-marca').value = '';
@@ -1815,8 +1845,10 @@ function abrirModalNovoVeiculo() {
     preencherDatalistLocalidades('ev-local-lista');
     document.getElementById('ev-local').value = '';
     document.getElementById('ev-data-cessao').value = '';
-    preencherSelectLideres('ev-lider', null, null);
-    document.getElementById('modal-editar-veiculo-title').textContent = '➕ Adicionar Veículo';
+    const lider = liderId != null ? cachePessoal.find(p => p.id === liderId) : null;
+    preencherSelectLideres('ev-lider', lider ? lider.id : null, null);
+    if (lider) document.getElementById('ev-local').value = lider.local_prestacao || '';
+    document.getElementById('modal-editar-veiculo-title').textContent = lider ? `➕ Adicionar Veículo — Célula de ${lider.nome}` : '➕ Adicionar Veículo';
     document.getElementById('modal-editar-veiculo').classList.add('show');
 }
 
@@ -2597,7 +2629,8 @@ function renderizarGestaoLideres() {
                     ${historicoAtividadeHtml(eventosCelula)}
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
+                    ${podeIncluirCadastro() ? `<button class="btn-secondary" onclick="abrirModalNovoMultiplicador(${lider.id})">➕ Adicionar Multiplicador</button>
+                    <button class="btn-secondary" onclick="abrirModalNovoVeiculo(${lider.id})">➕ Adicionar Veículo</button>` : ''}
                 </div>
             </div>
 
@@ -3764,8 +3797,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Gestão de Líderes é para master e admin (validador/leitor comuns não
     // veem) — mesma regra de podeEditarCadastro().
     document.getElementById('nav-gestao-lideres').style.display = podeEditarCadastro() ? '' : 'none';
-    // "Adicionar Veículo" (tela Veículos) — mesma regra: só master/admin.
-    document.getElementById('btn-novo-veiculo').style.display = podeEditarCadastro() ? '' : 'none';
+    // "Adicionar Veículo" (tela Veículos) — só quem inclui (master_inclusao/admin).
+    document.getElementById('btn-novo-veiculo').style.display = podeIncluirCadastro() ? '' : 'none';
+    // "Nova Célula" (Gestão de Líderes) — só master_inclusao/admin.
+    document.getElementById('btn-nova-celula').style.display = podeIncluirCadastro() ? '' : 'none';
     // Pessoal carrega antes de Formulários/Multiplicadores: validar um
     // veículo/multiplicador precisa da lista de líderes já em cachePessoal
     // pra casar o proprietário/líder. Pessoal + Veículos também alimentam a
