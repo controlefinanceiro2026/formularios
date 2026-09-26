@@ -449,23 +449,28 @@ async function carregarPapel() {
 // Multiplicadores, validar pré-cadastros) + edita Pessoal/Veículos — ver
 // [[project_painel_perfil_master]].
 //
-// A validação de formulários pelo painel foi ENCERRADA: nenhum papel valida
-// mais Formulários, Cadastro Rápido nem Multiplicadores por aqui (só pela
-// plataforma principal). A trava real é a RLS — ver
-// supabase/migracao-painel-encerrar-validacao.sql; esta constante só tira os
-// botões da tela e barra os fluxos em JS.
+// A validação de formulários pelo painel foi ENCERRADA para validador/master/
+// leitor: eles não validam mais Formulários, Cadastro Rápido nem Multiplicadores
+// por aqui. O ADMIN é exceção — tem todas as telas e funcionalidades do painel,
+// inclusive validar. A trava real é a RLS — ver
+// supabase/migracao-painel-encerrar-validacao.sql (só eh_admin() escreve nessas
+// tabelas); esta constante só tira os botões da tela e barra os fluxos em JS.
 const VALIDACAO_ENCERRADA = true;
+
+function validacaoEncerradaParaMim() {
+    return VALIDACAO_ENCERRADA && meuPapel !== 'admin';
+}
 
 function temPapelAvancado() {
     return meuPapel === 'validador' || meuPapel === 'master' || meuPapel === 'admin';
 }
 
 function possoValidarFormularios() {
-    return !VALIDACAO_ENCERRADA && temPapelAvancado();
+    return !validacaoEncerradaParaMim() && temPapelAvancado();
 }
 
 function bloquearSeValidacaoEncerrada() {
-    if (VALIDACAO_ENCERRADA) throw new Error('A validação de formulários pelo painel foi encerrada. Use a plataforma principal.');
+    if (validacaoEncerradaParaMim()) throw new Error('A validação de formulários pelo painel foi encerrada. Use a plataforma principal.');
 }
 
 // Só 'master' (e 'admin', que já tem acesso total pela plataforma
@@ -2149,6 +2154,292 @@ async function alternarPessoaAtiva(id) {
     renderizarGestaoLideres();
 }
 
+// ─── Inativos e remanejamento (Gestão de Líderes › aba Inativos) ─────────
+// Espelho do app.js da plataforma principal. Lista quem está inativo (pessoa
+// ou célula) com os veículos associados e o histórico de pagamento, e
+// remaneja para outra célula. O histórico é da PESSOA/PLACA, nunca da célula:
+// remanejar só troca lider_id (+ reativa), então a parcela já paga segue paga
+// e a Agenda não cobra de novo. Regras em remanejamentoInativos.js (cópia de
+// lib/). O painel não lê lançamentos nem etiquetas — usa a contagem de
+// pagamentos da RPC gestao_lideres_pagamentos_realizados (sem datas).
+// Escrever exige master/admin (RLS "master edita pessoal/veiculos").
+let abaGestaoLideresAtual = 'celulas';
+const remanejarEstado = { pessoaId: null, veiculoId: null };
+
+function mudarAbaGestaoLideres(aba) {
+    abaGestaoLideresAtual = aba;
+    document.getElementById('gl-aba-celulas').style.display = aba === 'celulas' ? '' : 'none';
+    document.getElementById('gl-aba-inativos').style.display = aba === 'inativos' ? '' : 'none';
+    document.getElementById('gl-aba-btn-celulas').className = aba === 'celulas' ? 'btn-primary' : 'btn-secondary';
+    document.getElementById('gl-aba-btn-inativos').className = aba === 'inativos' ? 'btn-primary' : 'btn-secondary';
+    if (aba === 'inativos') {
+        prepararFiltrosInativosGestao();
+        renderizarInativosGestao();
+    }
+}
+
+function prepararFiltrosInativosGestao() {
+    const sel = document.getElementById('gli-localidade');
+    const atual = sel.value;
+    const locais = Array.from(new Set(RemanejamentoInativos.listarInativos(cachePessoal, cacheVeiculos)
+        .map(i => i.pessoa.local_prestacao).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    sel.innerHTML = '<option value="">Todas</option>' + locais.map(l => `<option value="${escaparHtml(l)}">${escaparHtml(l)}</option>`).join('');
+    if (locais.includes(atual)) sel.value = atual;
+}
+
+function limparFiltrosInativosGestao() {
+    document.getElementById('gli-busca').value = '';
+    document.getElementById('gli-situacao').value = '';
+    document.getElementById('gli-localidade').value = '';
+    renderizarInativosGestao();
+}
+
+// Nº de pagamentos já recebidos (RPC). null = RPC indisponível/carregando.
+function pagamentosRecebidosPessoaGestao(pessoa) {
+    return indicePagamentosGestao ? (indicePagamentosGestao.pessoas.get(String(pessoa.id)) || 0) : null;
+}
+function pagamentosRecebidosVeiculoGestao(veiculo) {
+    return indicePagamentosGestao ? (indicePagamentosGestao.veiculos.get(veiculo.placa) || 0) : null;
+}
+
+function historicoPessoaGestao(pessoa) {
+    return RemanejamentoInativos.historicoPessoaPorContagem(pessoa, pagamentosRecebidosPessoaGestao(pessoa) || 0, []);
+}
+
+// Faixa com o cronograma (paga / a pagar) — o "registro de que foi pago".
+function htmlParcelasHistorico(cronograma, disponivel) {
+    if (!disponivel) return '<span class="text-muted">histórico de pagamento indisponível (migração de pagamentos pendente no Supabase)</span>';
+    if (!cronograma.length) return '<span class="text-muted">sem cronograma de parcelas</span>';
+    return cronograma.map(c => `<span style="display:inline-block; margin:0 0.5rem 0.25rem 0; padding:0.15rem 0.5rem; border-radius:6px; font-size:0.8rem; background:${c.paga ? '#f0fdf4' : '#fef2f2'}; border:1px solid ${c.paga ? '#bbf7d0' : '#fecaca'}; color:${c.paga ? '#15803d' : '#b91c1c'};">
+            <strong>Parcela ${c.parcela} · ${escaparHtml(formatarData(c.data))}</strong> ${c.paga ? '✅ Paga' : '⏳ A pagar'} · ${formatarMoeda(c.valor)}</span>`).join('');
+}
+
+function renderizarInativosGestao() {
+    const container = document.getElementById('gli-lista');
+    const badge = document.getElementById('gl-aba-inativos-contagem');
+    if (!container || !badge || typeof RemanejamentoInativos === 'undefined') return;
+
+    const todos = RemanejamentoInativos.listarInativos(cachePessoal, cacheVeiculos);
+    badge.textContent = todos.length;
+    if (abaGestaoLideresAtual !== 'inativos') return;
+
+    const busca = normalizarBuscaTexto(document.getElementById('gli-busca').value);
+    const buscaDigitos = apenasDigitos(document.getElementById('gli-busca').value);
+    const situacao = document.getElementById('gli-situacao').value;
+    const localidade = document.getElementById('gli-localidade').value;
+
+    const lista = todos.filter(i => {
+        if (situacao && i.motivo !== situacao) return false;
+        if (localidade && i.pessoa.local_prestacao !== localidade) return false;
+        if (!busca && !buscaDigitos) return true;
+        return normalizarBuscaTexto(i.pessoa.nome).includes(busca)
+            || (buscaDigitos && apenasDigitos(i.pessoa.cpf).includes(buscaDigitos))
+            || i.veiculos.some(v => normalizarBuscaTexto(v.placa).includes(busca));
+    });
+
+    document.getElementById('gli-contagem').textContent = `${lista.length} inativo(s) encontrado(s) de ${todos.length} no total.`;
+    if (!lista.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:2rem; text-align:center;">Nenhuma pessoa inativa encontrada.</p>';
+        return;
+    }
+
+    const disponivel = !!indicePagamentosGestao;
+    container.innerHTML = lista.map(({ pessoa, motivo, remanejavel, liderOrigem, veiculos }) => {
+        const hist = historicoPessoaGestao(pessoa);
+        const eventos = liderOrigem ? eventosDaCelula(liderOrigem.id) : [];
+        const evento = eventos.find(h => motivo === 'pessoa' ? (h.alvo === 'pessoa' && h.pessoa_id === pessoa.id) : h.alvo === 'celula');
+        const desde = textoDesdeInativo(evento);
+        const ehLider = pessoa.funcao === 'lider';
+
+        const linhasVeiculo = veiculos.map(v => {
+            const h = RemanejamentoInativos.historicoVeiculoPorContagem(v, ehLider ? pessoa : liderOrigem, pagamentosRecebidosVeiculoGestao(v) || 0);
+            return `
+            <tr>
+                <td>${escaparHtml(v.placa)}</td>
+                <td>${escaparHtml([v.marca, v.modelo].filter(Boolean).join(' ') || '—')}</td>
+                <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
+                <td>${htmlParcelasHistorico(h.cronograma, disponivel)}</td>
+                <td><button class="btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.6rem;" onclick="abrirModalRemanejarInativo(${pessoa.id}, ${v.id})">🔀 Remanejar veículo</button></td>
+            </tr>`;
+        }).join('');
+
+        return `
+        <div class="table-container" style="padding:1.25rem 1.5rem; margin-bottom:1rem; border-left:4px solid ${motivo === 'pessoa' ? '#b91c1c' : '#b45309'};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
+                <div>
+                    <h3 style="margin:0;">${escaparHtml(pessoa.nome)}
+                        <span class="badge badge-despesa">${motivo === 'pessoa' ? 'Inativo' : 'Célula inativa'}</span>
+                        <span class="badge badge-info">${ehLider ? 'Líder' : 'Multiplicador'}</span>
+                    </h3>
+                    <p class="text-muted" style="margin:0.25rem 0 0;">
+                        CPF ${escaparHtml(mascararCPF(pessoa.cpf))}
+                        · ${escaparHtml(pessoa.local_prestacao || 'sem localidade')}
+                        ${!ehLider && liderOrigem ? ` · Célula de origem: ${escaparHtml(liderOrigem.nome)}` : ''}
+                        ${pessoa.telefone ? ` · ${escaparHtml(pessoa.telefone)}` : ''}
+                    </p>
+                    ${desde ? `<div class="text-muted" style="font-size:0.75rem; margin-top:0.15rem;">Inativo ${escaparHtml(desde)}</div>` : ''}
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    ${remanejavel ? `<button class="btn-primary" onclick="abrirModalRemanejarInativo(${pessoa.id})">🔀 Remanejar para outra célula</button>` : ''}
+                    ${motivo === 'pessoa' ? `<button class="btn-secondary" onclick="alternarPessoaAtiva(${pessoa.id})" title="Volta a ativo na mesma célula">▶️ Reativar</button>` : ''}
+                </div>
+            </div>
+            <div style="margin-top:0.75rem;">
+                <strong style="font-size:0.85rem;">💳 Histórico de pagamento (mantido)</strong>
+                <div style="margin-top:0.3rem;">${pessoa.nao_gerar_pagamento ? '<span class="text-muted">Marcado como "não gerar pagamento"</span>' : htmlParcelasHistorico(hist.cronograma, disponivel)}</div>
+            </div>
+            ${veiculos.length ? `
+            <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🚗 Veículo(s) associado(s) (${veiculos.length})</h4>
+            <table class="table-data">
+                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Histórico de pagamento</th><th>Ações</th></tr></thead>
+                <tbody>${linhasVeiculo}</tbody>
+            </table>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// Abre o modal. Sem veiculoId: remaneja a PESSOA (e, à escolha, o veículo
+// dela junto). Com veiculoId: remaneja só aquele veículo.
+function abrirModalRemanejarInativo(pessoaId, veiculoId = null) {
+    const pessoa = (cachePessoal || []).find(p => p.id === pessoaId);
+    if (!pessoa) return;
+    const entrada = RemanejamentoInativos.listarInativos(cachePessoal, cacheVeiculos).find(i => i.pessoa.id === pessoaId);
+    remanejarEstado.pessoaId = pessoaId;
+    remanejarEstado.veiculoId = veiculoId;
+
+    const soVeiculo = veiculoId != null;
+    document.getElementById('remanejar-titulo').textContent = soVeiculo
+        ? `Remanejar veículo — ${(cacheVeiculos.find(v => v.id === veiculoId) || {}).placa || ''}`
+        : `Remanejar ${pessoa.nome}`;
+
+    const hist = historicoPessoaGestao(pessoa);
+    document.getElementById('remanejar-historico').innerHTML = soVeiculo ? '' : `
+        <div style="border:1px solid #bbf7d0; background:#f0fdf4; border-radius:8px; padding:0.6rem 0.8rem;">
+            <strong style="font-size:0.85rem;">💳 Histórico de pagamento que acompanha a pessoa</strong>
+            <div style="margin-top:0.3rem;">${htmlParcelasHistorico(hist.cronograma, !!indicePagamentosGestao)}</div>
+        </div>`;
+
+    const veiculosBox = document.getElementById('remanejar-veiculos');
+    if (soVeiculo || !entrada || !entrada.veiculos.length) {
+        veiculosBox.innerHTML = '';
+    } else {
+        veiculosBox.innerHTML = `<strong style="font-size:0.85rem;">🚗 Levar junto o veículo (o novo líder passa a constar como proprietário, como no cadastro de Veículos):</strong>` +
+            entrada.veiculos.map(v => `
+            <label style="display:flex; align-items:center; gap:0.4rem; margin-top:0.3rem; font-weight:500;">
+                <input type="checkbox" class="chk-remanejar-veiculo" value="${v.id}" checked onchange="atualizarResumoRemanejar()">
+                ${escaparHtml(v.placa)} — ${escaparHtml([v.marca, v.modelo].filter(Boolean).join(' ') || 'sem modelo')}
+            </label>`).join('');
+    }
+
+    document.getElementById('remanejar-filtro').value = '';
+    popularDestinosRemanejar();
+    document.getElementById('remanejar-resumo').innerHTML = '';
+    document.getElementById('modal-remanejar-inativo').classList.add('show');
+}
+
+function fecharModalRemanejarInativo() {
+    document.getElementById('modal-remanejar-inativo').classList.remove('show');
+}
+
+function popularDestinosRemanejar() {
+    const busca = normalizarBuscaTexto(document.getElementById('remanejar-filtro').value);
+    const sel = document.getElementById('remanejar-destino');
+    const anterior = sel.value;
+    const destinos = RemanejamentoInativos.destinosPossiveis(cachePessoal).filter(l =>
+        !busca || normalizarBuscaTexto(l.nome).includes(busca) || normalizarBuscaTexto(l.local_prestacao).includes(busca));
+    sel.innerHTML = destinos.slice(0, 300).map(l => {
+        const n = contarMultiplicadoresDoLider(l.id);
+        return `<option value="${l.id}">${escaparHtml(l.nome)} — ${escaparHtml(l.local_prestacao || 'sem localidade')} (${n} multiplicador${n === 1 ? '' : 'es'} ativo${n === 1 ? '' : 's'})</option>`;
+    }).join('') + (destinos.length > 300 ? '<option disabled>… refine o filtro para ver mais</option>' : '');
+    if (anterior && destinos.some(l => String(l.id) === anterior)) sel.value = anterior;
+    atualizarResumoRemanejar();
+}
+
+function contextoRemanejar() {
+    const pessoa = (cachePessoal || []).find(p => p.id === remanejarEstado.pessoaId);
+    const liderDestino = (cachePessoal || []).find(p => String(p.id) === document.getElementById('remanejar-destino').value) || null;
+    const soVeiculo = remanejarEstado.veiculoId != null;
+    let veiculosLevados;
+    if (soVeiculo) {
+        veiculosLevados = (cacheVeiculos || []).filter(v => v.id === remanejarEstado.veiculoId);
+    } else {
+        const marcados = new Set(Array.from(document.querySelectorAll('.chk-remanejar-veiculo:checked')).map(c => Number(c.value)));
+        veiculosLevados = (cacheVeiculos || []).filter(v => marcados.has(v.id));
+    }
+    const validacao = RemanejamentoInativos.validarRemanejamento({
+        pessoa: soVeiculo ? null : pessoa, liderDestino, veiculosLevados,
+        pessoal: cachePessoal, veiculos: cacheVeiculos
+    });
+    return { pessoa, liderDestino, veiculosLevados, soVeiculo, validacao };
+}
+
+function atualizarResumoRemanejar() {
+    const alvo = document.getElementById('remanejar-resumo');
+    const { liderDestino, validacao } = contextoRemanejar();
+    if (!liderDestino) { alvo.innerHTML = ''; return; }
+    alvo.innerHTML =
+        validacao.erros.map(e => `<div style="color:#b91c1c; font-size:0.85rem;">⛔ ${escaparHtml(e)}</div>`).join('') +
+        validacao.avisos.map(a => `<div style="color:#b45309; font-size:0.85rem;">⚠️ ${escaparHtml(a)}</div>`).join('');
+}
+
+async function confirmarRemanejarInativo(botao) {
+    const { pessoa, liderDestino, veiculosLevados, soVeiculo, validacao } = contextoRemanejar();
+    if (!pessoa) return;
+    if (validacao.erros.length) { alert(validacao.erros[0]); return; }
+
+    const origem = AtividadeCelula.liderDaPessoa(pessoa, cachePessoal);
+    const hist = historicoPessoaGestao(pessoa);
+    const linhas = [];
+    if (!soVeiculo) {
+        linhas.push(`Pessoa: ${pessoa.nome} → célula de ${liderDestino.nome} (${liderDestino.local_prestacao || 'sem localidade'}); volta a ficar ATIVA.`);
+        if (indicePagamentosGestao) {
+            const pagas = hist.cronograma.filter(c => c.paga).map(c => `Parcela ${c.parcela}`);
+            const faltam = hist.cronograma.filter(c => !c.paga).map(c => `Parcela ${c.parcela}`);
+            linhas.push(`Histórico mantido — já paga: ${pagas.join(', ') || 'nenhuma'}; a pagar: ${faltam.join(', ') || 'nenhuma'}. O que já foi pago não será cobrado de novo.`);
+        } else {
+            linhas.push('Histórico de pagamento indisponível nesta tela, mas ele é da pessoa e não é alterado pelo remanejamento.');
+        }
+    }
+    veiculosLevados.forEach(v => linhas.push(`Veículo ${v.placa} → célula de ${liderDestino.nome}; o proprietário passa a constar como ${liderDestino.nome} (refaça o Termo de Cessão se necessário). Histórico de pagamento do veículo mantido.`));
+    validacao.avisos.forEach(a => linhas.push(`⚠️ ${a}`));
+    if (!confirm(`Confirmar remanejamento?\n\n${linhas.join('\n\n')}`)) return;
+
+    botao.disabled = true;
+    try {
+        let falhou = null;
+
+        if (!soVeiculo) {
+            const payload = RemanejamentoInativos.payloadPessoaRemanejada(pessoa, liderDestino);
+            const { error } = await supabaseClient.from('pessoal_contratado').update(payload).eq('id', pessoa.id);
+            if (error) { alert('Não foi possível remanejar a pessoa: ' + error.message); return; }
+            Object.assign(pessoa, payload);
+            await registrarAtividadeCelula({
+                liderId: liderDestino.id, alvo: 'pessoa', pessoa, ativo: true,
+                motivo: `Remanejado(a) da célula de ${origem ? origem.nome : 'sem célula'}`
+            });
+        }
+
+        for (const v of veiculosLevados) {
+            const payload = RemanejamentoInativos.payloadVeiculoRemanejado(v, liderDestino);
+            const { error } = await supabaseClient.from('veiculos').update(payload).eq('id', v.id);
+            if (error) { falhou = `Veículo ${v.placa}: ${error.message}`; break; }
+            Object.assign(v, payload);
+        }
+
+        fecharModalRemanejarInativo();
+        // Recarrega do zero (mesmo padrão da exclusão): Pessoal/Veículos voltam
+        // do banco e as colunas extras (ativo/celula_ativa/...) são mescladas de novo.
+        await Promise.all([carregarPessoal(), carregarVeiculos()]);
+        await carregarFlagsGestaoLideres();
+        renderizarGestaoLideres();
+        renderizarInativosGestao();
+        alert(falhou ? 'Remanejado, mas o veículo não foi movido — ' + falhou
+            : (soVeiculo ? 'Veículo remanejado.' : `${pessoa.nome} remanejado(a) para a célula de ${liderDestino.nome}.`));
+    } finally {
+        botao.disabled = false;
+    }
+}
+
 // Filtro único da tela — usado pela renderização e pelas exportações
 // (Excel/PDF), que precisam sair com exatamente o que está na tela. `base` =
 // resultado de busca/localidade/coordenador/Comitê ANTES do filtro de célula
@@ -2217,6 +2508,9 @@ function descricaoFiltrosGestaoLideres() {
 function renderizarGestaoLideres() {
     const container = document.getElementById('gestao-lideres-lista');
     if (!container) return;
+
+    // Aba Inativos: mantém contagem/lista em dia quando algo muda aqui.
+    renderizarInativosGestao();
 
     const { base, lideres } = lideresFiltradosGestaoLideres();
     const rotuloMinimoApta = document.getElementById('gl-aptidao-minimo');

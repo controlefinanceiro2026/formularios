@@ -183,6 +183,12 @@
                 </section>
 
                 <section id="gestao-lideres" class="page">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+                        <button type="button" class="btn-primary" id="gl-aba-btn-celulas" onclick="mudarAbaGestaoLideres('celulas')">🧑‍✈️ Células</button>
+                        <button type="button" class="btn-secondary" id="gl-aba-btn-inativos" onclick="mudarAbaGestaoLideres('inativos')">⏸️ Inativos <span id="gl-aba-inativos-contagem" class="badge badge-despesa" style="margin-left:0.25rem;">0</span></button>
+                    </div>
+
+                    <div id="gl-aba-celulas">
                     <div class="table-container" style="padding:0.85rem 1.25rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.6rem;">
                         <strong style="font-size:1.05rem;">🎯</strong>
                         <span id="gl-contagem-celulas-ativas" style="font-size:1.05rem; font-weight:700;">— células ativas</span>
@@ -247,6 +253,37 @@
                     </div>
 
                     <div id="gestao-lideres-lista"></div>
+                    </div>
+
+                    <!-- INATIVOS — pessoas inativadas (ou de célula inativa) + veículos, para remanejar para outra célula. O histórico de pagamento é da pessoa/placa, então acompanha o remanejamento. Ver remanejamentoInativos.js. -->
+                    <div id="gl-aba-inativos" style="display:none;">
+                        <div class="table-container" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem;">
+                            <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+                                <div class="form-group" style="flex:2; min-width:220px; margin-bottom:0;">
+                                    <label for="gli-busca">Buscar (nome, CPF ou placa)</label>
+                                    <input type="text" id="gli-busca" placeholder="Digite o nome, CPF ou placa..." oninput="renderizarInativosGestao()">
+                                </div>
+                                <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+                                    <label for="gli-situacao">Situação</label>
+                                    <select id="gli-situacao" onchange="renderizarInativosGestao()">
+                                        <option value="">Todos</option>
+                                        <option value="pessoa">Pessoa inativada</option>
+                                        <option value="celula">Célula inativa</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+                                    <label for="gli-localidade">Localidade</label>
+                                    <select id="gli-localidade" onchange="renderizarInativosGestao()">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-secondary" onclick="limparFiltrosInativosGestao()">Limpar filtros</button>
+                            </div>
+                            <p id="gli-contagem" class="text-muted" style="margin:0.75rem 0 0;"></p>
+                            <p class="text-muted" style="margin:0.4rem 0 0; font-size:0.82rem;">O histórico de pagamento é da pessoa (e da placa do veículo), não da célula: ao remanejar, o que já foi pago continua pago e a Agenda não cobra a mesma parcela de novo.</p>
+                        </div>
+                        <div id="gli-lista"></div>
+                    </div>
                 </section>
 
                 <section id="relatorios" class="page">
@@ -348,6 +385,28 @@
     </div>
 
     <!-- MODAL VISUALIZADOR DE DOCUMENTO -->
+    <!-- MODAL REMANEJAR INATIVO — mover pessoa/veículo para outra célula -->
+    <div id="modal-remanejar-inativo" class="modal">
+        <div class="modal-content" style="max-width:760px;">
+            <div class="modal-header">
+                <h3 id="remanejar-titulo">Remanejar</h3>
+                <span class="close-modal" onclick="fecharModalRemanejarInativo()">&times;</span>
+            </div>
+            <div id="remanejar-historico" style="margin-bottom:1rem;"></div>
+            <div class="form-group">
+                <label for="remanejar-filtro">Célula de destino — filtrar por líder ou localidade</label>
+                <input type="text" id="remanejar-filtro" placeholder="Digite o nome do líder ou a localidade..." oninput="popularDestinosRemanejar()">
+                <select id="remanejar-destino" size="7" style="width:100%; margin-top:0.4rem;" onchange="atualizarResumoRemanejar()"></select>
+            </div>
+            <div id="remanejar-veiculos" style="margin-bottom:1rem;"></div>
+            <div id="remanejar-resumo" style="margin-bottom:1rem;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalRemanejarInativo()">Cancelar</button>
+                <button type="button" class="btn-primary" id="remanejar-confirmar" onclick="confirmarRemanejarInativo(this)">Remanejar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-documento" class="modal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
@@ -610,6 +669,8 @@
     <script src="pdfDocumentos.js"></script>
     <script src="parcelasPessoal.js?v=1"></script>
     <script src="statusPagamentoCelula.js?v=1"></script>
-    <script src="painel.js?v=6"></script>
+    <script src="atividadeCelula.js?v=4"></script>
+    <script src="remanejamentoInativos.js?v=2"></script>
+    <script src="painel.js?v=8"></script>
 </body>
 </html>
