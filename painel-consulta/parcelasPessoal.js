@@ -166,13 +166,72 @@
         }));
     }
 
+    // "Inativar o pagamento para uma das parcelas" (Gestão de Líderes): a
+    // pessoa/veículo continua com a célula ativa e as OUTRAS parcelas
+    // normais, mas a(s) parcela(s) marcada(s) aqui nunca aparece(m) como "a
+    // pagar" (Agenda, Relatório Gerencial, Etiquetas, formulário público de
+    // pagamento) — diferente de nao_gerar_pagamento, que tira a
+    // pessoa/veículo de TODAS as parcelas. Coluna jsonb/array
+    // "parcelas_pagamento_excluidas" em pessoal_contratado/veiculos (ex.:
+    // [1] exclui só a Parcela 1). Aceita array ou string JSON (o driver pode
+    // devolver um ou outro), mesmo padrão de normalizarDatasPersonalizadas.
+    function normalizarParcelasExcluidas(valor) {
+        let lista = valor;
+        if (typeof lista === 'string') {
+            try { lista = JSON.parse(lista); } catch (e) { lista = lista.split(','); }
+        }
+        if (!Array.isArray(lista)) return [];
+        return [...new Set(lista.map(n => Number(n)).filter(n => Number.isInteger(n) && n > 0))];
+    }
+
+    function parcelaExcluida(entidade, numeroParcela) {
+        return normalizarParcelasExcluidas(entidade && entidade.parcelas_pagamento_excluidas).includes(numeroParcela);
+    }
+
+    // "Campanha por parcela" (Gestão de Líderes): quando uma pessoa/veículo
+    // MUDA de fora-da-campanha pra dentro-da-campanha (ou vice-versa) entre
+    // uma parcela e outra — ex.: já recebeu a Parcela 1 fora da campanha e só
+    // a partir da Parcela 2 passa a contar —, o padrão geral da entidade
+    // (contabilizar_campanha da pessoa, ou CNPJ do veículo) não dá conta
+    // sozinho: cada parcela pode ter sido decidida diferente. Coluna
+    // jsonb "parcelas_campanha" guarda só as parcelas que o usuário decidiu
+    // explicitamente (num -> true/false); parcela sem entrada aqui cai no
+    // padrão geral. Mesmo padrão de aceitar array/objeto ou string JSON das
+    // outras normalizações deste módulo.
+    function normalizarParcelasCampanha(valor) {
+        let objeto = valor;
+        if (typeof objeto === 'string') {
+            try { objeto = JSON.parse(objeto); } catch (e) { objeto = {}; }
+        }
+        if (!objeto || typeof objeto !== 'object' || Array.isArray(objeto)) return {};
+        const limpo = {};
+        Object.keys(objeto).forEach(chave => {
+            const numero = Number(chave);
+            if (Number.isInteger(numero) && numero > 0) limpo[numero] = !!objeto[chave];
+        });
+        return limpo;
+    }
+
+    // Se a parcela tem decisão explícita em parcelas_campanha, usa ela; senão
+    // cai no padrão geral informado por quem chama (contabilizar_campanha da
+    // pessoa, ou cnpjEhDaCampanha do veículo — este módulo não conhece CNPJ
+    // da campanha, por isso recebe o padrão já calculado).
+    function resolverCampanhaParcela(entidade, numeroParcela, padrao) {
+        const overrides = normalizarParcelasCampanha(entidade && entidade.parcelas_campanha);
+        return Object.prototype.hasOwnProperty.call(overrides, numeroParcela) ? overrides[numeroParcela] : !!padrao;
+    }
+
     // Cronograma COMPLETO da pessoa: todas as parcelas, pagas ou não.
-    // [{ data: 'YYYY-MM-DD', parcela, totalParcelas, valor }] — vazio
-    // quando não dá para projetar (sem valor de contrato, sem periodicidade,
-    // datas inválidas).
+    // [{ data: 'YYYY-MM-DD', parcela, totalParcelas, valor, excluida }] —
+    // vazio quando não dá para projetar (sem valor de contrato, sem
+    // periodicidade, datas inválidas). `excluida` só marca a parcela (ver
+    // parcelaExcluida) — quem olha o cronograma completo (histórico,
+    // conferência) continua vendo a parcela; parcelasFuturasPessoal() é
+    // quem de fato a tira da lista do que falta pagar.
     function calcularCronogramaParcelasPessoal(pessoa) {
         if (!pessoa || !pessoa.valor_contrato) return [];
-        return cronogramaDeDatas(datasCronogramaPessoal(pessoa), pessoa.valor_contrato);
+        return cronogramaDeDatas(datasCronogramaPessoal(pessoa), pessoa.valor_contrato)
+            .map(c => ({ ...c, excluida: parcelaExcluida(pessoa, c.parcela) }));
     }
 
     // ── Veículos associados a um líder ──────────────────────────────────
@@ -187,19 +246,22 @@
 
     function calcularCronogramaParcelasVeiculo(veiculo, lider) {
         if (!veiculo || !veiculo.valor_contratado || !lider) return [];
-        return cronogramaDeDatas(datasCronogramaPessoal(lider), veiculo.valor_contratado);
+        return cronogramaDeDatas(datasCronogramaPessoal(lider), veiculo.valor_contratado)
+            .map(c => ({ ...c, excluida: parcelaExcluida(veiculo, c.parcela) }));
     }
 
     function parcelasFuturasVeiculo(veiculo, lider, lancamentos) {
         const pagas = contarParcelasPagasVeiculo(veiculo, lancamentos);
-        return calcularCronogramaParcelasVeiculo(veiculo, lider).filter(p => p.parcela > pagas);
+        return calcularCronogramaParcelasVeiculo(veiculo, lider).filter(p => p.parcela > pagas && !p.excluida);
     }
 
-    // Só as parcelas que ainda faltam lançar (índice > parcelas pagas).
-    // Mesmo resultado de app.js#calcularParcelasFuturasPessoal.
+    // Só as parcelas que ainda faltam lançar (índice > parcelas pagas e não
+    // excluída — ver parcelaExcluida). Mesmo resultado de
+    // app.js#calcularParcelasFuturasPessoal (que reimplementa isso local,
+    // sem depender deste módulo — mantenha as duas em sincronia).
     function parcelasFuturasPessoal(pessoa, lancamentos) {
         const pagas = contarParcelasPagas(pessoa, lancamentos);
-        return calcularCronogramaParcelasPessoal(pessoa).filter(p => p.parcela > pagas);
+        return calcularCronogramaParcelasPessoal(pessoa).filter(p => p.parcela > pagas && !p.excluida);
     }
 
     // A próxima parcela a vencer (ou null se está tudo quitado).
@@ -214,6 +276,10 @@
         intervaloDiasPeriodicidade,
         normalizarDatasPersonalizadas,
         normalizarDetalhePagamentos,
+        normalizarParcelasExcluidas,
+        parcelaExcluida,
+        normalizarParcelasCampanha,
+        resolverCampanhaParcela,
         dividirValorParcelas,
         datasCronogramaPessoal,
         pagamentosDaPessoa,

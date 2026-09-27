@@ -102,7 +102,10 @@
             const r = { parcela: numero, data: null, total: 0, pagos: 0, valorTotal: 0, valorPago: 0, pendentes: [] };
             itens.forEach(item => {
                 const c = item.cronograma.find(x => x.parcela === numero);
-                if (!c) return;
+                // Parcela marcada como excluída (ver ParcelasPessoal.
+                // parcelaExcluida) nem entra na conta desta parcela — não
+                // conta no total nem aparece como pendente.
+                if (!c || c.excluida) return;
                 if (!r.data) r.data = c.data;
                 r.total++;
                 r.valorTotal += c.valor;

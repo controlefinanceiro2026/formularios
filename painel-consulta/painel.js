@@ -451,14 +451,16 @@ async function carregarPapel() {
 //
 // A validação de formulários pelo painel foi ENCERRADA para validador/master/
 // leitor: eles não validam mais Formulários, Cadastro Rápido nem Multiplicadores
-// por aqui. O ADMIN é exceção — tem todas as telas e funcionalidades do painel,
+// por aqui. O ADMIN e o MASTER_INCLUSAO (Master com inclusão e edição) são
+// exceção — validam normalmente (RLS em supabase/migracao-painel-master-inclusao.sql).
+// O ADMIN também tem todas as telas e funcionalidades do painel,
 // inclusive validar. A trava real é a RLS — ver
 // supabase/migracao-painel-encerrar-validacao.sql (só eh_admin() escreve nessas
 // tabelas); esta constante só tira os botões da tela e barra os fluxos em JS.
 const VALIDACAO_ENCERRADA = true;
 
 function validacaoEncerradaParaMim() {
-    return VALIDACAO_ENCERRADA && meuPapel !== 'admin';
+    return VALIDACAO_ENCERRADA && meuPapel !== 'admin' && meuPapel !== 'master_inclusao';
 }
 
 function temPapelAvancado() {
@@ -1904,6 +1906,125 @@ async function salvarEdicaoVeiculo(botao) {
 // (carregarPessoal/carregarVeiculos) em vez de corrigir o cache na mão —
 // já resolve sozinho qualquer falha parcial no meio da cascata.
 
+// ─── Excluir pessoa/veículo de UMA parcela (Gestão de Líderes) ─────────────
+// Espelho de app.js: diferente de "Não gerar pagamento" (tira de TODAS as
+// parcelas), aqui só a parcela marcada some da Agenda/Relatório/Etiquetas —
+// as outras continuam normais. Ver ParcelasPessoal.parcelaExcluida (cópia
+// local de lib/parcelasPessoal.js) e lib/statusPagamentoCelula.js.
+const PARCELAS_NUMEROS_GESTAO = [1, 2];
+
+function checkboxesParcelasExcluidas(tipo, id, entidade) {
+    const atuais = ParcelasPessoal.normalizarParcelasExcluidas(entidade.parcelas_pagamento_excluidas);
+    const rotulo = tipo === 'veiculo' ? 'veículo' : 'pessoa';
+    return PARCELAS_NUMEROS_GESTAO.map(n => `
+        <label style="display:inline-flex; align-items:center; gap:0.2rem; font-size:0.72rem; font-weight:600; cursor:pointer; color:${atuais.includes(n) ? '#b91c1c' : '#475569'};" title="Excluir a Parcela ${n} do pagamento desta ${rotulo} (as demais parcelas continuam normais). Uma parcela já paga não pode ser excluída.">
+            <input type="checkbox" style="width:13px; height:13px; cursor:pointer;" ${atuais.includes(n) ? 'checked' : ''} onchange="alternarParcelaExcluida('${tipo}', ${id}, ${n}, this)">
+            P${n}
+        </label>`).join('');
+}
+
+// Nº de parcelas já pagas — vem do índice de pagamentos contados da RPC
+// gestao_lideres_pagamentos_realizados() (o painel não lê lançamentos), ver
+// pagamentosRecebidosPessoaGestao/Veiculo mais abaixo. null = índice ainda
+// não carregou / indisponível — trata como "não dá pra confirmar", e por
+// segurança BLOQUEIA a exclusão (nunca assume que não foi pago).
+function parcelasPagasDaEntidade(tipo, entidade) {
+    return tipo === 'veiculo' ? pagamentosRecebidosVeiculoGestao(entidade) : pagamentosRecebidosPessoaGestao(entidade);
+}
+
+async function alternarParcelaExcluida(tipo, id, numero, chk) {
+    const tabela = tipo === 'veiculo' ? 'veiculos' : 'pessoal_contratado';
+    const lista = tipo === 'veiculo' ? cacheVeiculos : cachePessoal;
+    const entidade = (lista || []).find(x => x.id === id);
+    if (!entidade) return;
+
+    if (chk.checked) {
+        const pagas = parcelasPagasDaEntidade(tipo, entidade);
+        if (pagas === null) {
+            chk.checked = false;
+            alert('Não dá pra confirmar se essa parcela já foi paga agora (dados de pagamento ainda carregando ou indisponíveis) — tente de novo em instantes.');
+            return;
+        }
+        if (pagas >= numero) {
+            chk.checked = false;
+            alert(`A Parcela ${numero} já foi paga${tipo === 'veiculo' ? ' para este veículo' : ' para esta pessoa'} — não dá para excluir uma parcela já paga.`);
+            return;
+        }
+    }
+
+    const atuais = new Set(ParcelasPessoal.normalizarParcelasExcluidas(entidade.parcelas_pagamento_excluidas));
+    if (chk.checked) atuais.add(numero); else atuais.delete(numero);
+    const novaLista = [...atuais].sort((a, b) => a - b);
+
+    chk.disabled = true;
+    const { error } = await supabaseClient.from(tabela).update({ parcelas_pagamento_excluidas: novaLista }).eq('id', id);
+    chk.disabled = false;
+    if (error) { chk.checked = !chk.checked; alert('Não foi possível atualizar: ' + error.message); return; }
+
+    entidade.parcelas_pagamento_excluidas = novaLista;
+    renderizarGestaoLideres();
+}
+
+// ─── Excluir UMA parcela do pagamento de TODA a célula ────────────────────
+// Espelho de app.js#alternarParcelaExcluidaCelula: aplica em bloco (líder +
+// multiplicadores + veículo(s)), pulando quem já recebeu a parcela.
+function membrosDaCelulaGestao(liderId) {
+    const lider = (cachePessoal || []).find(p => p.id === liderId);
+    if (!lider) return { lider: null, pessoas: [], veiculos: [] };
+    const multiplicadores = (cachePessoal || []).filter(p => p.lider_id === liderId);
+    const veiculosDoLider = (cacheVeiculos || []).filter(v => v.lider_id === liderId);
+    return { lider, pessoas: [lider, ...multiplicadores], veiculos: veiculosDoLider };
+}
+
+function celulaTemParcelaExcluida(liderId, numero) {
+    const { pessoas, veiculos } = membrosDaCelulaGestao(liderId);
+    const todos = [...pessoas, ...veiculos];
+    return todos.length > 0 && todos.every(e => ParcelasPessoal.parcelaExcluida(e, numero));
+}
+
+async function alternarParcelaExcluidaCelula(liderId, numero, chk) {
+    const { lider, pessoas, veiculos } = membrosDaCelulaGestao(liderId);
+    if (!lider) return;
+    const excluir = chk.checked;
+
+    if (excluir && (pessoas.some(p => parcelasPagasDaEntidade('pessoa', p) === null) || veiculos.some(v => parcelasPagasDaEntidade('veiculo', v) === null))) {
+        chk.checked = false;
+        alert('Não dá pra confirmar quem já recebeu essa parcela agora (dados de pagamento ainda carregando ou indisponíveis) — tente de novo em instantes.');
+        return;
+    }
+
+    const puladasPagas = [];
+    let erroOcorrido = null;
+
+    for (const entidade of pessoas) {
+        if (excluir && parcelasPagasDaEntidade('pessoa', entidade) >= numero) { puladasPagas.push(entidade.nome); continue; }
+        const atuais = new Set(ParcelasPessoal.normalizarParcelasExcluidas(entidade.parcelas_pagamento_excluidas));
+        if (excluir) atuais.add(numero); else atuais.delete(numero);
+        const novaLista = [...atuais].sort((a, b) => a - b);
+        const { error } = await supabaseClient.from('pessoal_contratado').update({ parcelas_pagamento_excluidas: novaLista }).eq('id', entidade.id);
+        if (error) { erroOcorrido = `${entidade.nome}: ${error.message}`; break; }
+        entidade.parcelas_pagamento_excluidas = novaLista;
+    }
+    if (!erroOcorrido) {
+        for (const v of veiculos) {
+            if (excluir && parcelasPagasDaEntidade('veiculo', v) >= numero) { puladasPagas.push(`Veículo ${v.placa}`); continue; }
+            const atuais = new Set(ParcelasPessoal.normalizarParcelasExcluidas(v.parcelas_pagamento_excluidas));
+            if (excluir) atuais.add(numero); else atuais.delete(numero);
+            const novaLista = [...atuais].sort((a, b) => a - b);
+            const { error } = await supabaseClient.from('veiculos').update({ parcelas_pagamento_excluidas: novaLista }).eq('id', v.id);
+            if (error) { erroOcorrido = `Veículo ${v.placa}: ${error.message}`; break; }
+            v.parcelas_pagamento_excluidas = novaLista;
+        }
+    }
+
+    if (erroOcorrido) {
+        alert(`Parou no meio ao aplicar em toda a célula — ${erroOcorrido}\n\nO que já foi salvo continua salvo; confira a célula e tente de novo.`);
+    } else if (puladasPagas.length) {
+        alert(`Parcela ${numero} aplicada na célula, exceto em quem já recebeu essa parcela (continuam normais): ${puladasPagas.join(', ')}.`);
+    }
+    renderizarGestaoLideres();
+}
+
 function normalizarBuscaTexto(v) {
     return String(v == null ? '' : v)
         .normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -2590,6 +2711,7 @@ function renderizarGestaoLideres() {
                 <td>${escaparHtml(m.telefone || '—')}</td>
                 <td>${celulaHerdeirosHtml(m.id)}</td>
                 <td class="text-center">${campanhaBadgeHtml(!!m.contabilizar_campanha)}</td>
+                <td style="white-space:nowrap;">${checkboxesParcelasExcluidas('pessoa', m.id, m)}</td>
                 <td>
                     <button class="btn-icon" onclick="alternarPessoaAtiva(${m.id})" title="${mAtivo ? 'Inativar (sai da Agenda de Pagamento)' : 'Reativar'}">${mAtivo ? '⏸️' : '▶️'}</button>
                 </td>
@@ -2602,6 +2724,7 @@ function renderizarGestaoLideres() {
                 <td>${escaparHtml([v.marca, v.modelo].filter(Boolean).join(' ') || '—')}</td>
                 <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
                 <td class="text-center">${campanhaBadgeHtml(cnpjEhDaCampanha(v.cnpj_associado))}</td>
+                <td style="white-space:nowrap;">${checkboxesParcelasExcluidas('veiculo', v.id, v)}</td>
             </tr>`).join('');
 
         return `
@@ -2626,6 +2749,18 @@ function renderizarGestaoLideres() {
                         <span class="rotulo-celula-ativa" style="color:${liderCelulaAtiva(lider) ? '#15803d' : '#b91c1c'};">${liderCelulaAtiva(lider) ? ROTULO_CELULA_ATIVA : ROTULO_CELULA_INATIVA}</span>
                     </label>
                     ${desdeCelula ? `<div class="text-muted" style="font-size:0.75rem; margin-top:0.15rem;">Inativa ${escaparHtml(desdeCelula)}</div>` : ''}
+                    <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span style="font-size:0.78rem; font-weight:600;">Excluir parcela do pagamento de TODA a célula:</span>
+                        ${PARCELAS_NUMEROS_GESTAO.map(n => `
+                        <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.78rem; font-weight:600; cursor:pointer; color:${celulaTemParcelaExcluida(lider.id, n) ? '#b91c1c' : '#475569'};" title="Marca a Parcela ${n} como excluída no líder, em todos os multiplicadores e no(s) veículo(s) — quem já recebeu essa parcela é mantido normal.">
+                            <input type="checkbox" style="width:15px; height:15px; cursor:pointer;" ${celulaTemParcelaExcluida(lider.id, n) ? 'checked' : ''} onchange="alternarParcelaExcluidaCelula(${lider.id}, ${n}, this)">
+                            Parcela ${n}
+                        </label>`).join('')}
+                    </div>
+                    <div style="margin-top:0.3rem; display:flex; align-items:center; gap:0.5rem;">
+                        <span class="text-muted" style="font-size:0.78rem;">— ou só do líder:</span>
+                        ${checkboxesParcelasExcluidas('pessoa', lider.id, lider)}
+                    </div>
                     ${historicoAtividadeHtml(eventosCelula)}
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -2639,14 +2774,14 @@ function renderizarGestaoLideres() {
             <h4 style="margin:1rem 0 0.5rem; font-size:0.95rem;">🧑‍🤝‍🧑 Multiplicadores (${multiplicadores.length}${multiplicadores.some(m => !pessoaAtiva(m)) ? ` · ${contarMultiplicadoresDoLider(lider.id)} ativos` : ''})</h4>
             ${multiplicadores.length ? `
             <table class="table-data">
-                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Campanha</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Herdeiros diretos</th><th>Campanha</th><th title="Excluir uma parcela do pagamento deste multiplicador, sem mexer na outra">Parcelas</th><th>Ações</th></tr></thead>
                 <tbody>${linhasMultiplicador}</tbody>
             </table>` : '<p class="text-muted">Nenhum multiplicador vinculado.</p>'}
 
             <h4 style="margin:1.25rem 0 0.5rem; font-size:0.95rem;">🚗 Veículo(s) (${veiculosDoLider.length})</h4>
             ${veiculosDoLider.length ? `
             <table class="table-data">
-                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Campanha</th></tr></thead>
+                <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Valor Contratado</th><th>Campanha</th><th title="Excluir uma parcela do pagamento deste veículo, sem mexer na outra">Parcelas</th></tr></thead>
                 <tbody>${linhasVeiculo}</tbody>
             </table>` : '<p class="text-muted">Nenhum veículo vinculado.</p>'}
         </div>`;
