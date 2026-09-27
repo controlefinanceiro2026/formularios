@@ -2706,7 +2706,7 @@ function renderizarGestaoLideres() {
             const desdeM = mAtivo ? '' : textoDesdeInativo(eventosCelula.find(h => h.alvo === 'pessoa' && h.pessoa_id === m.id));
             return `
             <tr${mAtivo ? '' : ' style="opacity:0.6;"'}>
-                <td>${escaparHtml(m.nome)}${mAtivo ? '' : ` <span class="badge badge-despesa" title="${escaparHtml(desdeM)}">Inativo</span>${desdeM ? ` <span class="text-muted" style="font-size:0.72rem;">${escaparHtml(desdeM)}</span>` : ''}`}</td>
+                <td>${escaparHtml(m.nome)}${mAtivo ? '' : ` <span class="badge badge-despesa" title="${escaparHtml(desdeM)}">Inativo</span>${desdeM ? ` <span class="text-muted" style="font-size:0.72rem;">${escaparHtml(desdeM)}</span>` : ''}`}${podeEditarCadastro() ? ` <button class="btn-icon" onclick="abrirModalEditarPessoal(${m.id})" title="Editar dados de ${escaparHtml(m.nome)}">✏️</button>` : ''}</td>
                 <td>${escaparHtml(mascararCPF(m.cpf))}</td>
                 <td>${escaparHtml(m.telefone || '—')}</td>
                 <td>${celulaHerdeirosHtml(m.id)}</td>
@@ -2731,7 +2731,7 @@ function renderizarGestaoLideres() {
         <div class="table-container" style="padding:1.5rem; margin-bottom:1.25rem;${liderCelulaAtiva(lider) ? '' : ' border-left:4px solid #b91c1c;'}">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
                 <div>
-                    <h3 style="margin:0;">${escaparHtml(lider.nome)}</h3>
+                    <h3 style="margin:0;">${escaparHtml(lider.nome)}${podeEditarCadastro() ? ` <button class="btn-icon" onclick="abrirModalEditarPessoal(${lider.id})" title="Editar dados de ${escaparHtml(lider.nome)}">✏️</button>` : ''}</h3>
                     <p class="text-muted" style="margin:0.25rem 0 0;">
                         CPF ${escaparHtml(mascararCPF(lider.cpf))}
                         · ${escaparHtml(lider.local_prestacao || 'sem localidade')}
