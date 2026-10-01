@@ -1615,10 +1615,11 @@ async function carregarVeiculos() {
 // Master edita qualquer campo já existente de Pessoal e Veículos direto
 // pelas telas de Cadastro do painel — a RLS ("master edita
 // pessoal/veiculos", ver supabase/migracao-painel-perfil-master.sql) é a
-// trava real; podeEditarCadastro() só decide o que aparece na tela. Não
-// inclui upload/substituição de documentos (contrato, CRLV, termo de
-// cessão) nem as datas personalizadas de pagamento — isso continua só
-// pela plataforma principal.
+// trava real; podeEditarCadastro() só decide o que aparece na tela.
+// Upload/substituição de documentos: só o CRLV e o Termo de Cessão assinado
+// de VEÍCULOS, e só para master_inclusao/admin (podeIncluirCadastro() — ver
+// prepararDocsVeiculoModal). Contratos/comprovantes de Pessoal e as datas
+// personalizadas de pagamento continuam só pela plataforma principal.
 
 // Localidades já vistas em Pessoal/Veículos — datalist de apoio (texto
 // livre, não select: o painel não carrega a lista oficial de 33 RAs).
@@ -1824,8 +1825,40 @@ function abrirModalEditarVeiculo(id) {
     document.getElementById('ev-local').value = v.localidade_atendimento || '';
     document.getElementById('ev-data-cessao').value = v.data_inicio_cessao ? isoParaData(v.data_inicio_cessao) : '';
     preencherSelectLideres('ev-lider', v.lider_id, null);
+    prepararDocsVeiculoModal(v);
     document.getElementById('modal-editar-veiculo-title').textContent = '✏️ Editar Veículo';
     document.getElementById('modal-editar-veiculo').classList.add('show');
+}
+
+// Documentos do veículo no modal (master_inclusao/admin): mostra os campos de
+// upload e o que já está anexado (botão pra abrir). v = null → veículo novo.
+function prepararDocsVeiculoModal(v) {
+    const bloco = document.getElementById('ev-docs');
+    if (!bloco) return;
+    bloco.style.display = podeIncluirCadastro() ? '' : 'none';
+    document.getElementById('ev-documento').value = '';
+    document.getElementById('ev-termo').value = '';
+    const atual = (idEl, url, titulo) => {
+        const caminho = caminhoDoBucket(url, 'documentos-veiculo');
+        document.getElementById(idEl).innerHTML = caminho
+            ? `Já anexado: <a href="#" onclick="visualizarDocumento('documentos-veiculo','${escaparHtml(caminho).replace(/'/g, '&#39;')}','${titulo} — ${escaparHtml(v.placa)}'); return false;">ver arquivo atual</a>`
+            : 'Nenhum arquivo anexado.';
+    };
+    atual('ev-documento-atual', v && v.documento_url, 'CRLV');
+    atual('ev-termo-atual', v && v.termo_cessao_url, 'Termo de Cessão assinado');
+}
+
+// Sobe um arquivo de veículo para "documentos-veiculo" (caminho único por
+// Date.now() — só INSERT no Storage, que é o que a RLS libera ao
+// master_inclusao) e devolve a URL a gravar no cadastro (proxy autenticado,
+// mesmo formato da validação de formulários). null = falhou/avisou.
+async function uploadArquivoVeiculoPainel(arquivo, pasta, prefixo, rotulo) {
+    if (arquivo.size > 10 * 1024 * 1024) { alert(`${rotulo}: o arquivo passa de 10 MB.`); return null; }
+    const ext = (arquivo.name.split('.').pop() || 'pdf').toLowerCase();
+    const caminho = `${pasta}/${prefixo}${Date.now()}.${ext}`;
+    const { error } = await supabaseClient.storage.from('documentos-veiculo').upload(caminho, arquivo);
+    if (error) { alert(`Não foi possível enviar ${rotulo}: ${error.message}`); return null; }
+    return urlProxyStorage('documentos-veiculo', caminho);
 }
 
 // Mesmo modal, em branco — ao salvar, salvarEdicaoVeiculo() detecta ev-id
@@ -1850,6 +1883,7 @@ function abrirModalNovoVeiculo(liderId) {
     const lider = liderId != null ? cachePessoal.find(p => p.id === liderId) : null;
     preencherSelectLideres('ev-lider', lider ? lider.id : null, null);
     if (lider) document.getElementById('ev-local').value = lider.local_prestacao || '';
+    prepararDocsVeiculoModal(null);
     document.getElementById('modal-editar-veiculo-title').textContent = lider ? `➕ Adicionar Veículo — Célula de ${lider.nome}` : '➕ Adicionar Veículo';
     document.getElementById('modal-editar-veiculo').classList.add('show');
 }
@@ -1885,6 +1919,23 @@ async function salvarEdicaoVeiculo(botao) {
     };
 
     botao.disabled = true;
+    // Documentos (CRLV / Termo de Cessão assinado) — só master_inclusao/admin.
+    // Só entra no payload o que foi escolhido agora; o resto fica como está.
+    if (podeIncluirCadastro()) {
+        const pasta = id || Date.now();
+        const arqDoc = document.getElementById('ev-documento').files[0];
+        const arqTermo = document.getElementById('ev-termo').files[0];
+        if (arqDoc) {
+            const url = await uploadArquivoVeiculoPainel(arqDoc, pasta, '', 'o documento do veículo');
+            if (!url) { botao.disabled = false; return; }
+            payload.documento_url = url;
+        }
+        if (arqTermo) {
+            const url = await uploadArquivoVeiculoPainel(arqTermo, pasta, 'TermoCessao_', 'o Termo de Cessão assinado');
+            if (!url) { botao.disabled = false; return; }
+            payload.termo_cessao_url = url;
+        }
+    }
     const { error } = id
         ? await supabaseClient.from('veiculos').update(payload).eq('id', id)
         : await supabaseClient.from('veiculos').insert(payload);
@@ -1915,12 +1966,22 @@ const PARCELAS_NUMEROS_GESTAO = [1, 2];
 
 function checkboxesParcelasExcluidas(tipo, id, entidade) {
     const atuais = ParcelasPessoal.normalizarParcelasExcluidas(entidade.parcelas_pagamento_excluidas);
+    const pagas = parcelasPagasDaEntidade(tipo, entidade);
     const rotulo = tipo === 'veiculo' ? 'veículo' : 'pessoa';
-    return PARCELAS_NUMEROS_GESTAO.map(n => `
-        <label style="display:inline-flex; align-items:center; gap:0.2rem; font-size:0.72rem; font-weight:600; cursor:pointer; color:${atuais.includes(n) ? '#b91c1c' : '#475569'};" title="Excluir a Parcela ${n} do pagamento desta ${rotulo} (as demais parcelas continuam normais). Uma parcela já paga não pode ser excluída.">
-            <input type="checkbox" style="width:13px; height:13px; cursor:pointer;" ${atuais.includes(n) ? 'checked' : ''} onchange="alternarParcelaExcluida('${tipo}', ${id}, ${n}, this)">
+    return PARCELAS_NUMEROS_GESTAO.map(n => {
+        const jaExcluida = atuais.includes(n);
+        // pagas === null (índice ainda carregando/indisponível) também bloqueia — por
+        // segurança nunca assume que a parcela não foi paga (ver parcelasPagasDaEntidade).
+        const bloqueada = !jaExcluida && (pagas === null || pagas >= n);
+        const titulo = bloqueada
+            ? `Parcela ${n} já paga${tipo === 'veiculo' ? ' para este veículo' : ' para esta pessoa'} — não pode ser excluída.`
+            : `Excluir a Parcela ${n} do pagamento desta ${rotulo} (as demais parcelas continuam normais).`;
+        return `
+        <label style="display:inline-flex; align-items:center; gap:0.2rem; font-size:0.72rem; font-weight:600; cursor:${bloqueada ? 'not-allowed' : 'pointer'}; color:${jaExcluida ? '#b91c1c' : (bloqueada ? '#cbd5e1' : '#475569')};" title="${titulo}">
+            <input type="checkbox" style="width:13px; height:13px; cursor:${bloqueada ? 'not-allowed' : 'pointer'};" ${jaExcluida ? 'checked' : ''} ${bloqueada ? 'disabled' : ''} onchange="alternarParcelaExcluida('${tipo}', ${id}, ${n}, this)">
             P${n}
-        </label>`).join('');
+        </label>`;
+    }).join('');
 }
 
 // Nº de parcelas já pagas — vem do índice de pagamentos contados da RPC
@@ -1980,6 +2041,26 @@ function celulaTemParcelaExcluida(liderId, numero) {
     const { pessoas, veiculos } = membrosDaCelulaGestao(liderId);
     const todos = [...pessoas, ...veiculos];
     return todos.length > 0 && todos.every(e => ParcelasPessoal.parcelaExcluida(e, numero));
+}
+
+// true = alguém da célula já recebeu essa parcela (bloqueia o flag da célula
+// toda); false = ninguém recebeu ainda; null = índice de pagamentos ainda
+// carregando/indisponível para pelo menos um membro — trata como bloqueado,
+// mesma cautela de parcelasPagasDaEntidade.
+function celulaAlgumPagouParcela(liderId, numero) {
+    const { pessoas, veiculos } = membrosDaCelulaGestao(liderId);
+    let desconhecido = false;
+    for (const p of pessoas) {
+        const pagas = parcelasPagasDaEntidade('pessoa', p);
+        if (pagas === null) desconhecido = true;
+        else if (pagas >= numero) return true;
+    }
+    for (const v of veiculos) {
+        const pagas = parcelasPagasDaEntidade('veiculo', v);
+        if (pagas === null) desconhecido = true;
+        else if (pagas >= numero) return true;
+    }
+    return desconhecido ? null : false;
 }
 
 async function alternarParcelaExcluidaCelula(liderId, numero, chk) {
@@ -2751,11 +2832,19 @@ function renderizarGestaoLideres() {
                     ${desdeCelula ? `<div class="text-muted" style="font-size:0.75rem; margin-top:0.15rem;">Inativa ${escaparHtml(desdeCelula)}</div>` : ''}
                     <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                         <span style="font-size:0.78rem; font-weight:600;">Excluir parcela do pagamento de TODA a célula:</span>
-                        ${PARCELAS_NUMEROS_GESTAO.map(n => `
-                        <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.78rem; font-weight:600; cursor:pointer; color:${celulaTemParcelaExcluida(lider.id, n) ? '#b91c1c' : '#475569'};" title="Marca a Parcela ${n} como excluída no líder, em todos os multiplicadores e no(s) veículo(s) — quem já recebeu essa parcela é mantido normal.">
-                            <input type="checkbox" style="width:15px; height:15px; cursor:pointer;" ${celulaTemParcelaExcluida(lider.id, n) ? 'checked' : ''} onchange="alternarParcelaExcluidaCelula(${lider.id}, ${n}, this)">
+                        ${PARCELAS_NUMEROS_GESTAO.map(n => {
+                            const jaExcluida = celulaTemParcelaExcluida(lider.id, n);
+                            const algumPagou = celulaAlgumPagouParcela(lider.id, n);
+                            const bloqueada = !jaExcluida && algumPagou !== false;
+                            const titulo = bloqueada
+                                ? `Parcela ${n} já paga para pelo menos uma pessoa ou veículo desta célula — não pode ser excluída da célula toda.`
+                                : `Marca a Parcela ${n} como excluída no líder, em todos os multiplicadores e no(s) veículo(s) — quem já recebeu essa parcela é mantido normal.`;
+                            return `
+                        <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.78rem; font-weight:600; cursor:${bloqueada ? 'not-allowed' : 'pointer'}; color:${jaExcluida ? '#b91c1c' : (bloqueada ? '#cbd5e1' : '#475569')};" title="${titulo}">
+                            <input type="checkbox" style="width:15px; height:15px; cursor:${bloqueada ? 'not-allowed' : 'pointer'};" ${jaExcluida ? 'checked' : ''} ${bloqueada ? 'disabled' : ''} onchange="alternarParcelaExcluidaCelula(${lider.id}, ${n}, this)">
                             Parcela ${n}
-                        </label>`).join('')}
+                        </label>`;
+                        }).join('')}
                     </div>
                     <div style="margin-top:0.3rem; display:flex; align-items:center; gap:0.5rem;">
                         <span class="text-muted" style="font-size:0.78rem;">— ou só do líder:</span>

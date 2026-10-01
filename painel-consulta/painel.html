@@ -599,8 +599,8 @@
         </div>
     </div>
 
-    <!-- MODAL EDITAR VEÍCULO — perfil master edita qualquer campo já existente
-         (sem documentos — isso continua só pela plataforma principal) -->
+    <!-- MODAL EDITAR VEÍCULO — perfil master edita qualquer campo já existente;
+         master_inclusao/admin também incluem veículos e sobem CRLV/Termo assinado -->
     <div id="modal-editar-veiculo" class="modal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
@@ -654,6 +654,23 @@
                     <label for="ev-data-cessao">Data Início da Cessão</label>
                     <input type="text" id="ev-data-cessao" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" oninput="this.value = mascararData(this.value)">
                 </div>
+            </div>
+            <!-- Documentos do veículo — só master_inclusao/admin (podeIncluirCadastro()):
+                 subir/substituir o CRLV e o Termo de Cessão assinado. -->
+            <div id="ev-docs" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid #e2e8f0;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0 1rem;">
+                    <div class="form-group">
+                        <label for="ev-documento">Documento do veículo (CRLV)</label>
+                        <input type="file" id="ev-documento" accept=".pdf,.jpg,.jpeg,.png">
+                        <small id="ev-documento-atual" class="text-muted"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="ev-termo">Termo de Cessão assinado</label>
+                        <input type="file" id="ev-termo" accept=".pdf,.jpg,.jpeg,.png">
+                        <small id="ev-termo-atual" class="text-muted"></small>
+                    </div>
+                </div>
+                <small class="text-muted">PDF ou imagem, até 10 MB. Enviar um novo arquivo substitui o anterior no cadastro (o arquivo antigo fica guardado no armazenamento).</small>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="fecharModalEditarVeiculo()">Cancelar</button>
