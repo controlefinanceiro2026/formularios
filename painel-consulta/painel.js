@@ -1603,6 +1603,7 @@ async function carregarVeiculos() {
             <td>${v.valor_contratado != null ? formatarMoeda(v.valor_contratado) : '—'}</td>
             <td>${botoesDoc || '<span style="color:#cbd5e1;">—</span>'}</td>
             <td>
+                ${podeIncluirCadastro() ? `<button class="btn-icon" onclick="abrirModalEditarVeiculo(${v.id})" title="Editar veículo ${escaparHtml(v.placa)}">✏️</button>` : ''}
                 <button class="btn-icon" onclick="gerarTermoCessaoVeiculo(cacheVeiculos.find(x => x.id === ${v.id}))" title="Gerar Termo de Cessão (modelo em branco)">📄</button>
             </td>
         </tr>`;
