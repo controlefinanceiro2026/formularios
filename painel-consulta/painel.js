@@ -1973,7 +1973,7 @@ function checkboxesParcelasExcluidas(tipo, id, entidade) {
         const jaExcluida = atuais.includes(n);
         // pagas === null (índice ainda carregando/indisponível) também bloqueia — por
         // segurança nunca assume que a parcela não foi paga (ver parcelasPagasDaEntidade).
-        const bloqueada = !jaExcluida && (pagas === null || pagas >= n);
+        const bloqueada = !jaExcluida && (pagas === null || pagas.has(n));
         const titulo = bloqueada
             ? `Parcela ${n} já paga${tipo === 'veiculo' ? ' para este veículo' : ' para esta pessoa'} — não pode ser excluída.`
             : `Excluir a Parcela ${n} do pagamento desta ${rotulo} (as demais parcelas continuam normais).`;
@@ -1985,7 +1985,7 @@ function checkboxesParcelasExcluidas(tipo, id, entidade) {
     }).join('');
 }
 
-// Nº de parcelas já pagas — vem do índice de pagamentos contados da RPC
+// Parcelas já pagas (Set de números; cada parcela é independente) — vem do índice de pagamentos contados da RPC
 // gestao_lideres_pagamentos_realizados() (o painel não lê lançamentos), ver
 // pagamentosRecebidosPessoaGestao/Veiculo mais abaixo. null = índice ainda
 // não carregou / indisponível — trata como "não dá pra confirmar", e por
@@ -2007,7 +2007,7 @@ async function alternarParcelaExcluida(tipo, id, numero, chk) {
             alert('Não dá pra confirmar se essa parcela já foi paga agora (dados de pagamento ainda carregando ou indisponíveis) — tente de novo em instantes.');
             return;
         }
-        if (pagas >= numero) {
+        if (pagas.has(numero)) {
             chk.checked = false;
             alert(`A Parcela ${numero} já foi paga${tipo === 'veiculo' ? ' para este veículo' : ' para esta pessoa'} — não dá para excluir uma parcela já paga.`);
             return;
@@ -2054,12 +2054,12 @@ function celulaAlgumPagouParcela(liderId, numero) {
     for (const p of pessoas) {
         const pagas = parcelasPagasDaEntidade('pessoa', p);
         if (pagas === null) desconhecido = true;
-        else if (pagas >= numero) return true;
+        else if (pagas.has(numero)) return true;
     }
     for (const v of veiculos) {
         const pagas = parcelasPagasDaEntidade('veiculo', v);
         if (pagas === null) desconhecido = true;
-        else if (pagas >= numero) return true;
+        else if (pagas.has(numero)) return true;
     }
     return desconhecido ? null : false;
 }
@@ -2079,7 +2079,7 @@ async function alternarParcelaExcluidaCelula(liderId, numero, chk) {
     let erroOcorrido = null;
 
     for (const entidade of pessoas) {
-        if (excluir && parcelasPagasDaEntidade('pessoa', entidade) >= numero) { puladasPagas.push(entidade.nome); continue; }
+        if (excluir && parcelasPagasDaEntidade('pessoa', entidade).has(numero)) { puladasPagas.push(entidade.nome); continue; }
         const atuais = new Set(ParcelasPessoal.normalizarParcelasExcluidas(entidade.parcelas_pagamento_excluidas));
         if (excluir) atuais.add(numero); else atuais.delete(numero);
         const novaLista = [...atuais].sort((a, b) => a - b);
@@ -2089,7 +2089,7 @@ async function alternarParcelaExcluidaCelula(liderId, numero, chk) {
     }
     if (!erroOcorrido) {
         for (const v of veiculos) {
-            if (excluir && parcelasPagasDaEntidade('veiculo', v) >= numero) { puladasPagas.push(`Veículo ${v.placa}`); continue; }
+            if (excluir && parcelasPagasDaEntidade('veiculo', v).has(numero)) { puladasPagas.push(`Veículo ${v.placa}`); continue; }
             const atuais = new Set(ParcelasPessoal.normalizarParcelasExcluidas(v.parcelas_pagamento_excluidas));
             if (excluir) atuais.add(numero); else atuais.delete(numero);
             const novaLista = [...atuais].sort((a, b) => a - b);
@@ -2429,16 +2429,16 @@ function limparFiltrosInativosGestao() {
     renderizarInativosGestao();
 }
 
-// Nº de pagamentos já recebidos (RPC). null = RPC indisponível/carregando.
+// Parcelas já recebidas (Set, RPC). null = RPC indisponível/carregando.
 function pagamentosRecebidosPessoaGestao(pessoa) {
-    return indicePagamentosGestao ? (indicePagamentosGestao.pessoas.get(String(pessoa.id)) || 0) : null;
+    return indicePagamentosGestao ? ParcelasPessoal.conjuntoParcelasPagas(indicePagamentosGestao.pessoas.get(String(pessoa.id))) : null;
 }
 function pagamentosRecebidosVeiculoGestao(veiculo) {
-    return indicePagamentosGestao ? (indicePagamentosGestao.veiculos.get(veiculo.placa) || 0) : null;
+    return indicePagamentosGestao ? ParcelasPessoal.conjuntoParcelasPagas(indicePagamentosGestao.veiculos.get(veiculo.placa)) : null;
 }
 
 function historicoPessoaGestao(pessoa) {
-    return RemanejamentoInativos.historicoPessoaPorContagem(pessoa, pagamentosRecebidosPessoaGestao(pessoa) || 0, []);
+    return RemanejamentoInativos.historicoPessoaPorContagem(pessoa, pagamentosRecebidosPessoaGestao(pessoa) || new Set(), []);
 }
 
 // Faixa com o cronograma (paga / a pagar) — o "registro de que foi pago".
@@ -2487,7 +2487,7 @@ function renderizarInativosGestao() {
         const ehLider = pessoa.funcao === 'lider';
 
         const linhasVeiculo = veiculos.map(v => {
-            const h = RemanejamentoInativos.historicoVeiculoPorContagem(v, ehLider ? pessoa : liderOrigem, pagamentosRecebidosVeiculoGestao(v) || 0);
+            const h = RemanejamentoInativos.historicoVeiculoPorContagem(v, ehLider ? pessoa : liderOrigem, pagamentosRecebidosVeiculoGestao(v) || new Set());
             return `
             <tr>
                 <td>${escaparHtml(v.placa)}</td>
@@ -3224,7 +3224,7 @@ function situacaoPagamentoPessoaGestao(p, lider) {
         return { texto: 'Fora da agenda', pagas: 0, total: 0, fora: true };
     }
     const cronograma = ParcelasPessoal.calcularCronogramaParcelasPessoal(p);
-    return situacaoPagamentoTexto(Math.min(indicePagamentosGestao.pessoas.get(String(p.id)) || 0, cronograma.length), cronograma.length);
+    return situacaoPagamentoTexto(Math.min(ParcelasPessoal.conjuntoParcelasPagas(indicePagamentosGestao.pessoas.get(String(p.id))).size, cronograma.length), cronograma.length);
 }
 
 function situacaoPagamentoVeiculoGestao(v, lider) {
@@ -3234,7 +3234,7 @@ function situacaoPagamentoVeiculoGestao(v, lider) {
     }
     if (v.valor_contratado == null) return { texto: 'Sem valor contratado', pagas: 0, total: 0, fora: false };
     const cronograma = ParcelasPessoal.calcularCronogramaParcelasVeiculo(v, lider);
-    return situacaoPagamentoTexto(Math.min(indicePagamentosGestao.veiculos.get(v.placa) || 0, cronograma.length), cronograma.length);
+    return situacaoPagamentoTexto(Math.min(ParcelasPessoal.conjuntoParcelasPagas(indicePagamentosGestao.veiculos.get(v.placa)).size, cronograma.length), cronograma.length);
 }
 
 function situacaoPagamentoCelulaGestao(itens) {

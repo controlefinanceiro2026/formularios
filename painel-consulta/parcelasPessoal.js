@@ -119,9 +119,36 @@
         return saidas;
     }
 
-    // Nº de parcelas já quitadas de uma pessoa (consumo em ordem).
+    // CONJUNTO de parcelas quitadas a partir de uma lista de pagamentos
+    // ([{ parcela? }]). Parcelas são independentes: o item que traz o número
+    // da parcela (todo item de detalhe_pagamentos de um consolidado da
+    // Agenda) quita ESSA parcela — dá para pagar a Parcela 2 sem a 1 e vice-
+    // versa. Só o lançamento individual legado, sem número de parcela, segue
+    // o consumo em ordem: quita a menor parcela ainda livre. Dois itens da
+    // mesma parcela contam uma vez só.
+    function conjuntoParcelasPagas(pagamentos) {
+        const pagas = new Set();
+        let semNumero = 0;
+        (pagamentos || []).forEach(x => {
+            const n = Number(x && x.parcela);
+            if (Number.isInteger(n) && n > 0) pagas.add(n);
+            else semNumero++;
+        });
+        for (; semNumero > 0; semNumero--) {
+            let n = 1;
+            while (pagas.has(n)) n++;
+            pagas.add(n);
+        }
+        return pagas;
+    }
+
+    function parcelasPagasPessoal(pessoa, lancamentos) {
+        return conjuntoParcelasPagas(pagamentosDaPessoa(pessoa, lancamentos));
+    }
+
+    // Nº de parcelas já quitadas de uma pessoa.
     function contarParcelasPagas(pessoa, lancamentos) {
-        return pagamentosDaPessoa(pessoa, lancamentos).length;
+        return parcelasPagasPessoal(pessoa, lancamentos).size;
     }
 
     // Só as DATAS do cronograma da pessoa (sem valor), na ordem cronológica —
@@ -239,9 +266,14 @@
     // do líder (mesmas datas / mesmo nº de parcelas), mas com o valor
     // contratado do próprio veículo dividido nessas parcelas. "Parcela paga"
     // = pagamento DESPESA / tipificação 'Aluguel de Veículos' com a placa do
-    // veículo (individual ou dentro de detalhe_pagamentos), consumo em ordem.
+    // veículo (individual ou dentro de detalhe_pagamentos); cada parcela é
+    // independente (ver conjuntoParcelasPagas).
+    function parcelasPagasVeiculo(veiculo, lancamentos) {
+        return conjuntoParcelasPagas(pagamentosDoVeiculo(veiculo, lancamentos));
+    }
+
     function contarParcelasPagasVeiculo(veiculo, lancamentos) {
-        return pagamentosDoVeiculo(veiculo, lancamentos).length;
+        return parcelasPagasVeiculo(veiculo, lancamentos).size;
     }
 
     function calcularCronogramaParcelasVeiculo(veiculo, lider) {
@@ -251,8 +283,8 @@
     }
 
     function parcelasFuturasVeiculo(veiculo, lider, lancamentos) {
-        const pagas = contarParcelasPagasVeiculo(veiculo, lancamentos);
-        return calcularCronogramaParcelasVeiculo(veiculo, lider).filter(p => p.parcela > pagas && !p.excluida);
+        const pagas = parcelasPagasVeiculo(veiculo, lancamentos);
+        return calcularCronogramaParcelasVeiculo(veiculo, lider).filter(p => !pagas.has(p.parcela) && !p.excluida);
     }
 
     // Só as parcelas que ainda faltam lançar (índice > parcelas pagas e não
@@ -260,8 +292,8 @@
     // app.js#calcularParcelasFuturasPessoal (que reimplementa isso local,
     // sem depender deste módulo — mantenha as duas em sincronia).
     function parcelasFuturasPessoal(pessoa, lancamentos) {
-        const pagas = contarParcelasPagas(pessoa, lancamentos);
-        return calcularCronogramaParcelasPessoal(pessoa).filter(p => p.parcela > pagas && !p.excluida);
+        const pagas = parcelasPagasPessoal(pessoa, lancamentos);
+        return calcularCronogramaParcelasPessoal(pessoa).filter(p => !pagas.has(p.parcela) && !p.excluida);
     }
 
     // A próxima parcela a vencer (ou null se está tudo quitado).
@@ -284,6 +316,9 @@
         datasCronogramaPessoal,
         pagamentosDaPessoa,
         pagamentosDoVeiculo,
+        conjuntoParcelasPagas,
+        parcelasPagasPessoal,
+        parcelasPagasVeiculo,
         contarParcelasPagas,
         calcularCronogramaParcelasPessoal,
         parcelasFuturasPessoal,

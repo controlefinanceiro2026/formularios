@@ -4,8 +4,8 @@
 //
 // Lógica pura: recebe a célula e um ÍNDICE de pagamentos já efetuados.
 // "Parcela paga" segue o mesmo critério da Agenda (lib/parcelasPessoal.js):
-// consumo em ordem — o n-ésimo pagamento de uma pessoa/placa quita a n-ésima
-// parcela do cronograma dela. Quem está fora da Agenda (inativo, não gera
+// cada parcela é independente — o pagamento que traz o número da parcela
+// quita ESSA parcela; só o legado sem número segue a ordem. Quem está fora da Agenda (inativo, não gera
 // pagamento, veículo sem valor) não entra na conta.
 //
 // Cópia idêntica em painel-consulta/statusPagamentoCelula.js (deploy
@@ -31,17 +31,21 @@
     function indexarPagamentos(lancamentos) {
         const pessoas = new Map();
         const veiculos = new Map();
-        const somar = (mapa, chave) => mapa.set(chave, (mapa.get(chave) || 0) + 1);
+        // chave → lista dos pagamentos ({ parcela? }); ver conjuntoParcelasPagas.
+        const somar = (mapa, chave, parcela) => {
+            if (!mapa.has(chave)) mapa.set(chave, []);
+            mapa.get(chave).push({ parcela });
+        };
         (lancamentos || []).forEach(l => {
             if (l.tipo !== 'DESPESA') return;
             const ehAluguel = PP.TIPIFICACOES_VEICULO.has(l.tipificacao);
-            if (l.pessoa_id != null) somar(pessoas, String(l.pessoa_id));
-            if (l.placa != null && ehAluguel) somar(veiculos, l.placa);
+            if (l.pessoa_id != null) somar(pessoas, String(l.pessoa_id), undefined);
+            if (l.placa != null && ehAluguel) somar(veiculos, l.placa, undefined);
             if (l.pessoa_id != null) return;
             PP.normalizarDetalhePagamentos(l.detalhe_pagamentos).forEach(d => {
                 if (!d) return;
-                if (d.pessoa_id != null) somar(pessoas, String(d.pessoa_id));
-                if (d.placa != null && ehAluguel) somar(veiculos, d.placa);
+                if (d.pessoa_id != null) somar(pessoas, String(d.pessoa_id), d.parcela);
+                if (d.placa != null && ehAluguel) somar(veiculos, d.placa, d.parcela);
             });
         });
         return { pessoas, veiculos };
@@ -49,14 +53,22 @@
 
     // Mesmo índice, a partir de linhas já contadas — o formato que a RPC
     // gestao_lideres_pagamentos_realizados() devolve ao painel:
-    // [{ pessoa_id, placa, pagamentos }] (uma das duas chaves preenchida).
+    // [{ pessoa_id, placa, pagamentos, parcelas? }] (uma das duas chaves
+    // preenchida). `parcelas` (int[] com o número da parcela dos itens que
+    // trazem o número) só existe depois da migração de parcelas
+    // independentes; sem ele, os `pagamentos` entram como itens sem número
+    // (consumo em ordem, como antes).
     function indexarPagamentosContados(linhas) {
         const pessoas = new Map();
         const veiculos = new Map();
         (linhas || []).forEach(r => {
-            const n = Number(r.pagamentos) || 0;
-            if (r.pessoa_id != null) pessoas.set(String(r.pessoa_id), (pessoas.get(String(r.pessoa_id)) || 0) + n);
-            else if (r.placa != null) veiculos.set(r.placa, (veiculos.get(r.placa) || 0) + n);
+            const numeradas = Array.isArray(r.parcelas) ? r.parcelas.map(Number).filter(n => Number.isInteger(n) && n > 0) : [];
+            const total = Number(r.pagamentos) || 0;
+            const itens = numeradas.map(parcela => ({ parcela }));
+            for (let i = numeradas.length; i < total; i++) itens.push({ parcela: undefined });
+            const mapa = r.pessoa_id != null ? pessoas : (r.placa != null ? veiculos : null);
+            const chave = r.pessoa_id != null ? String(r.pessoa_id) : r.placa;
+            if (mapa) mapa.set(chave, (mapa.get(chave) || []).concat(itens));
         });
         return { pessoas, veiculos };
     }
@@ -86,7 +98,7 @@
             itens.push({
                 rotulo: p.nome,
                 cronograma: PP.calcularCronogramaParcelasPessoal(p),
-                pagamentos: idx.pessoas.get(String(p.id)) || 0
+                pagas: PP.conjuntoParcelasPagas(idx.pessoas.get(String(p.id)))
             });
         });
         (veiculos || []).forEach(v => {
@@ -94,7 +106,7 @@
             itens.push({
                 rotulo: `Veículo ${v.placa}`,
                 cronograma: PP.calcularCronogramaParcelasVeiculo(v, lider),
-                pagamentos: idx.veiculos.get(v.placa) || 0
+                pagas: PP.conjuntoParcelasPagas(idx.veiculos.get(v.placa))
             });
         });
 
@@ -109,7 +121,7 @@
                 if (!r.data) r.data = c.data;
                 r.total++;
                 r.valorTotal += c.valor;
-                if (item.pagamentos >= numero) { r.pagos++; r.valorPago += c.valor; }
+                if (item.pagas.has(numero)) { r.pagos++; r.valorPago += c.valor; }
                 else r.pendentes.push(item.rotulo);
             });
             r.valorTotal = r2(r.valorTotal);

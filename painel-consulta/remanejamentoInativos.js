@@ -63,8 +63,16 @@
     // Mesma visão a partir de uma CONTAGEM de pagamentos (o Painel de
     // Consulta não lê lançamentos: a RPC gestao_lideres_pagamentos_realizados
     // só devolve quantos pagamentos cada pessoa/placa recebeu). Sem datas.
+    // `pagas`: nº de pagamentos (legado, consumo em ordem) OU Set/array com
+    // os números das parcelas quitadas.
+    const conjuntoPagas = pagas => pagas instanceof Set ? pagas : Array.isArray(pagas) ? new Set(pagas)
+        : new Set(Array.from({ length: Number(pagas) || 0 }, (_, i) => i + 1));
+    const qtdPagas = pagas => pagas instanceof Set ? pagas.size : Array.isArray(pagas) ? new Set(pagas).size : Number(pagas) || 0;
+
     function historicoPessoaPorContagem(pessoa, pagas, etiquetas, pagamentos) {
-        const cronograma = PP.calcularCronogramaParcelasPessoal(pessoa).map(c => ({ ...c, paga: c.parcela <= pagas }));
+        const setPagas = conjuntoPagas(pagas);
+        pagas = qtdPagas(pagas);
+        const cronograma = PP.calcularCronogramaParcelasPessoal(pessoa).map(c => ({ ...c, paga: setPagas.has(c.parcela) }));
         const minhasEtiquetas = (etiquetas || [])
             .filter(e => e.pessoa_id != null && e.pessoa_id == pessoa.id) // eslint-disable-line eqeqeq
             .sort((a, b) => String(a.data_pagamento).localeCompare(String(b.data_pagamento)));
@@ -76,18 +84,20 @@
     }
 
     function historicoVeiculoPorContagem(veiculo, lider, pagas, pagamentos) {
-        const cronograma = PP.calcularCronogramaParcelasVeiculo(veiculo, lider).map(c => ({ ...c, paga: c.parcela <= pagas }));
+        const setPagas = conjuntoPagas(pagas);
+        pagas = qtdPagas(pagas);
+        const cronograma = PP.calcularCronogramaParcelasVeiculo(veiculo, lider).map(c => ({ ...c, paga: setPagas.has(c.parcela) }));
         return { pagamentos: pagamentos || [], pagas, cronograma };
     }
 
     function historicoPessoa(pessoa, lancamentos, etiquetas) {
         const pagamentos = PP.pagamentosDaPessoa(pessoa, lancamentos);
-        return historicoPessoaPorContagem(pessoa, pagamentos.length, etiquetas, pagamentos);
+        return historicoPessoaPorContagem(pessoa, PP.conjuntoParcelasPagas(pagamentos), etiquetas, pagamentos);
     }
 
     function historicoVeiculo(veiculo, lider, lancamentos) {
         const pagamentos = PP.pagamentosDoVeiculo(veiculo, lancamentos);
-        return historicoVeiculoPorContagem(veiculo, lider, pagamentos.length, pagamentos);
+        return historicoVeiculoPorContagem(veiculo, lider, PP.conjuntoParcelasPagas(pagamentos), pagamentos);
     }
 
     // Líderes que podem receber alguém: ativos, célula ativa e fora do Comitê
